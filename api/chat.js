@@ -61,15 +61,14 @@ FORMAT (adapt flexibly — skip sections that don't add value):
 2) Key details (2–3 bullets using "•").
 3) Interaction flag if relevant: 🟢 Minor | 🟡 Moderate | 🔴 Major.
 4) One next step: practical action OR one clarifying question.
-5) End: *Educational only — verify with your pharmacist or prescriber.*
+Do NOT add a disclaimer or "educational only" line — the UI handles that.
 
 RULES:
-- One disclaimer at the end, not scattered mid-answer.
-- Answer first, then note when professional input matters. Don't substitute "consult your doctor" for an answer.
+- No disclaimers in your response. No "consult your doctor" as a substitute for an answer. Answer first, then note when professional input matters (e.g., "Worth mentioning to your prescriber...").
 - Don't hedge everything. Be confident when evidence supports it.
 - 2–3 bullets max. Brevity is premium.
 - Typical adult dose ranges + "start low" when appropriate. Mention upper limits/toxicity briefly. No child/pregnancy dosing.
-- Use cautious phrasing for uncertain mechanisms ("may support", "thought to help"). Don't say "bioavailability", "best form", "regulates circadian rhythm", or "reduces stress hormones" unless the user specifically asks.
+- Use cautious phrasing for uncertain mechanisms ("may support", "thought to help"). NEVER say "bioavailability", "best form", "regulates circadian rhythm", "reduces cortisol levels", "reduces stress hormones", or "lowers cortisol". Instead say "may help support stress resilience" or "thought to help the body adapt to stress".
 - Never fabricate citations. If meds are named vaguely, ask which specific one.
 - When relevant, suggest what to tell the prescriber (e.g., "Worth mentioning: 'I'm taking X — any concern with my meds?'").
 `.trim();
@@ -202,7 +201,7 @@ function isOnTopic(text) {
     return true;
   }
   // Body/condition signals
-  if (/\b(blood pressure|cholesterol|thyroid|diabetes|kidney|liver|heart|stomach|gut|digest|inflam|immune|joint|bone|muscle|weight|fat|cortisol|hormone|insulin|serotonin|dopamine|pregnant|breastfeed|nursing|allerg|headache|migraine|nausea|diarrhea|constipat|bloat|fatigue|insomnia)\b/.test(t)) {
+  if (/\b(blood pressure|cholesterol|thyroid|diabetes|kidney|liver|heart|stomach|gut|digest|inflam|immune|joint|bone|muscle|weight|fat|cortisol|hormone|insulin|serotonin|dopamine|pregnant|pregnancy|breastfeed|nursing|conceiv|fertility|ttc|trying to conceive|ovulat|sperm|libido|pcos|endometri|allerg|headache|migraine|nausea|diarrhea|constipat|bloat|fatigue|insomnia|acne|hair loss|menopaus|perimenopaus|menstr|period|pms)\b/.test(t)) {
     return true;
   }
   // Interaction-style questions
@@ -329,8 +328,6 @@ function mineralSpacingNote() {
   );
 }
 
-const DISCLAIMER_MARKER = "*Educational only";
-
 function stripModelSpacingAdvice(text) {
   const lines = text.split("\n");
   const shouldRemove = (line) => {
@@ -349,13 +346,6 @@ function stripModelSpacingAdvice(text) {
     return hasSpacingLanguage && (mentionsTargets || mentionsMinerals);
   };
   return lines.filter((line) => !shouldRemove(line)).join("\n").trim();
-}
-
-function injectBeforeDisclaimer(reply, note) {
-  if (reply.includes(DISCLAIMER_MARKER)) {
-    return reply.replace(DISCLAIMER_MARKER, "\n" + note + "\n\n" + DISCLAIMER_MARKER);
-  }
-  return reply + "\n\n" + note + "\n\n" + DISCLAIMER_MARKER + " — verify with your pharmacist or prescriber.*";
 }
 
 // -----------------------------------------------------------------------------
@@ -545,10 +535,19 @@ module.exports = async function handler(req, res) {
       completion.choices?.[0]?.message?.content?.trim() ||
       "I couldn’t generate a response. Please try again.";
 
+    // Strip any LLM-added disclaimer (UI footer handles it)
+    reply = reply
+      .replace(/\n*\*?Educational only[^\n]*/gi, '')
+      .replace(/\n*\*?This is for educational[^\n]*/gi, '')
+      .replace(/\n*\*?Disclaimer[^\n]*/gi, '')
+      .replace(/\n*\*?Note: this is not medical advice[^\n]*/gi, '')
+      .replace(/\n*\*?Consult (?:your |a )?(?:doctor|physician|healthcare provider|clinician|pharmacist)[^\n]*before[^\n]*/gi, '')
+      .trim();
+
     // Deterministic mineral spacing: strip LLM's version, inject clean standardized bullet
     if (mentionsMineralSpacingTrigger(message)) {
       reply = stripModelSpacingAdvice(reply);
-      reply = injectBeforeDisclaimer(reply, mineralSpacingNote());
+      reply = reply + "\n\n" + mineralSpacingNote();
     }
 
     const response = { reply, model: "llama-3.3-70b-versatile" };
