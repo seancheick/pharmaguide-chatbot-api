@@ -155,6 +155,38 @@ assert("assertNoForbiddenKeys ok on valid keys", (() => {
   catch (e) { return false; }
 })());
 
+assert("assertNoForbiddenKeys throws on nested forbidden key", (() => {
+  try { assertNoForbiddenKeys({ nested: { array: [{ message: "test" }] } }); return false; }
+  catch (e) { return e.message.includes("forbidden key") && e.message.includes("message"); }
+})());
+
+section("Analytics Event — long string guard (PHI-leak canary)");
+
+assert("throws on >80 char string without leaking value", (() => {
+  const longString = "A".repeat(85);
+  try {
+    assertNoForbiddenKeys({ user_input_proxy: longString });
+    return false; // Should not reach here
+  } catch (e) {
+    const msg = e.message;
+    return msg.includes("exceeding maximum allowed length") &&
+           msg.includes("80 characters") &&
+           msg.includes("user_input_proxy") &&
+           !msg.includes(longString); // Value must not be leaked!
+  }
+})());
+
+assert("nested >80 char string throws safely", (() => {
+  const longString = "B".repeat(100);
+  try {
+    assertNoForbiddenKeys({ deep: [{ field: longString }] });
+    return false;
+  } catch (e) {
+    const msg = e.message;
+    return msg.includes("deep[0].field") && msg.includes("length: 100") && !msg.includes(longString);
+  }
+})());
+
 section("Analytics Event — latency bucketing");
 
 assert("0ms → 0-200ms", bucketLatency(0) === "0-200ms");

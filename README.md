@@ -3,21 +3,31 @@
 ## 🎯 Overview
 
 This is a complete AI chatbot solution for PharmaGuide.io featuring:
-- **Backend**: Vercel serverless function using Groq API (Llama 3.3 70B)
+- **Backend**: Vercel serverless function using Groq's high-speed API (Llama 3.3 70B)
 - **Frontend**: Premium glassmorphism chat widget
+- **Safety Engine**: Deterministic risk routing, symptom triage, and post-response validation
+- **Infrastructure**: Upstash Redis rate limiting, response caching, and circuit breakers
 - **Free Tier**: ~6,000 requests/day on Groq's generous free tier
 
 ---
 
 ## 📁 Project Structure
 
-```
+```text
 pharmaguide-chatbot/
 ├── api/
 │   ├── chat.js          # Main chat endpoint
 │   └── health.js        # Health check endpoint
+├── src/
+│   ├── config/          # Policy, prompts, and synonyms
+│   ├── core/            # Normalization, entity extraction, risk router
+│   ├── gates/           # Safety gate detection and static replies
+│   ├── infra/           # Analytics, circuit breaker, rate limit, cache, memory
+│   └── postprocess/     # Output validation and response shaping
+├── scripts/             # CI/CD deployment release gates
+├── test/                # Test suites (unit and golden traces)
 ├── chatbot-widget.html  # Frontend widget (copy to WordPress)
-├── package.json         # Dependencies
+├── package.json         # Dependencies and build scripts
 ├── vercel.json          # Vercel configuration
 └── README.md            # This file
 ```
@@ -50,14 +60,13 @@ pharmaguide-chatbot/
    - Link to existing project? → Yes → select `pharmaguideai`
    - Or create new project with name `pharmaguideai`
 
-5. **Set environment variable**:
+5. **Set environment variables**:
    ```bash
    vercel env add GROQ_API_KEY
+   vercel env add UPSTASH_REDIS_REST_URL
+   vercel env add UPSTASH_REDIS_REST_TOKEN
    ```
-   When prompted, paste your Groq API key:
-   ```
-   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
-   ```
+   *Note: Provide your Groq API key for the AI to function. The Upstash Redis variables are for multi-region rate limiting. If omitted, the API will safely fall back to an in-memory rate limiter.*
    Select: Production, Preview, Development (all three)
 
 6. **Redeploy with the environment variable**:
@@ -76,9 +85,10 @@ pharmaguide-chatbot/
 
 3. **Configure Environment Variables**:
    - Go to Project Settings → Environment Variables
-   - Add:
-     - Name: `GROQ_API_KEY`
-     - Value: `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`
+   - Add the following keys:
+     - `GROQ_API_KEY` (Required for AI responses)
+     - `UPSTASH_REDIS_REST_URL` (Required/Recommended for multi-region rate limiting)
+     - `UPSTASH_REDIS_REST_TOKEN` (Required/Recommended for multi-region rate limiting)
    - Check all environments (Production, Preview, Development)
 
 4. **Deploy**:
@@ -178,12 +188,9 @@ Change these to whatever starter prompts you prefer.
 
 ### Rate Limiting
 
-The API includes rate limiting (10 requests/minute/IP). To adjust:
-
-In `api/chat.js`, modify:
-```javascript
-const MAX_REQUESTS_PER_WINDOW = 10; // Change this number
-```
+The API includes advanced rate limiting via **Upstash Redis** (Sliding Window: 10 requests / 1 minute / IP).
+- If Upstash variables (`UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`) are provided in Vercel, it uses distributed Redis for global limit tracking.
+- If they are missing or the connection fails, it safely falls back to a fast, per-instance in-memory rate limiter.
 
 ---
 
@@ -313,12 +320,29 @@ To move the button to the left side:
 }
 ```
 
+## 🧪 CI/CD & Testing
+
+The project uses built-in automated safeguards before deployment:
+
+### Local Testing
+```bash
+npm run test
+```
+Runs the entire local test suite, including semantic golden traces, gate behavior, analytics PHI guards, and circuit breaker constraints.
+
+### Release Gate
+```bash
+npm run build
+```
+Vercel automatically triggers this during deployment. It executes `scripts/check_release.js` which blocks the release if documentation drift, unresolved policy claims, or trace test failures are detected.
+
 ---
 
 ## ✅ Checklist
 
-- [ ] Deploy API to Vercel
-- [ ] Add GROQ_API_KEY environment variable
+- [ ] Add `GROQ_API_KEY` to Vercel
+- [ ] Add `UPSTASH_REDIS_REST_URL` & `UPSTASH_REDIS_REST_TOKEN` (Optional but recommended)
+- [ ] Deploy API to Vercel (Release gate will run automatically)
 - [ ] Test API with curl
 - [ ] Install widget on WordPress
 - [ ] Test chat on live site

@@ -53,11 +53,36 @@ function hashMessage(normalizedText) {
 
 // ── Schema guard ──
 function assertNoForbiddenKeys(event) {
-  for (const key of Object.keys(event)) {
-    if (FORBIDDEN_KEYS.has(key)) {
-      throw new Error(`Analytics event contains forbidden key: "${key}"`);
+  function checkNode(node, path) {
+    if (node === null || node === undefined) return;
+    
+    if (typeof node === "object") {
+      if (Array.isArray(node)) {
+        for (let i = 0; i < node.length; i++) {
+          checkNode(node[i], `${path}[${i}]`);
+        }
+      } else {
+        for (const key of Object.keys(node)) {
+          if (FORBIDDEN_KEYS.has(key)) {
+            throw new Error(`Analytics event contains forbidden key: "${key}" at path "${path ? path + '.' + key : key}"`);
+          }
+          checkNode(node[key], path ? `${path}.${key}` : key);
+        }
+      }
+    } else if (typeof node === "string") {
+      // String length heuristic to prevent PHI leak via long text fields
+      if (node.length > 80) {
+        // Exclude specific safe keys from the length limit. (Currently empty, waiting for tests to fail and dictate)
+        const currentKey = path ? path.split('.').pop().replace(/\[\d+\]/g, '') : '';
+        const whitelist = []; 
+        if (!whitelist.includes(currentKey)) {
+          throw new Error(`Analytics event contains string exceeding maximum allowed length of 80 characters at path "${path}" (length: ${node.length}).`);
+        }
+      }
     }
   }
+
+  checkNode(event, "");
 }
 
 // ── Retry detection ──

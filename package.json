@@ -6,6 +6,10 @@
   "engines": {
     "node": ">=18.0.0"
   },
+  "scripts": {
+    "check:release": "node scripts/check_release.js",
+    "build": "npm run check:release"
+  },
   "dependencies": {
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.36.3",

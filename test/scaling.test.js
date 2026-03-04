@@ -6,7 +6,7 @@
 const { tryDSLGate, isDSLRoute, getCompiledGates, validateGateDefinitions, renderDSLReply } = require("../src/gates/gateEngine");
 const { scoreRisks, resolveSeverity } = require("../src/core/riskScore");
 const { validateResponse } = require("../src/postprocess/safetyValidator");
-const { createSessionMemory, detectGoal, updateSessionMemory, shouldSkipClarifier, getMemorySummary } = require("../src/core/sessionMemory");
+const { createSessionMemory, detectGoal, updateSessionMemory, shouldSkipClarifier, getMemorySummary } = require("../src/infra/sessionMemory");
 
 let pass = 0, fail = 0, total = 0;
 const failures = [];

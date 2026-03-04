@@ -231,12 +231,124 @@ assert("T18: reply mentions stopping or contacting prescriber", /stop|prescriber
 assert("T18: validation passes", t18.validation.safe);
 
 // ═══════════════════════════════════════════════════════════════
-console.log(`\n═══════════════════════════════════════════════════════════════`);
-if (fail > 0) {
-  console.log(`  ${fail} FAILED out of ${total}`);
-  for (const f of failures) console.log(`    • ${f}`);
-  process.exit(1);
-} else {
-  console.log(`  ALL TESTS PASSED: ${pass}/${total}`);
+// API-Level Pipeline Traces (Mocking chat.js dependencies)
+// ═══════════════════════════════════════════════════════════════
+const chatHandler = require("../api/chat");
+const { groq } = require("../src/infra/groqClient");
+const circuitBreaker = require("../src/infra/circuitBreaker");
+const responseCache = require("../src/infra/responseCache");
+const crypto = require("crypto");
+const { SYSTEM_PROMPT } = require("../src/config/systemPrompt");
+
+async function runApiTrace(message, mockSetup, uniqueIp = "127.0.0.1") {
+  const req = {
+    method: "POST",
+    headers: { "x-forwarded-for": uniqueIp },
+    body: { message, history: [] }
+  };
+  
+  let statusCode = 200;
+  let jsonResponse = null;
+  const res = {
+    status: (code) => { statusCode = code; return res; },
+    json: (data) => { jsonResponse = data; return res; },
+    setHeader: () => res,
+    getHeader: () => null,
+    end: () => res
+  };
+
+  // Setup Mocks
+  const originalCreate = groq.chat.completions.create;
+  circuitBreaker.reset();
+  responseCache.clearCache();
+  
+  if (mockSetup) mockSetup();
+
+  await chatHandler(req, res);
+
+  // Restore
+  groq.chat.completions.create = originalCreate;
+  circuitBreaker.reset();
+  responseCache.clearCache();
+
+  return { status: statusCode, body: jsonResponse };
 }
-console.log(`═══════════════════════════════════════════════════════════════\n`);
+
+async function runApiTests() {
+  section("Trace 19: API Cache Hit");
+  
+  const t19 = await runApiTrace("what is vitamin d", () => {
+    const sysHash = crypto.createHash("sha256").update(SYSTEM_PROMPT).digest("hex").slice(0, 12);
+    const key = responseCache.buildCacheKey("what is vitamin d", sysHash, "llama-3.3-70b-versatile");
+    // Ensure cache is populated
+    responseCache.setCachedResponse(key, "This is a cached response about Vitamin D.");
+    // Make sure LLM throws so if cache misses, test fails loudly
+    groq.chat.completions.create = async () => { throw new Error("Should not hit LLM"); };
+  }, "10.0.0.19");
+
+  assert("T19: status is 200", t19.status === 200);
+  assert("T19: reply matches cache", t19.body?.reply === "This is a cached response about Vitamin D.");
+  assert("T19: model returned is llm model, not system route", t19.body?.model === "llama-3.3-70b-versatile");
+
+
+  section("Trace 20: API LLM Timeout -> Graceful Degradation");
+  
+  const t20 = await runApiTrace("what is ashwagandha", () => {
+    // LLM Timeout simulation
+    groq.chat.completions.create = async () => {
+      throw { status: 500, message: "timeout" }; // Simulate API throw
+    };
+  }, "10.0.0.20");
+  
+  assert("T20: status is 500 fallback or error", t20.status === 500);
+  assert("T20: reply contains unexpected error message", t20.body?.error?.includes("unexpected error"));
+
+
+  section("Trace 21: API Circuit Breaker Open -> Blocked LLM");
+  
+  const t21 = await runApiTrace("what is magnesium", () => {
+    // Force circuit open
+    for (let i = 0; i < circuitBreaker.FAILURE_THRESHOLD; i++) circuitBreaker.recordFailure();
+    groq.chat.completions.create = async () => { throw new Error("Should not hit LLM - Circuit Open"); };
+  }, "10.0.0.21");
+
+  assert("T21: status is 200", t21.status === 200);
+  assert("T21: reply contains degraded system capacity warning", t21.body?.reply?.includes("experiencing a brief delay"));
+  assert("T21: model is system:degraded", t21.body?.model === "system:degraded");
+
+
+  section("Trace 22: API Validator Violation -> Safe Fallback (LLM generated bad response)");
+  
+  const t22 = await runApiTrace("what is magnesium", () => {
+    // We'll skip the gate by tricking the triage if necessary, or just rely on a query that hits LLM
+    groq.chat.completions.create = async () => {
+      // Simulate LLM returning a prescribing statement
+      return {
+        choices: [{
+          message: {
+            content: "I recommend you take 50 mg daily for 2 weeks."
+          }
+        }]
+      };
+    };
+  }, "10.0.0.22");
+
+  assert("T22: status is 200", t22.status === 200);
+  assert("T22: reply fell back to safe fallback or contains safe disclaimer", t22.body?.reply?.includes("I want to make sure I give you accurate"));
+
+  // ═══════════════════════════════════════════════════════════════
+  console.log(`\n═══════════════════════════════════════════════════════════════`);
+  if (fail > 0) {
+    console.log(`  ${fail} FAILED out of ${total}`);
+    for (const f of failures) console.log(`    • ${f}`);
+    process.exit(1);
+  } else {
+    console.log(`  ALL TESTS PASSED: ${pass}/${total}`);
+  }
+  console.log(`═══════════════════════════════════════════════════════════════\n`);
+}
+
+runApiTests().catch(e => {
+  console.error(e);
+  process.exit(1);
+});
