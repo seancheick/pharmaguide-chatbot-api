@@ -1,0 +1,27 @@
+{
+  "release_version": "1.2.0",
+  "released_at": "2026-03-03",
+  "policy_version": "1.0.0",
+  "claims_version": "1.1.0",
+  "validator_version": "1.1.0",
+  "model_ids": ["llama-3.3-70b-versatile"],
+  "test_suites": {
+    "full_suite": { "count": 505, "file": "test/full-suite.test.js" },
+    "edge_cases": { "count": 171, "file": "test/edge-cases.test.js" },
+    "ux_scenarios": { "count": 36, "file": "test/ux-scenarios.test.js" },
+    "safety_harness": { "count": 50, "file": "test/safety-harness.test.js" },
+    "validator": { "count": 39, "file": "test/validator.test.js" },
+    "adversarial": { "count": 65, "file": "test/adversarial.test.js" },
+    "golden_traces": { "count": 60, "file": "test/golden-traces.test.js" },
+    "analytics": { "count": 106, "file": "test/analytics.test.js" },
+    "operational": { "count": 67, "file": "test/operational.test.js" },
+    "scaling": { "count": 79, "file": "test/scaling.test.js" },
+    "load": { "count": 45, "file": "test/load.test.js" }
+  },
+  "forbidden_analytics_keys": ["message", "raw_message", "ip", "entity_names", "meds", "supplements", "raw_ip", "doses", "lab_values"],
+  "claims_count": 19,
+  "domains_count": 19,
+  "dsl_gate_count": 6,
+  "approved_by": null,
+  "notes": "Scaling release: gate DSL engine (6 gates), severity resolver, circuit breaker, response linter, claim bundles, session memory, load testing."
+}

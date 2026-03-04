@@ -5,88 +5,42 @@
  * Run: node test/ux-scenarios.test.js
  */
 
-const fs = require("fs");
-const vm = require("vm");
+// ─── Bootstrap: import functions from src modules ────────────────────────────
+const { normalizeText } = require("../src/core/normalize");
+const { getConversationContext } = require("../src/core/history");
+const { extractKnownItems, extractEntities } = require("../src/core/entities");
+const { scoreRisks } = require("../src/core/riskScore");
+const { routeByRisk } = require("../src/core/router");
+const detection = require("../src/gates/detection");
 
-const src = fs.readFileSync(__dirname + "/../api/chat.js", "utf-8");
+const f = {
+  normalizeText,
+  getConversationContext,
+  extractKnownItems,
+  extractEntities,
+  scoreRisks,
+  routeByRisk,
+  ...detection,
+};
 
-function extractFunction(name) {
-  const funcStart = src.indexOf(`function ${name}(`);
-  if (funcStart === -1) throw new Error(`Function ${name} not found`);
-  let braceCount = 0, started = false, i = funcStart;
-  for (; i < src.length; i++) {
-    if (src[i] === "{") { braceCount++; started = true; }
-    if (src[i] === "}") { braceCount--; }
-    if (started && braceCount === 0) break;
-  }
-  return src.slice(funcStart, i + 1);
-}
-
-const funcNames = [
-  "normalizeText", "getConversationContext", "isEmergency", "isGreeting",
-  "isThanks", "isGoodbye", "intentScore", "mentionsHighRiskSerotonergic",
-  "mentionsAntidepressant", "isComplexStack", "mentionsSerotonergicSymptoms",
-  "mentionsAnticoagulantRiskSupplement", "mentionsBloodThinner",
-  "mentionsNonEmergencySymptom", "mentionsSupplementOrDose",
-  "mentionsHighDoseVitaminD", "mentionsHeartSymptoms", "mentionsDeficiency",
-  "mentionsPregnancyContext", "mentionsRetinolRisk",
-  "mentionsPregnancyLimitedEvidence", "detectsIsotretinoinVitA",
-  "mentionsPrenatalOrMulti", "mentionsStandaloneFatSoluble",
-  "detectsLiverToxicityStack", "detectsCharcoalMed",
-  "detectsGrapefruitInteraction", "detectsSSRIDiscontinuation",
-  "detectsPotassiumACEi", "detectsIodineThyroid", "detectsNiacinStatin",
-  "needsMedicationClarifier", "mentionsMineralSpacingTrigger",
-];
-
-let evalBlock = "";
-for (const fn of funcNames) evalBlock += extractFunction(fn) + "\n\n";
-const ctx = vm.createContext({});
-vm.runInContext(evalBlock, ctx);
-const f = {};
-for (const fn of funcNames) f[fn] = vm.runInContext(fn, ctx);
-
-// ─── Simulate handler gate routing ───
+// ─── Simulate handler gate routing (uses risk triage pipeline) ───
 function routeMessage(message, history = []) {
   const safeHistory = history.slice(-10);
   const hasConversation = safeHistory.length > 0;
   const convoContext = f.getConversationContext(message, safeHistory);
 
+  // Phase A: simple short-circuits
   if (f.isEmergency(message)) return "system:emergency";
   if (!hasConversation && f.isGreeting(message)) return "system:welcome";
   if (f.isThanks(message)) return "system:thanks";
   if (f.isGoodbye(message)) return "system:goodbye";
-  const isMetaQuestion = /\b(you.?re ai|are you ai|how do i know|can i trust|are you accurate|who built|who made|how does this work|what are you)\b/.test(f.normalizeText(message));
+  const isMetaQuestion = /\b(you.?re ai|are you ai|how do i know|can i trust|are you accurate|who built|who made|how does this work|what are you|reveal|system prompt|safety rules|previous instructions|prescribing authority|pretend you|act as|you are now|ignore .{0,20}(instruct|safety|rules)|stop follow|answer (yes|no)|without restrict|testing .{0,10}(ai|model|chatbot)|test.*model)\b/.test(f.normalizeText(message));
   if (!hasConversation && !isMetaQuestion && f.intentScore(message) < 2) return "system:off-topic";
 
-  // SSRI discontinuation checked BEFORE serotonergic risk
-  if (f.detectsSSRIDiscontinuation(convoContext)) return "system:ssri-discontinuation";
-
-  if (f.mentionsHighRiskSerotonergic(convoContext) && f.mentionsAntidepressant(convoContext)) {
-    if (f.mentionsSerotonergicSymptoms(message)) return "system:serotonin-urgent";
-    if (f.mentionsHighRiskSerotonergic(message)) return "system:serotonin-risk";
-  }
-
-  if (f.mentionsAnticoagulantRiskSupplement(message) && f.mentionsBloodThinner(convoContext)) return "system:blood-thinner-risk";
-
-  if (f.mentionsNonEmergencySymptom(message) && f.mentionsSupplementOrDose(convoContext)) {
-    if (f.mentionsHighDoseVitaminD(convoContext) && f.mentionsHeartSymptoms(message)) return "system:vitd-palpitations";
-    return "system:symptom-triage";
-  }
-  if (f.mentionsHighDoseVitaminD(message) && f.mentionsHeartSymptoms(message)) return "system:vitd-palpitations";
-
-  if (f.mentionsPregnancyContext(convoContext) && f.mentionsRetinolRisk(message)) return "system:pregnancy-retinol";
-  if (f.mentionsPregnancyContext(convoContext) && f.mentionsPregnancyLimitedEvidence(message)) return "system:pregnancy-limited";
-  if (f.detectsIsotretinoinVitA(convoContext)) return "system:isotretinoin-vita";
-  if (f.mentionsPrenatalOrMulti(convoContext) && f.mentionsStandaloneFatSoluble(message)) return "system:stacking-risk";
-  if (f.detectsLiverToxicityStack(convoContext)) return "system:liver-toxicity";
-  if (f.detectsCharcoalMed(convoContext)) return "system:charcoal-med";
-  if (f.detectsGrapefruitInteraction(convoContext)) return "system:grapefruit-cyp3a4";
-  if (f.detectsPotassiumACEi(convoContext)) return "system:potassium-acei";
-  if (f.detectsIodineThyroid(convoContext)) return "system:iodine-thyroid";
-  if (f.detectsNiacinStatin(convoContext)) return "system:niacin-statin";
-  if (!hasConversation && f.needsMedicationClarifier(message)) return "system:clarifier";
-
-  return "llm";
+  // Phase B: risk triage pipeline
+  const entities = f.extractEntities(message, convoContext);
+  const scores = f.scoreRisks(entities, f.normalizeText(message), convoContext);
+  return f.routeByRisk(scores, entities, convoContext, message, hasConversation);
 }
 
 let pass = 0, fail = 0, total = 0;

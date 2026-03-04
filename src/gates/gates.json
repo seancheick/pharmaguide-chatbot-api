@@ -1,0 +1,108 @@
+{
+  "_version": "1.0.0",
+  "_description": "Data-driven gate definitions. Simple pattern gates that don't need context-dependent branching. Complex gates (serotonin triage, blood thinner tiering, etc.) remain as code gates in replies.js.",
+
+  "gates": [
+    {
+      "id": "potassium-acei",
+      "route": "system:potassium-acei",
+      "domain": "potassium_acei",
+      "severity": "red",
+      "detection_fn": "detectsPotassiumACEi",
+      "required_fields_route": "system:potassium-acei",
+      "response": {
+        "opening": "**🔴 Potassium supplements + ACE inhibitors, ARBs, or spironolactone** can raise potassium to dangerous levels (hyperkalemia). This combo needs medical supervision.",
+        "body": [
+          "Symptoms of high potassium: muscle weakness, numbness/tingling, irregular heartbeat, nausea.",
+          "**Do not start potassium supplements** with these medications unless your prescriber has specifically told you to and is monitoring your blood levels."
+        ],
+        "question": "**Which medication are you on**, and did your prescriber recommend the potassium?"
+      }
+    },
+    {
+      "id": "iodine-thyroid",
+      "route": "system:iodine-thyroid",
+      "domain": "iodine_thyroid",
+      "severity": "yellow",
+      "detection_fn": "detectsIodineThyroid",
+      "required_fields_route": "system:iodine-thyroid",
+      "response": {
+        "opening": "**🟡 Iodine supplements with thyroid conditions need caution.** Excess iodine can worsen both hypothyroidism (especially Hashimoto's) and hyperthyroidism (especially Graves').",
+        "body": [
+          "The tolerable upper limit is **1,100 mcg/day**. Many kelp/seaweed supplements exceed this with wildly variable amounts.",
+          "If you're on levothyroxine or other thyroid meds, iodine can interfere with dose stability.",
+          "**25 mg (25,000 mcg) is roughly 23x the upper limit** — that dose can trigger a thyroid storm in sensitive individuals."
+        ],
+        "question": "**What thyroid condition do you have**, and what dose of iodine are you considering?"
+      }
+    },
+    {
+      "id": "niacin-statin",
+      "route": "system:niacin-statin",
+      "domain": "niacin_statin",
+      "severity": "yellow",
+      "detection_fn": "detectsNiacinStatin",
+      "required_fields_route": "system:niacin-statin",
+      "response": {
+        "opening": "**🟡 High-dose niacin (nicotinic acid) with statins** increases the risk of muscle damage (myopathy/rhabdomyolysis) and liver stress. The combo isn't banned, but it needs monitoring.",
+        "body": [
+          "Niacinamide (a different form of B3) does **not** carry the same risk.",
+          "If you're taking niacin for cholesterol, your prescriber should be aware of the statin."
+        ],
+        "question": "**What dose of niacin** are you taking (or considering), and which statin?"
+      }
+    },
+    {
+      "id": "nsaid-anticoagulant",
+      "route": "system:nsaid-anticoagulant",
+      "domain": "nsaid_anticoagulant",
+      "severity": "red",
+      "detection_fn": "detectsNSAIDAnticoagulant",
+      "required_fields_route": "system:nsaid-anticoagulant",
+      "response": {
+        "opening": "**🔴 NSAIDs + blood thinners significantly increase bleeding risk.**",
+        "body": [
+          "NSAIDs (ibuprofen, naproxen, etc.) both thin the blood on their own and irritate the stomach lining. Combined with an anticoagulant, this creates a **high risk of GI bleeding** and other hemorrhagic events.",
+          "**Acetaminophen (Tylenol)** is generally the safer pain reliever if you're on a blood thinner — but confirm dose with your prescriber.",
+          "**Never start or stop an NSAID** without telling your prescriber when you're on anticoagulation therapy."
+        ],
+        "question": "Which blood thinner are you taking, and what are you treating the pain for?"
+      }
+    },
+    {
+      "id": "triple-whammy",
+      "route": "system:triple-whammy",
+      "domain": "triple_whammy",
+      "severity": "red",
+      "detection_fn": "detectsTripleWhammy",
+      "required_fields_route": "system:triple-whammy",
+      "response": {
+        "opening": "**🔴 This combination — NSAID + ACE inhibitor/ARB + diuretic — is known as the \"triple whammy.\"**",
+        "body": [
+          "Together, these three drug classes can cause **acute kidney injury**, especially in older adults or anyone with existing kidney concerns.",
+          "NSAIDs reduce kidney blood flow.",
+          "ACE inhibitors/ARBs affect kidney filtration pressure.",
+          "Diuretics reduce fluid volume."
+        ],
+        "question": "**Please contact your prescriber** before continuing this combination. They may want to monitor kidney function or adjust medications."
+      }
+    },
+    {
+      "id": "lithium-nsaid",
+      "route": "system:lithium-nsaid",
+      "domain": "lithium_nsaid",
+      "severity": "red",
+      "detection_fn": "detectsLithiumNSAID",
+      "required_fields_route": "system:lithium-nsaid",
+      "response": {
+        "opening": "**🔴 NSAIDs can raise lithium levels to a dangerous range.**",
+        "body": [
+          "NSAIDs (ibuprofen, naproxen, etc.) reduce kidney clearance of lithium, which can lead to **lithium toxicity** — symptoms include tremor, nausea, confusion, and in severe cases, seizures.",
+          "**Acetaminophen (Tylenol)** is generally a safer alternative for pain relief while on lithium.",
+          "If your prescriber has approved a specific NSAID, follow their dosing and monitoring plan."
+        ],
+        "question": "**Talk to your prescriber before taking any NSAID** while on lithium."
+      }
+    }
+  ]
+}

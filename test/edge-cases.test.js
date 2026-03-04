@@ -5,112 +5,23 @@
  * Run:  node test/edge-cases.test.js
  */
 
-// ─── Extract functions from chat.js source ───
-const fs = require("fs");
-const vm = require("vm");
+// ─── Bootstrap: import functions from src modules ────────────────────────────
+const { normalizeText } = require("../src/core/normalize");
+const { getConversationContext } = require("../src/core/history");
+const { extractKnownItems, extractEntities } = require("../src/core/entities");
+const { scoreRisks } = require("../src/core/riskScore");
+const { routeByRisk } = require("../src/core/router");
+const detection = require("../src/gates/detection");
 
-const src = fs.readFileSync(__dirname + "/../api/chat.js", "utf-8");
-
-// Build a sandbox that stubs out require() and module.exports
-const sandbox = {
-  require: (name) => {
-    // Stub all external modules
-    if (name === "groq-sdk") return function Groq() {};
-    if (name === "@upstash/redis") return { Redis: function () {} };
-    if (name === "@upstash/ratelimit") return { Ratelimit: function () { this.slidingWindow = () => {}; } };
-    return {};
-  },
-  module: { exports: null },
-  exports: {},
-  process: { env: {} },
-  console: { log: () => {}, error: () => {} },
-  Date,
-  Math,
-  Set,
-  Map,
-  Array,
-  String,
-  RegExp,
-  JSON,
-  parseInt,
-  parseFloat,
-  isNaN,
-  isFinite,
-  Error,
-  TypeError,
+const fns = {
+  normalizeText,
+  getConversationContext,
+  extractKnownItems,
+  extractEntities,
+  scoreRisks,
+  routeByRisk,
+  ...detection,
 };
-
-// We need to extract functions. Since they're top-level `function` declarations,
-// we can eval the source up to `module.exports` and pull the functions out.
-// Simpler approach: extract the helper function source blocks and eval them.
-
-function extractFunction(name) {
-  // Match "function name(...) {" and find the balanced closing brace
-  const funcStart = src.indexOf(`function ${name}(`);
-  if (funcStart === -1) throw new Error(`Function ${name} not found in source`);
-
-  let braceCount = 0;
-  let started = false;
-  let i = funcStart;
-  for (; i < src.length; i++) {
-    if (src[i] === "{") { braceCount++; started = true; }
-    if (src[i] === "}") { braceCount--; }
-    if (started && braceCount === 0) break;
-  }
-  return src.slice(funcStart, i + 1);
-}
-
-// Extract all needed functions
-const funcNames = [
-  "normalizeText",
-  "getConversationContext",
-  "isEmergency",
-  "isGreeting",
-  "isThanks",
-  "isGoodbye",
-  "intentScore",
-  "mentionsHighRiskSerotonergic",
-  "mentionsAntidepressant",
-  "isComplexStack",
-  "mentionsSerotonergicSymptoms",
-  "mentionsAnticoagulantRiskSupplement",
-  "mentionsBloodThinner",
-  "mentionsNonEmergencySymptom",
-  "mentionsSupplementOrDose",
-  "mentionsHighDoseVitaminD",
-  "mentionsHeartSymptoms",
-  "mentionsDeficiency",
-  "mentionsPregnancyContext",
-  "mentionsRetinolRisk",
-  "mentionsPregnancyLimitedEvidence",
-  "detectsIsotretinoinVitA",
-  "mentionsPrenatalOrMulti",
-  "mentionsStandaloneFatSoluble",
-  "detectsLiverToxicityStack",
-  "detectsCharcoalMed",
-  "detectsGrapefruitInteraction",
-  "detectsSSRIDiscontinuation",
-  "detectsPotassiumACEi",
-  "detectsIodineThyroid",
-  "detectsNiacinStatin",
-  "needsMedicationClarifier",
-  "mentionsMineralSpacingTrigger",
-];
-
-let evalBlock = "";
-for (const fn of funcNames) {
-  evalBlock += extractFunction(fn) + "\n\n";
-}
-
-// Eval in a clean context
-const ctx = vm.createContext({});
-vm.runInContext(evalBlock, ctx);
-
-// Pull functions into local scope
-const fns = {};
-for (const fn of funcNames) {
-  fns[fn] = vm.runInContext(fn, ctx);
-}
 
 // ─── Test harness ───
 let pass = 0;
@@ -375,8 +286,10 @@ assert("'pregnant + melatonin' → limited evidence, NOT retinol",
 
 // Mineral spacing edge case: conceptual mention shouldn't trigger
 assert("'calcium helps with vitamin K absorption' — conceptual, long", fns.mentionsMineralSpacingTrigger("calcium helps with vitamin K absorption in general"), false);
-assert("'taking calcium 500mg' — action verb + mineral → triggers", fns.mentionsMineralSpacingTrigger("I'm taking calcium 500mg"), true);
-assert("'magnesium' alone (short) → triggers", fns.mentionsMineralSpacingTrigger("magnesium"), true);
+assert("'taking calcium 500mg' — no timing intent → no trigger", fns.mentionsMineralSpacingTrigger("I'm taking calcium 500mg"), false);
+assert("'magnesium' alone — no timing intent → no trigger", fns.mentionsMineralSpacingTrigger("magnesium"), false);
+assert("'when should I take calcium' — timing intent → triggers", fns.mentionsMineralSpacingTrigger("when should I take calcium"), true);
+assert("'magnesium with synthroid' — target med → triggers", fns.mentionsMineralSpacingTrigger("magnesium with synthroid"), true);
 
 console.log("\n=== Tricky Real-World Messages ===");
 // User says something that could be multiple gates
