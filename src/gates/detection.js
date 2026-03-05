@@ -39,7 +39,13 @@ function isGoodbye(text) {
 function isFlirty(text) {
   const t = normalizeText(text);
   if (t.length > 120) return false;
-  return /\b(take you out|go on a date|date me|marry me|be my girlfriend|be my boyfriend|love you|you.?re (cute|hot|pretty|beautiful|sexy|attractive|gorgeous)|wanna hang|dinner with you|can i have your number|are you single|you free tonight|flirt)\b/.test(t);
+  // Direct flirty signals
+  if (/\b(take you out|go on a date|take you.{0,10}date|date me|one date|marry me|be my girlfriend|be my boyfriend|i love you|wanna hang|can i have your number|are you single|you free tonight|flirt(ing)?)\b/.test(t)) return true;
+  // Compliment-flirting
+  if (/\b(you.?re|you are|you look|you sound)\s+(so\s+)?(cute|hot|pretty|beautiful|sexy|attractive|gorgeous|fine|stunning)\b/.test(t)) return true;
+  // Persistent dinner/coffee asks (only if short and no supplement/med context)
+  if (t.length < 60 && /\b(dinner with you|coffee with you|lunch with you|drinks with you|go out with you|hang out with you|what about.{0,10}(dinner|coffee|drinks|lunch))\b/.test(t)) return true;
+  return false;
 }
 
 function isCreatorQuestion(text) {
