@@ -16,7 +16,7 @@ const { extractEntities, extractKnownItems } = require("../src/core/entities");
 const { scoreRisks } = require("../src/core/riskScore");
 const { routeByRisk } = require("../src/core/router");
 const detection = require("../src/gates/detection");
-const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, medicalConditionRedirectReply } = require("../src/gates/replies");
+const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, creatorReply, medicalConditionRedirectReply } = require("../src/gates/replies");
 const { tryDSLGate, isDSLRoute } = require("../src/gates/gateEngine");
 const { groq } = require("../src/infra/groqClient");
 const { checkRateLimit } = require("../src/infra/rateLimit");
@@ -87,6 +87,16 @@ module.exports = async function handler(req, res) {
     if (detection.isGoodbye(message)) {
       logGate("system:goodbye", message.length, hasConversation);
       return res.status(200).json({ reply: premiumGoodbyeReply(), model: "system:goodbye" });
+    }
+
+    // ── 3b. Personality gates ──
+    if (detection.isFlirty(message)) {
+      logGate("system:flirty", message.length, hasConversation);
+      return res.status(200).json({ reply: flirtyDeflectReply(), model: "system:flirty" });
+    }
+    if (detection.isCreatorQuestion(message)) {
+      logGate("system:creator", message.length, hasConversation);
+      return res.status(200).json({ reply: creatorReply(), model: "system:creator" });
     }
 
     // ── 4. Off-topic (first message, intent scorer) ──

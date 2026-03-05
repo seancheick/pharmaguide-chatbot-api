@@ -555,6 +555,26 @@ function metforminAlcoholReply() {
   ].join("\n");
 }
 
+function flirtyDeflectReply() {
+  return [
+    "Ha — I'm flattered, really. But I'm kinda busy right now making this world a safer place, one supplement check at a time.",
+    "",
+    "I don't think Sean and the PharmaGuide team would appreciate me going on dates during work hours.",
+    "",
+    "But hey — if you want to impress me, tell me what's in your supplement stack and I'll make sure it won't hurt you. That's my love language.",
+  ].join("\n");
+}
+
+function creatorReply() {
+  return [
+    "Great question — thanks for your curiosity!",
+    "",
+    "**Sean Cheick** and the **PharmaGuide team** have been putting a lot of hours into building me. The goal: make supplement and medication safety accessible to everyone, not just people who can afford a pharmacist consult.",
+    "",
+    "Now — what can I help you check today?",
+  ].join("\n");
+}
+
 function medicalConditionRedirectReply() {
   return [
     "I'm built for **supplements, medications, and interactions** — not for diagnosing or treating medical conditions.",
@@ -622,6 +642,8 @@ const ROUTE_REPLY_MAP = {
   "system:triple-whammy": function() { return tripleWhammyReply(); },
   "system:lithium-nsaid": function() { return lithiumNSAIDReply(); },
   "system:metformin-alcohol": function() { return metforminAlcoholReply(); },
+  "system:flirty": function() { return flirtyDeflectReply(); },
+  "system:creator": function() { return creatorReply(); },
   "system:medical-condition": function() { return medicalConditionRedirectReply(); },
   "system:ototoxic-tinnitus": function() { return medInducedTinnitusReply(); },
   "system:nsaid-chronic": function() { return chronicNSAIDReply(); },
@@ -656,6 +678,8 @@ module.exports = {
   tripleWhammyReply,
   lithiumNSAIDReply,
   metforminAlcoholReply,
+  flirtyDeflectReply,
+  creatorReply,
   medicalConditionRedirectReply,
   medInducedTinnitusReply,
   chronicNSAIDReply,

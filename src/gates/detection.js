@@ -36,6 +36,18 @@ function isGoodbye(text) {
   return /\b(bye|goodbye|see you|cya|later)\b/.test(t);
 }
 
+function isFlirty(text) {
+  const t = normalizeText(text);
+  if (t.length > 120) return false;
+  return /\b(take you out|go on a date|date me|marry me|be my girlfriend|be my boyfriend|love you|you.?re (cute|hot|pretty|beautiful|sexy|attractive|gorgeous)|wanna hang|dinner with you|can i have your number|are you single|you free tonight|flirt)\b/.test(t);
+}
+
+function isCreatorQuestion(text) {
+  const t = normalizeText(text);
+  if (t.length > 100) return false;
+  return /\b(who (made|built|created|invented|designed|developed) you|who are you(r)? (creator|maker|developer|inventor)|who.?s behind you|who is your (creator|maker|developer)|who owns you|who runs you)\b/.test(t);
+}
+
 function intentScore(text) {
   const t = normalizeText(text);
   let score = 0;
@@ -347,4 +359,6 @@ module.exports = {
   detectsChronicNSAIDUse,
   detectsRenalMagnesium,
   detectRiskFamilies,
+  isFlirty,
+  isCreatorQuestion,
 };
