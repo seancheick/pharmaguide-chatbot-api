@@ -28,6 +28,8 @@ for (const def of gateDefinitions.gates) {
     route: def.route,
     domain: def.domain,
     severity: def.severity,
+    confidence: def.confidence || "high",
+    reference_ids: def.reference_ids || [],
     detect: detectionFn,
     requiredFieldsRoute: def.required_fields_route,
     response: def.response,
@@ -69,6 +71,8 @@ function tryDSLGate(route) {
     matched: true,
     route: gate.route,
     reply: renderDSLReply(gate),
+    confidence: gate.confidence,
+    reference_ids: gate.reference_ids,
     gate,
   };
 }
@@ -89,6 +93,8 @@ function getCompiledGates() {
     route: g.route,
     domain: g.domain,
     severity: g.severity,
+    confidence: g.confidence,
+    reference_ids: g.reference_ids,
   }));
 }
 
@@ -117,6 +123,16 @@ function validateGateDefinitions() {
     // Detection function exists
     if (def.detection_fn && !detection[def.detection_fn]) {
       issues.push(`Gate "${def.id}": detection_fn "${def.detection_fn}" not found`);
+    }
+
+    // Confidence field (v2.0.0)
+    if (def.confidence && !["high", "moderate", "low"].includes(def.confidence)) {
+      issues.push(`Gate "${def.id}": invalid confidence "${def.confidence}" (must be high|moderate|low)`);
+    }
+
+    // Reference IDs (v2.0.0)
+    if (def.reference_ids && !Array.isArray(def.reference_ids)) {
+      issues.push(`Gate "${def.id}": reference_ids must be an array`);
     }
 
     // Response structure

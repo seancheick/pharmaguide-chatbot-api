@@ -1,5 +1,6 @@
 const { normalizeText } = require("../core/normalize");
 const detection = require("./detection");
+const { getSafeItemClarification, getRenalFormNote, getFormGuidance } = require("../core/formAdvisor");
 
 function emergencyReply() {
   return [
@@ -86,6 +87,12 @@ function serotonergicWarningReply(convoContext) {
 
   if (hasRhodiola) {
     lines.push("• **Rhodiola** has MAO-modulating and serotonergic properties — it's not as strong as 5-HTP, but it adds to the serotonin load when combined with an SSRI" + (has5HTP ? " and 5-HTP." : "."));
+  }
+
+  // Form-specific clarification: safe items in the stack
+  const safeClarification = getSafeItemClarification(convoContext);
+  if (safeClarification) {
+    lines.push(safeClarification);
   }
 
   lines.push(
@@ -406,16 +413,24 @@ function niacinStatinReply() {
   ].join("\n");
 }
 
-function renalMagnesiumReply() {
-  return [
+function renalMagnesiumReply(convoContext) {
+  const lines = [
     "**🔴 Magnesium supplementation with kidney disease needs caution.** Healthy kidneys clear excess magnesium efficiently, but impaired kidneys (CKD stages 3–5, dialysis) cannot — this can lead to **hypermagnesemia**, which is potentially dangerous.",
     "",
     "• Symptoms of magnesium toxicity: nausea, low blood pressure, muscle weakness, breathing difficulty, cardiac arrest in severe cases.",
     "• **Do not start magnesium supplements** without your nephrologist's approval if you have CKD or are on dialysis.",
     "• Even \"gentle\" forms (glycinate, citrate) still add magnesium your kidneys may not clear.",
-    "",
-    "**What stage is your kidney disease**, and did a provider recommend the magnesium?",
-  ].join("\n");
+  ];
+
+  // Form-specific note if user mentioned a specific form
+  const ctx = convoContext || "";
+  const formNote = getRenalFormNote(ctx);
+  if (formNote) {
+    lines.push(formNote);
+  }
+
+  lines.push("", "**What stage is your kidney disease**, and did a provider recommend the magnesium?");
+  return lines.join("\n");
 }
 
 function medicationClarifierReply(text) {
@@ -600,7 +615,7 @@ const ROUTE_REPLY_MAP = {
   "system:potassium-acei": function() { return potassiumACEiReply(); },
   "system:iodine-thyroid": function() { return iodineThyroidReply(); },
   "system:niacin-statin": function() { return niacinStatinReply(); },
-  "system:renal-magnesium": function() { return renalMagnesiumReply(); },
+  "system:renal-magnesium": function(convoContext) { return renalMagnesiumReply(convoContext); },
   "system:clarifier": function(convoContext, message) { return medicationClarifierReply(message); },
   "system:stack-triage": function(convoContext) { return complexStackTriageReply(convoContext, detection.detectRiskFamilies(convoContext)); },
   "system:nsaid-anticoagulant": function() { return nsaidAnticoagulantReply(); },

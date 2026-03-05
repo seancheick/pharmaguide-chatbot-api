@@ -1,5 +1,6 @@
 const { normalizeText } = require("./normalize");
 const detection = require("../gates/detection");
+const { getKBEntriesForEntities } = require("../config/knowledgeBase");
 
 function scoreRisks(entities, normalizedText, convoContext) {
   const ctx = convoContext || normalizedText;
@@ -147,7 +148,48 @@ function resolveSeverity(scores, entities, validationResult) {
     }
   }
 
-  // Escalation 4: validator violations → degraded
+  // Escalation 4: KB-aware population adjustments
+  const allEntityNames = [...meds, ...supplements];
+  if (allEntityNames.length > 0 && populations.length > 0) {
+    const kbEntries = getKBEntriesForEntities(allEntityNames);
+    for (const entry of kbEntries) {
+      if (!entry.populations) continue;
+
+      // Elderly: flag unsafe items, bump stimulant/NSAID thresholds
+      if (populations.includes("elderly")) {
+        if (entry.populations.elderly && entry.populations.elderly.safe === false) {
+          if (severity === "green") severity = "yellow";
+          else if (severity === "yellow") severity = "red";
+          escalations.push(`elderly_unsafe_${entry.canonical}`);
+          if (!reasonCodes.includes("elderly_kb_flag")) reasonCodes.push("elderly_kb_flag");
+        }
+      }
+
+      // Renal: flag items where KB says unsafe
+      if (populations.includes("renal")) {
+        if (entry.populations.renal && entry.populations.renal.safe === false) {
+          if (severity !== "red") {
+            severity = "red";
+            escalations.push(`renal_unsafe_${entry.canonical}`);
+          }
+          if (!reasonCodes.includes("renal_kb_flag")) reasonCodes.push("renal_kb_flag");
+        }
+      }
+
+      // Pregnancy: flag items where KB says unsafe
+      if (populations.includes("pregnancy")) {
+        if (entry.populations.pregnancy && entry.populations.pregnancy.safe === false) {
+          if (severity !== "red") {
+            severity = "red";
+            escalations.push(`pregnancy_unsafe_${entry.canonical}`);
+          }
+          if (!reasonCodes.includes("pregnancy_kb_flag")) reasonCodes.push("pregnancy_kb_flag");
+        }
+      }
+    }
+  }
+
+  // Escalation 5: validator violations → degraded
   let forceDegraded = false;
   if (validationResult && !validationResult.safe) {
     forceDegraded = true;

@@ -1,6 +1,6 @@
 {
-  "_version": "1.0.0",
-  "_description": "Data-driven gate definitions. Simple pattern gates that don't need context-dependent branching. Complex gates (serotonin triage, blood thinner tiering, etc.) remain as code gates in replies.js.",
+  "_version": "2.0.0",
+  "_description": "Data-driven gate definitions with references and confidence. Simple pattern gates that don't need context-dependent branching. Complex gates (serotonin triage, blood thinner tiering, etc.) remain as code gates in replies.js.",
 
   "gates": [
     {
@@ -8,10 +8,12 @@
       "route": "system:potassium-acei",
       "domain": "potassium_acei",
       "severity": "red",
+      "confidence": "high",
       "detection_fn": "detectsPotassiumACEi",
       "required_fields_route": "system:potassium-acei",
+      "reference_ids": ["palmer-2004", "juurlink-2003"],
       "response": {
-        "opening": "**🔴 Potassium supplements + ACE inhibitors, ARBs, or spironolactone** can raise potassium to dangerous levels (hyperkalemia). This combo needs medical supervision.",
+        "opening": "**🔴 Potassium supplements + ACE inhibitors, ARBs, or spironolactone** can raise potassium to dangerous levels (hyperkalemia) *(Palmer, NEJM 2004)*. This combo needs medical supervision.",
         "body": [
           "Symptoms of high potassium: muscle weakness, numbness/tingling, irregular heartbeat, nausea.",
           "**Do not start potassium supplements** with these medications unless your prescriber has specifically told you to and is monitoring your blood levels."
@@ -24,8 +26,10 @@
       "route": "system:iodine-thyroid",
       "domain": "iodine_thyroid",
       "severity": "yellow",
+      "confidence": "high",
       "detection_fn": "detectsIodineThyroid",
       "required_fields_route": "system:iodine-thyroid",
+      "reference_ids": ["ods-iodine-2022"],
       "response": {
         "opening": "**🟡 Iodine supplements with thyroid conditions need caution.** Excess iodine can worsen both hypothyroidism (especially Hashimoto's) and hyperthyroidism (especially Graves').",
         "body": [
@@ -41,8 +45,10 @@
       "route": "system:niacin-statin",
       "domain": "niacin_statin",
       "severity": "yellow",
+      "confidence": "high",
       "detection_fn": "detectsNiacinStatin",
       "required_fields_route": "system:niacin-statin",
+      "reference_ids": ["aim-him-2011"],
       "response": {
         "opening": "**🟡 High-dose niacin (nicotinic acid) with statins** increases the risk of muscle damage (myopathy/rhabdomyolysis) and liver stress. The combo isn't banned, but it needs monitoring.",
         "body": [
@@ -57,10 +63,12 @@
       "route": "system:nsaid-anticoagulant",
       "domain": "nsaid_anticoagulant",
       "severity": "red",
+      "confidence": "high",
       "detection_fn": "detectsNSAIDAnticoagulant",
       "required_fields_route": "system:nsaid-anticoagulant",
+      "reference_ids": ["lanas-2006"],
       "response": {
-        "opening": "**🔴 NSAIDs + blood thinners significantly increase bleeding risk.**",
+        "opening": "**🔴 NSAIDs + blood thinners significantly increase bleeding risk.** *(Lanas et al., Am J Gastro 2006)*",
         "body": [
           "NSAIDs (ibuprofen, naproxen, etc.) both thin the blood on their own and irritate the stomach lining. Combined with an anticoagulant, this creates a **high risk of GI bleeding** and other hemorrhagic events.",
           "**Acetaminophen (Tylenol)** is generally the safer pain reliever if you're on a blood thinner — but confirm dose with your prescriber.",
@@ -74,10 +82,12 @@
       "route": "system:triple-whammy",
       "domain": "triple_whammy",
       "severity": "red",
+      "confidence": "high",
       "detection_fn": "detectsTripleWhammy",
       "required_fields_route": "system:triple-whammy",
+      "reference_ids": ["lapi-2013", "warner-2011"],
       "response": {
-        "opening": "**🔴 This combination — NSAID + ACE inhibitor/ARB + diuretic — is known as the \"triple whammy.\"**",
+        "opening": "**🔴 This combination — NSAID + ACE inhibitor/ARB + diuretic — is known as the \"triple whammy.\"** *(Lapi et al., BMJ 2013)*",
         "body": [
           "Together, these three drug classes can cause **acute kidney injury**, especially in older adults or anyone with existing kidney concerns.",
           "NSAIDs reduce kidney blood flow.",
@@ -92,8 +102,10 @@
       "route": "system:lithium-nsaid",
       "domain": "lithium_nsaid",
       "severity": "red",
+      "confidence": "high",
       "detection_fn": "detectsLithiumNSAID",
       "required_fields_route": "system:lithium-nsaid",
+      "reference_ids": ["handler-2006", "lexi-comp-2023"],
       "response": {
         "opening": "**🔴 NSAIDs can raise lithium levels to a dangerous range.**",
         "body": [
@@ -102,6 +114,123 @@
           "If your prescriber has approved a specific NSAID, follow their dosing and monitoring plan."
         ],
         "question": "**Talk to your prescriber before taking any NSAID** while on lithium."
+      }
+    },
+    {
+      "id": "metformin-alcohol",
+      "route": "system:metformin-alcohol",
+      "domain": "metformin_alcohol",
+      "severity": "yellow",
+      "confidence": "high",
+      "detection_fn": "detectsMetforminAlcohol",
+      "required_fields_route": "system:metformin-alcohol",
+      "reference_ids": ["defrances-2008"],
+      "response": {
+        "opening": "**🟡 Alcohol + metformin increases the risk of lactic acidosis.**",
+        "body": [
+          "Both metformin and alcohol affect how your body handles lactic acid. Heavy or binge drinking while on metformin can lead to a rare but serious condition called **lactic acidosis**.",
+          "**Moderate, occasional** alcohol (1 drink with food) is generally considered manageable for most people on metformin — but confirm with your prescriber.",
+          "**Heavy drinking** (3+ drinks) or drinking on an empty stomach significantly raises risk.",
+          "Alcohol can also cause **low blood sugar**, compounding diabetes management challenges."
+        ],
+        "question": "How much and how often are you drinking?"
+      }
+    },
+    {
+      "id": "renal-magnesium",
+      "route": "system:renal-magnesium",
+      "domain": "renal_clearance",
+      "severity": "red",
+      "confidence": "high",
+      "detection_fn": "detectsRenalMagnesium",
+      "required_fields_route": "system:renal-magnesium",
+      "reference_ids": ["ods-magnesium-2022"],
+      "response": {
+        "opening": "**🔴 Magnesium supplementation with kidney disease needs caution.** Healthy kidneys clear excess magnesium efficiently, but impaired kidneys (CKD stages 3–5, dialysis) cannot — this can lead to **hypermagnesemia**, which is potentially dangerous.",
+        "body": [
+          "Symptoms of magnesium toxicity: nausea, low blood pressure, muscle weakness, breathing difficulty, cardiac arrest in severe cases.",
+          "**Do not start magnesium supplements** without your nephrologist's approval if you have CKD or are on dialysis.",
+          "Even \"gentle\" forms (glycinate, citrate) still add magnesium your kidneys may not clear."
+        ],
+        "question": "**What stage is your kidney disease**, and did a provider recommend the magnesium?"
+      }
+    },
+    {
+      "id": "isotretinoin-vita",
+      "route": "system:isotretinoin-vita",
+      "domain": "isotretinoin_vita",
+      "severity": "red",
+      "confidence": "high",
+      "detection_fn": "detectsIsotretinoinVitA",
+      "required_fields_route": "system:isotretinoin-vita",
+      "reference_ids": ["nj-fda-isotretinoin-2010"],
+      "response": {
+        "opening": "**🔴 Isotretinoin (Accutane) IS a vitamin A derivative.** Adding supplemental vitamin A on top creates a serious risk of **hypervitaminosis A** — vitamin A toxicity.",
+        "body": [
+          "Symptoms: severe headache (intracranial pressure), liver damage, dry/cracking skin, joint pain, nausea.",
+          "In pregnancy, this combination is **extremely dangerous** — isotretinoin alone is a known teratogen.",
+          "**Do not take any vitamin A supplement** (including cod liver oil) while on isotretinoin."
+        ],
+        "question": "If you're currently taking both, **contact your prescriber today** to confirm they're aware."
+      }
+    },
+    {
+      "id": "ototoxic-tinnitus",
+      "route": "system:ototoxic-tinnitus",
+      "domain": "ototoxic",
+      "severity": "yellow",
+      "confidence": "high",
+      "detection_fn": "detectsMedInducedTinnitus",
+      "required_fields_route": "system:ototoxic-tinnitus",
+      "reference_ids": ["rybak-1995"],
+      "response": {
+        "opening": "**🟡 Tinnitus (ringing in the ears) is a known side effect of several medications** *(Rybak, JAMA 1995)*, especially at higher doses.",
+        "body": [
+          "**High-dose aspirin** is one of the most common causes of medication-induced tinnitus. It's usually reversible when the dose is reduced.",
+          "**Loop diuretics** (furosemide/Lasix, bumetanide) can cause hearing changes, especially with IV use or high doses.",
+          "**Aminoglycosides** (gentamicin, tobramycin) carry ototoxicity risk — this can be permanent.",
+          "**Cisplatin** chemotherapy is well-known for causing hearing damage."
+        ],
+        "question": "When did the ringing start, and did anything change with your medications around that time?"
+      }
+    },
+    {
+      "id": "nsaid-chronic",
+      "route": "system:nsaid-chronic",
+      "domain": "nsaid_chronic",
+      "severity": "yellow",
+      "confidence": "high",
+      "detection_fn": "detectsChronicNSAIDUse",
+      "required_fields_route": "system:nsaid-chronic",
+      "reference_ids": ["lanas-2006", "warner-2011"],
+      "response": {
+        "opening": "**🟡 Long-term or daily NSAID use carries real risks** *(Lanas et al., Am J Gastro 2006)* that are worth knowing about:",
+        "body": [
+          "**GI bleeding/ulcers** — NSAIDs irritate the stomach lining. Risk increases with duration, dose, age (65+), and concurrent blood thinners or corticosteroids.",
+          "**Kidney damage** — NSAIDs reduce blood flow to the kidneys. Daily use, especially with dehydration or existing kidney issues, can lead to acute or chronic kidney injury.",
+          "**Cardiovascular risk** — Long-term high-dose NSAID use (especially diclofenac) is linked to increased heart attack and stroke risk.",
+          "**Acetaminophen (Tylenol)** may be a safer alternative for chronic pain, but it has its own liver toxicity ceiling (max 3,000 mg/day, less with alcohol).",
+          "If you need daily pain relief, your prescriber can help find a safer long-term strategy."
+        ],
+        "question": "How long have you been taking it daily, and are you on any other medications?"
+      }
+    },
+    {
+      "id": "medical-condition",
+      "route": "system:medical-condition",
+      "domain": "off_topic",
+      "severity": "green",
+      "confidence": "high",
+      "detection_fn": "isMedicalConditionQuery",
+      "required_fields_route": "system:medical-condition",
+      "reference_ids": [],
+      "response": {
+        "opening": "I'm built for **supplements, medications, and interactions** — not for diagnosing or treating medical conditions.",
+        "body": [
+          "For your question, a healthcare provider (doctor, physical therapist, or pharmacist) is the right resource.",
+          "That said, if you're wondering about **medications or supplements related to your condition**, I can help:"
+        ],
+        "question": "Try something like: \"Is it safe to take ibuprofen daily for shoulder pain?\" or \"Can I take turmeric with my blood thinner?\""
       }
     }
   ]

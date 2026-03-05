@@ -33,6 +33,7 @@ const { getDegradedResponse } = require("../src/infra/gracefulDegradation");
 const { buildAugmentedMessages } = require("../src/core/kbLookup");
 const { extractDoses, getDoseSummary } = require("../src/core/doseExtractor");
 const { resolveConfidence } = require("../src/core/confidence");
+const { buildTemporalContext } = require("../src/core/temporalContext");
 const crypto = require("crypto");
 
 function getClientIP(req) {
@@ -210,6 +211,14 @@ module.exports = async function handler(req, res) {
 
     // Build KB-augmented messages
     const { messages, kbHits } = buildAugmentedMessages(SYSTEM_PROMPT, safeHistory, message, entities);
+
+    // Inject temporal context if any meds/supps have temporal data
+    const allEntityNames = [...(entities.meds || []), ...(entities.supplements || [])];
+    const temporalBlock = buildTemporalContext(allEntityNames);
+    if (temporalBlock) {
+      // Insert as system message right after the main system prompt
+      messages.splice(1, 0, { role: "system", content: temporalBlock });
+    }
 
     if (process.env.NODE_ENV === "development") {
       const estTokens = Math.ceil(messages.reduce((sum, m) => sum + m.content.length, 0) / 4);

@@ -27,7 +27,7 @@ const emptyEntities = { meds: [], supplements: [], populations: [], symptoms: []
 section("Gate DSL — validation");
 
 assert("gate definitions valid", validateGateDefinitions().valid);
-assert("6 DSL gates compiled", getCompiledGates().length === 6);
+assert("12 DSL gates compiled", getCompiledGates().length === 12);
 
 section("Gate DSL — route matching");
 
@@ -57,6 +57,12 @@ const dslRoutes = [
   "system:nsaid-anticoagulant",
   "system:triple-whammy",
   "system:lithium-nsaid",
+  "system:metformin-alcohol",
+  "system:renal-magnesium",
+  "system:isotretinoin-vita",
+  "system:ototoxic-tinnitus",
+  "system:nsaid-chronic",
+  "system:medical-condition",
 ];
 
 for (const route of dslRoutes) {
@@ -74,7 +80,7 @@ section("Gate DSL — gate metadata");
 const gates = getCompiledGates();
 for (const gate of gates) {
   assert(`gate ${gate.id}: has domain`, !!gate.domain);
-  assert(`gate ${gate.id}: has severity`, gate.severity === "red" || gate.severity === "yellow");
+  assert(`gate ${gate.id}: has severity`, gate.severity === "red" || gate.severity === "yellow" || gate.severity === "green");
 }
 
 // ═══════════════════════════════════════════════════════════════
