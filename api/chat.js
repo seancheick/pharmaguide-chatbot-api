@@ -16,7 +16,7 @@ const { extractEntities, extractKnownItems } = require("../src/core/entities");
 const { scoreRisks } = require("../src/core/riskScore");
 const { routeByRisk } = require("../src/core/router");
 const detection = require("../src/gates/detection");
-const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply } = require("../src/gates/replies");
+const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, medicalConditionRedirectReply } = require("../src/gates/replies");
 const { tryDSLGate, isDSLRoute } = require("../src/gates/gateEngine");
 const { groq } = require("../src/infra/groqClient");
 const { checkRateLimit } = require("../src/infra/rateLimit");
@@ -30,6 +30,9 @@ const { buildAnalyticsEvent, emitAnalyticsEvent } = require("../src/infra/analyt
 const { buildCacheKey, isCacheable, getCachedResponse, setCachedResponse } = require("../src/infra/responseCache");
 const { allowRequest, recordSuccess, recordFailure } = require("../src/infra/circuitBreaker");
 const { getDegradedResponse } = require("../src/infra/gracefulDegradation");
+const { buildAugmentedMessages } = require("../src/core/kbLookup");
+const { extractDoses, getDoseSummary } = require("../src/core/doseExtractor");
+const { resolveConfidence } = require("../src/core/confidence");
 const crypto = require("crypto");
 
 function getClientIP(req) {
@@ -97,8 +100,16 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ reply: offTopicReply(), model: "system:off-topic" });
     }
 
+    // ── 4b. Medical condition redirect (first message, no supplement/interaction intent) ──
+    if (!hasConversation && detection.isMedicalConditionQuery(message)) {
+      logGate("system:medical-condition", message.length, hasConversation);
+      return res.status(200).json({ reply: medicalConditionRedirectReply(), model: "system:medical-condition" });
+    }
+
     // ── Risk triage pipeline ──
     const entities = extractEntities(message, convoContext);
+    const doses = extractDoses(message);
+    const doseSummary = getDoseSummary(doses);
     const scores = scoreRisks(entities, normalizeText(message), convoContext);
     const triageRoute = routeByRisk(scores, entities, convoContext, message, hasConversation);
 
@@ -141,14 +152,18 @@ module.exports = async function handler(req, res) {
         missingFields,
       }));
 
+      const { confidence, label: confidenceLabel } = resolveConfidence("gate", 0);
       const payload = {
         reply: gateReply,
         model: triageRoute,
+        confidence,
       };
       if (process.env.NODE_ENV === "development") {
         payload._scores = scores;
         payload._entities = entities;
         payload._validation = validation;
+        payload._confidence_label = confidenceLabel;
+        payload._dose_summary = doseSummary;
       }
       return res.status(200).json(payload);
     }
@@ -168,7 +183,8 @@ module.exports = async function handler(req, res) {
         brandResolved: !!brandResult, clarifierTriggered: false,
         unknownDosedCount: unknownDosed.length, missingFields: [],
       }));
-      return res.status(200).json({ reply: cached, model: modelId });
+      const { confidence: cacheConf } = resolveConfidence("cache", 0);
+      return res.status(200).json({ reply: cached, model: modelId, confidence: cacheConf });
     }
 
     // ── Circuit breaker check ──
@@ -184,21 +200,20 @@ module.exports = async function handler(req, res) {
         brandResolved: !!brandResult, clarifierTriggered: false,
         unknownDosedCount: unknownDosed.length, missingFields: [],
       }));
-      return res.status(200).json({ reply: degradedReply, model: "system:degraded" });
+      const { confidence: degradedConf } = resolveConfidence("degraded", 0);
+      return res.status(200).json({ reply: degradedReply, model: "system:degraded", confidence: degradedConf });
     }
 
     // ── LLM call ──
     logGate("llm", message.length, hasConversation);
     let llmError = null;
-    const messages = [
-      { role: "system", content: SYSTEM_PROMPT },
-      ...safeHistory,
-      { role: "user", content: message.trim() },
-    ];
+
+    // Build KB-augmented messages
+    const { messages, kbHits } = buildAugmentedMessages(SYSTEM_PROMPT, safeHistory, message, entities);
 
     if (process.env.NODE_ENV === "development") {
       const estTokens = Math.ceil(messages.reduce((sum, m) => sum + m.content.length, 0) / 4);
-      console.log(`[TOKEN EST] ~${estTokens} input tokens | history: ${safeHistory.length} msgs`);
+      console.log(`[TOKEN EST] ~${estTokens} input tokens | history: ${safeHistory.length} msgs | KB hits: ${kbHits}`);
     }
 
     const completion = await groq.chat.completions.create({
@@ -255,10 +270,14 @@ module.exports = async function handler(req, res) {
       unknownDosedCount: unknownDosed.length, missingFields: [],
     }));
 
-    const response = { reply, model: modelId };
+    const { confidence: llmConf, label: llmConfLabel } = resolveConfidence("llm", kbHits);
+    const response = { reply, model: modelId, confidence: llmConf };
     if (process.env.NODE_ENV === "development") {
       response.usage = completion.usage;
       response._validation = llmValidation;
+      response._confidence_label = llmConfLabel;
+      response._kb_hits = kbHits;
+      response._dose_summary = doseSummary;
     }
     return res.status(200).json(response);
   } catch (error) {
