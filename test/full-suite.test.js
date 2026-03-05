@@ -176,7 +176,7 @@ assert("sup", f.isGreeting("sup"), true);
 assert("good morning", f.isGreeting("Good morning"), true);
 assert("good evening", f.isGreeting("good evening"), true);
 assert("yo", f.isGreeting("yo"), true);
-assert("NOT: hi there!", f.isGreeting("Hi there!"), false);
+assert("YES: hi there!", f.isGreeting("Hi there!"), true);
 assert("NOT: hey can I take", f.isGreeting("hey can I take magnesium"), false);
 assert("NOT: long greeting", f.isGreeting("hello how are you doing today"), false);
 

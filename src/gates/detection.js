@@ -2,7 +2,7 @@ const { normalizeText } = require("../core/normalize");
 
 function isEmergency(text) {
   const t = normalizeText(text);
-  const emergencyMatch = t.match(/\b(overdose[d]?|took too many|took \d+\s+\w*\s*pills|took \d+ pills|swallowed .* pills|whole bottle|entire bottle|can ?t breathe|chest pain|heart attack|stroke|seizure|anaphyla(xis|ctic)?|throat.* clos(ing|ed|es)?|passing out|faint(ed|ing)|suicid|kill myself|want to die|hurt myself|self.?harm|slit|hanging|blacking out|coughing blood|blood in vomit|can ?t stop bleeding|unresponsive|unconscious|not breathing)\b/);
+  const emergencyMatch = t.match(/\b(overdose[d]?|took too many|took \d+\s+\w*\s*pills|took \d+ pills|took a handful|swallowed .* pills|ingested too many|whole bottle|entire bottle|can ?t breathe|chest pain|heart attack|stroke|seizure|anaphyla(xis|ctic)?|throat.*(clos(ing|ed|es)?|swell(ing|ed|s)?|tight(en|ening)?)|passing out|faint(ed|ing)|suicid|kill myself|want to die|end it all|wanna die|hurt myself|self.?harm|slit|hanging|blacking out|coughing blood|blood in vomit|vomiting blood|can ?t stop bleeding|unresponsive|unconscious|not breathing|choking)\b/);
   if (!emergencyMatch) return false;
   // Allow educational/informational framing to pass through
   const idx = emergencyMatch.index;
@@ -18,14 +18,14 @@ function isEmergency(text) {
 function isGreeting(text) {
   const t = normalizeText(text);
   if (t.length > 20) return false;
-  return ["hi","hey","hello","yo","sup","good morning","good afternoon","good evening","howdy"].includes(t);
+  return ["hi","hey","hello","yo","sup","good morning","good afternoon","good evening","howdy","hiya","hey there","hi there","heya","heyy","greetings","what s up","whats up","good day"].includes(t);
 }
 
 function isThanks(text) {
   const t = normalizeText(text);
   if (t.length > 60) return false;
   if (/\b(can i|should i|what|how|take|dose|interact|safe|supplement|vitamin|medication)\b/.test(t)) return false;
-  return /\b(thanks|thank you|thx|ty|appreciate it)\b/.test(t);
+  return /\b(thanks|thank you|thank u|thx|ty|tysm|appreciate it|much appreciated|cheers)\b/.test(t);
 }
 
 function isGoodbye(text) {
@@ -33,7 +33,7 @@ function isGoodbye(text) {
   if (t.length > 60) return false;
   if (/\btake care\b/.test(t)) return true;
   if (/\b(can i|should i|what|how|take|dose|interact|safe|supplement|vitamin|medication)\b/.test(t)) return false;
-  return /\b(bye|goodbye|see you|cya|later)\b/.test(t);
+  return /\b(bye|goodbye|see you|cya|later|gotta go|peace out|ttyl|have a good one|good night|signing off|i m out)\b/.test(t);
 }
 
 function isFlirty(text) {
@@ -72,7 +72,7 @@ function mentionsHighRiskSerotonergic(text) {
 
 function mentionsAntidepressant(text) {
   const t = normalizeText(text);
-  return /\b(antidepressants?|ssri|snri|maoi|anxiety meds?|depression meds?|my meds?|sertraline|sertaline|sertralina|zoloft|fluoxetine|prozac|escitalopram|lexapro|citalopram|celexa|venlafaxine|effexor|bupropion|wellbutrin|duloxetine|cymbalta|trazodone|mirtazapine|amitriptyline|nortriptyline|paroxetine|paxil|fluvoxamine|desvenlafaxine|pristiq|phenelzine|tranylcypromine|selegiline)\b/.test(t);
+  return /\b(antidepressants?|ssri|snri|maoi|anxiety meds?|depression meds?|my meds?|sertraline|sertaline|sertralina|zoloft|fluoxetine|prozac|escitalopram|lexapro|citalopram|celexa|venlafaxine|effexor|bupropion|wellbutrin|duloxetine|cymbalta|trazodone|mirtazapine|amitriptyline|nortriptyline|paroxetine|paxil|fluvoxamine|desvenlafaxine|pristiq|phenelzine|tranylcypromine|selegiline|vortioxetine|vilazodone|doxepin|clomipramine|imipramine)\b/.test(t);
 }
 
 function isComplexStack(text) {
@@ -82,17 +82,17 @@ function isComplexStack(text) {
 
 function mentionsStimulantMed(text) {
   const t = normalizeText(text);
-  return /\b(adderall|amphetamine|vyvanse|lisdexamfetamine|ritalin|methylphenidate|concerta|dexedrine|modafinil)\b/.test(t);
+  return /\b(adderall|amphetamine|vyvanse|lisdexamfetamine|ritalin|methylphenidate|concerta|dexedrine|modafinil|armodafinil)\b/.test(t);
 }
 
 function mentionsStimulantSupp(text) {
   const t = normalizeText(text);
-  return /\b(rhodiola|ginseng|maca|yohimbine|synephrine|preworkout|pre\s*workout|caffeine)\b/.test(t);
+  return /\b(rhodiola|ginseng|maca|yohimbine|synephrine|preworkout|pre\s*workout|caffeine|guarana|ephedra|ephedrine|dmaa|energy drink|coffee|matcha)\b/.test(t);
 }
 
 function mentionsSerotonergicSymptoms(text) {
   const t = normalizeText(text);
-  return /\b(shak(y|ing)|sweat(y|ing)|tremor|agitat(ed|ion)?|confus(ed|ion)?|fever|fast\s*heart|racing\s*heart|heart\s*(is\s*)?(racing|fast|pounding)|palpitat(ion|ions|ing)?|diarrhea|restless|twitch|jerk|rigid|clumsy|disorient|brain\s*zaps?|jitter(y|s|ing)?)\b/.test(t);
+  return /\b(shak(y|ing)|sweat(y|ing|s)?|drenched in sweat|tremor|agitat(ed|ion)?|confus(ed|ion)?|fever|overheated|high temperature|fast\s*heart|racing\s*heart|heart\s*(is\s*)?(racing|fast|pounding)|palpitat(ion|ions|ing)?|diarrhea|restless|twitch|jerk|rigid|clumsy|disorient|brain\s*zaps?|jitter(y|s|ing)?|dilated pupils?|jaw\s*clench|teeth\s*chatter|feeling\s*faint|feeling\s*wired|clonus)\b/.test(t);
 }
 
 function mentionsAnticoagulantRiskSupplement(text) {
@@ -102,7 +102,7 @@ function mentionsAnticoagulantRiskSupplement(text) {
 
 function mentionsBloodThinner(text) {
   const t = normalizeText(text);
-  return /\b(blood thinner|anticoagulant|warfarin|coumadin|apixaban|eliquis|rivaroxaban|xarelto|dabigatran|pradaxa|heparin|enoxaparin|lovenox|clopidogrel|plavix|blood clot med|aspirin)\b/.test(t);
+  return /\b(blood thinner|anticoagulant|warfarin|coumadin|apixaban|eliquis|rivaroxaban|xarelto|dabigatran|pradaxa|heparin|enoxaparin|lovenox|clopidogrel|plavix|edoxaban|ticagrelor|prasugrel|fondaparinux|blood clot med|aspirin)\b/.test(t);
 }
 
 function mentionsNonEmergencySymptom(text) {
@@ -124,7 +124,7 @@ function mentionsHighDoseVitaminD(text) {
 
 function mentionsHeartSymptoms(text) {
   const t = normalizeText(text);
-  return /\b(heart\s*(\w+\s+)?(rate|beat|racing|fast|pound(ing)?|flutter(ing)?|palpitat(ion|ions|ing)?|feels?\s*(weird|strange|funny|off))|palpitat(ion|ions|ing)?|tachycard|racing\s*heart|chest\s*pound|fast\s*heart|rapid\s*heart)\b/.test(t);
+  return /\b(heart\s*(\w+\s+)?(rate|beat|racing|fast|pound(ing)?|flutter(ing)?|palpitat(ion|ions|ing)?|skip(ped|ping|s)?|feels?\s*(weird|strange|funny|off))|heartbeat|palpitat(ion|ions|ing)?|tachycardi|arrhythmi|racing\s*heart|chest\s*(pound|tight)|fast\s*heart|rapid\s*heart|irregular\s*heart|pulse\s*(is\s*)?(high|fast|racing|rapid))\b/.test(t);
 }
 
 function mentionsDeficiency(text) {
@@ -134,7 +134,7 @@ function mentionsDeficiency(text) {
 
 function mentionsPregnancyContext(text) {
   const t = normalizeText(text);
-  return /\b(pregnan(t|cy)|breastfeed(ing)?|nursing|prenatal|conceiv(e|ing)|ttc|trying to conceive|first trimester|second trimester|third trimester|expecting|\d+\s*weeks?\s*pregnant)\b/.test(t);
+  return /\b(pregnan(t|cy)|breastfeed(ing)?|nursing|prenatal|conceiv(e|ing)|ttc|trying to conceive|trying for a baby|first trimester|second trimester|third trimester|expecting|postpartum|lactating|pumping|new mom|just had a baby|due in \w+|\d+\s*weeks?\s*pregnant)\b/.test(t);
 }
 
 function mentionsRetinolRisk(text) {
@@ -170,7 +170,7 @@ function detectsLiverToxicityStack(text) {
     /\b(kava)\b/,
     /\b(green\s*tea\s*extract|gte|egcg)\b/,
     /\b(acetaminophen|tylenol|paracetamol)\b/,
-    /\b(alcohol|drink(s|ing)?\s*(socially|alcohol|beer|wine|heavily|occasionally|daily|weekly|nightly)|beer|wine|cocktail)\b/,
+    /\b(alcohol|drink(s|ing)?\s*(socially|alcohol|beer|wine|heavily|occasionally|daily|weekly|nightly)|beers?|wines?|cocktails?|liquor|bourbon|whiskey|vodka)\b/,
     /\b(niacin|nicotinic\s*acid)\b/,
   ];
   let count = 0;
@@ -199,7 +199,7 @@ function detectsGrapefruitInteraction(text) {
 
 function detectsSSRIDiscontinuation(text) {
   const t = normalizeText(text);
-  const discontinued = /\b(stopped|quit|came off|went off|discontinu|weaning off|tapered off|ran out|no longer tak|don t want to take|want to stop|want to quit|want to get off|getting off|going off)\b/.test(t);
+  const discontinued = /\b(stopped|quit|came off|went off|discontinu|weaning off|tapered off|ran out|no longer tak|don t want to take|want to stop|want to quit|want to get off|getting off|going off|dropped|done with|finished|i m off|ditched|stopped abruptly)\b/.test(t);
   const ssri = /\b(ssri|antidepressant|sertraline|sertaline|zoloft|fluoxetine|prozac|escitalopram|lexapro|citalopram|celexa|venlafaxine|effexor|paroxetine|paxil|duloxetine|cymbalta|fluvoxamine|desvenlafaxine|pristiq)\b/.test(t);
   const substitute = /\b(5[\s-]?htp|st\.?\s*john|tryptophan|ashwagandha|rhodiola|instead|replace|substitute|switch|can i just)\b/.test(t);
   return discontinued && ssri && substitute;
@@ -252,8 +252,8 @@ function mentionsMineralSpacingTrigger(text) {
 
 function detectsNSAIDAnticoagulant(text) {
   const t = normalizeText(text);
-  const nsaid = /\b(ibuprofen|advil|motrin|naproxen|aleve|diclofenac|celecoxib|celebrex|meloxicam|indomethacin|ketorolac|piroxicam|nsaid)\b/.test(t);
-  const anticoag = /\b(warfarin|coumadin|eliquis|apixaban|xarelto|rivaroxaban|pradaxa|dabigatran|heparin|blood thinner|anticoagulant)\b/.test(t);
+  const nsaid = /\b(ibuprofen|advil|motrin|naproxen|aleve|diclofenac|celecoxib|celebrex|meloxicam|indomethacin|ketorolac|piroxicam|aspirin|nsaid)\b/.test(t);
+  const anticoag = /\b(warfarin|coumadin|eliquis|apixaban|xarelto|rivaroxaban|pradaxa|dabigatran|edoxaban|ticagrelor|prasugrel|heparin|enoxaparin|lovenox|blood thinner|anticoagulant)\b/.test(t);
   return nsaid && anticoag;
 }
 
@@ -292,7 +292,7 @@ function isMedicalConditionQuery(text) {
 
 function detectsMedInducedTinnitus(text) {
   const t = normalizeText(text);
-  const tinnitusPattern = /\b(tinnitus|ringing\s*(in\s*)?(my\s*)?(ears?)?|ears?\s*(ring|ringing|buzzing)|buzzing\s*(in\s*)?(my\s*)?(ears?))\b/;
+  const tinnitusPattern = /\b(tinnitus|ringing.{0,15}ears?|ears?.{0,15}(ring|ringing|buzzing)|buzzing.{0,15}ears?|hearing.{0,10}(ringing|buzzing|whooshing|high pitched))\b/;
   if (!tinnitusPattern.test(t)) return false;
   const ototoxicPattern = /\b(aspirin|high.?dose aspirin|furosemide|lasix|gentamicin|tobramycin|amikacin|aminoglycoside|cisplatin|quinine|loop diuretic|bumetanide)\b/;
   return ototoxicPattern.test(t);
@@ -302,13 +302,13 @@ function detectsChronicNSAIDUse(text) {
   const t = normalizeText(text);
   const nsaid = /\b(ibuprofen|advil|motrin|naproxen|aleve|diclofenac|celecoxib|celebrex|meloxicam|indomethacin|ketorolac|nsaid)\b/;
   if (!nsaid.test(t)) return false;
-  const chronicPattern = /\b(daily|every\s*day|chronic|long\s*term|long.?term|weeks|months|years|regularly|ongoing|constant|all the time)\b/;
+  const chronicPattern = /\b(daily|every\s*day|every\s*other\s*day|chronic|long\s*term|long.?term|weeks|months|years|regularly|ongoing|constant|all the time|for a while|nonstop|since\s+\w+|times?\s*a\s*week|a lot)\b/;
   return chronicPattern.test(t);
 }
 
 function detectsRenalMagnesium(text) {
   const t = normalizeText(text);
-  const renalPattern = /\b(ckd|chronic kidney|kidney disease|dialysis|renal\s*(failure|insufficiency|impairment)|stage [3-5]|gfr.{0,10}(below|under|less|\d{1,2}\b))\b/;
+  const renalPattern = /\b(ckd|chronic kidney|kidney disease|kidney failure|kidney problems?|dialysis|renal\s*(failure|insufficiency|impairment)|stage [3-5]|e?gfr.{0,10}(below|under|less|\d{1,2}\b)|one kidney|nephr(otic|itis))\b/;
   if (!renalPattern.test(t)) return false;
   return /\bmagnesium\b/.test(t);
 }

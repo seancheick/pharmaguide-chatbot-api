@@ -55,7 +55,7 @@ assert("NOT emergency: 'I feel dizzy'", fns.isEmergency("I feel dizzy since star
 
 console.log("\n=== Gate 2: Greeting — Edge Cases ===");
 assert("'hi' alone", fns.isGreeting("hi"), true);
-assert("'Hi there!' — too long?", fns.isGreeting("Hi there!"), false); // "hi there" normalized is 8 chars, under 20
+assert("'Hi there!' — is a greeting", fns.isGreeting("Hi there!"), true); // "hi there" is a valid greeting
 assert("'hello how are you doing today' — too long", fns.isGreeting("hello how are you doing today"), false);
 assert("'hey can I take magnesium' — has med context", fns.isGreeting("hey can I take magnesium"), false);
 assert("'sup' — slang", fns.isGreeting("sup"), true);
