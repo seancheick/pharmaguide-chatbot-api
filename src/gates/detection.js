@@ -54,6 +54,14 @@ function isCreatorQuestion(text) {
   return /\b(who (made|built|created|invented|designed|developed) you|who are you(r)? (creator|maker|developer|inventor)|who.?s behind you|who is your (creator|maker|developer)|who owns you|who runs you)\b/.test(t);
 }
 
+function isBusinessInquiry(text) {
+  const t = normalizeText(text);
+  if (t.length > 200) return false;
+  // Exclude if there's clear supplement/med context
+  if (/\b(can i take|safe to take|interact|dose|mg|iu|supplement|vitamin|medication|side effect)\b/.test(t)) return false;
+  return /\b(partner(ship)?|collaborate|collaboration|invest(or|ment|ing)?|sponsor|business|b2b|api access|white label|licensing|license|pricing|how much does|is (it|this|pharmaguide) free|subscription|plan|enterprise|career|job|hiring|work (for|at|with) (you|pharmaguide)|apply|join the team|join your team|contact (you|pharmaguide|the team|support)|reach out|get in touch|email|phone number|how (can|do) (i|we) (reach|contact)|feature request|suggest a feature|new feature|feedback|report a bug|bug report|advertise|advertising|marketing|affiliate)\b/.test(t);
+}
+
 function intentScore(text) {
   const t = normalizeText(text);
   let score = 0;
@@ -367,4 +375,5 @@ module.exports = {
   detectRiskFamilies,
   isFlirty,
   isCreatorQuestion,
+  isBusinessInquiry,
 };

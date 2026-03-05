@@ -16,7 +16,7 @@ const { extractEntities, extractKnownItems } = require("../src/core/entities");
 const { scoreRisks } = require("../src/core/riskScore");
 const { routeByRisk } = require("../src/core/router");
 const detection = require("../src/gates/detection");
-const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, flirtyRepeatReply, flirtyFinalReply, creatorReply, medicalConditionRedirectReply } = require("../src/gates/replies");
+const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, flirtyRepeatReply, flirtyFinalReply, creatorReply, businessInquiryReply, medicalConditionRedirectReply } = require("../src/gates/replies");
 const { tryDSLGate, isDSLRoute } = require("../src/gates/gateEngine");
 const { groq } = require("../src/infra/groqClient");
 const { checkRateLimit } = require("../src/infra/rateLimit");
@@ -111,6 +111,10 @@ module.exports = async function handler(req, res) {
     if (detection.isCreatorQuestion(message)) {
       logGate("system:creator", message.length, hasConversation);
       return res.status(200).json({ reply: creatorReply(), model: "system:creator" });
+    }
+    if (detection.isBusinessInquiry(message)) {
+      logGate("system:business-inquiry", message.length, hasConversation);
+      return res.status(200).json({ reply: businessInquiryReply(), model: "system:business-inquiry" });
     }
 
     // ── 4. Off-topic (first message, intent scorer) ──

@@ -593,6 +593,22 @@ function creatorReply() {
   ].join("\n");
 }
 
+function businessInquiryReply() {
+  return [
+    "Thanks for your interest in PharmaGuide! And yes — PharmaGuide is **completely free** to use.",
+    "",
+    "I'm built for supplement and medication safety checks — but for everything else, the team has you covered:",
+    "",
+    "• **Careers & joining the team:** [pharmaguide.io/careers](https://pharmaguide.io/careers)",
+    "• **Partnerships, features & general inquiries:** [pharmaguide.io](https://pharmaguide.io)",
+    "• **Email the team directly:** info@pharmaguide.io",
+    "",
+    "The team reads every message — they'd love to hear from you.",
+    "",
+    "In the meantime, need help checking any supplements or interactions?",
+  ].join("\n");
+}
+
 function medicalConditionRedirectReply() {
   return [
     "I'm built for **supplements, medications, and interactions** — not for diagnosing or treating medical conditions.",
@@ -664,6 +680,7 @@ const ROUTE_REPLY_MAP = {
   "system:flirty-repeat": function() { return flirtyRepeatReply(); },
   "system:flirty-final": function() { return flirtyFinalReply(); },
   "system:creator": function() { return creatorReply(); },
+  "system:business-inquiry": function() { return businessInquiryReply(); },
   "system:medical-condition": function() { return medicalConditionRedirectReply(); },
   "system:ototoxic-tinnitus": function() { return medInducedTinnitusReply(); },
   "system:nsaid-chronic": function() { return chronicNSAIDReply(); },
@@ -702,6 +719,7 @@ module.exports = {
   flirtyRepeatReply,
   flirtyFinalReply,
   creatorReply,
+  businessInquiryReply,
   medicalConditionRedirectReply,
   medInducedTinnitusReply,
   chronicNSAIDReply,
