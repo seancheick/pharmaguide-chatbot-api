@@ -16,6 +16,7 @@ const APPROVED_CLAIMS = {
     status: "active",
     tags: ["serotonin", "ssri", "5-htp", "drug-supplement"],
     related_claims: ["ssri-discontinuation-syndrome"],
+    reference_ids: ["boyer-shannon-2005", "dunkley-2003"],
   },
   "anticoagulant-supplement-interaction": {
     domain: "bleeding",
@@ -28,6 +29,7 @@ const APPROVED_CLAIMS = {
     status: "active",
     tags: ["bleeding", "warfarin", "anticoagulant", "turmeric", "fish-oil"],
     related_claims: ["nsaid-anticoagulant-bleeding"],
+    reference_ids: ["sumi-1987"],
   },
   "hepatotoxicity-stacking": {
     domain: "hepatotoxic",
@@ -39,6 +41,7 @@ const APPROVED_CLAIMS = {
     review_cycle_months: 12,
     status: "active",
     tags: ["liver", "hepatotoxic", "kava", "green-tea-extract"],
+    reference_ids: ["fda-kava-2002", "teschke-2010", "mazzanti-2009"],
   },
   "charcoal-absorption-interference": {
     domain: "absorption",
@@ -50,6 +53,7 @@ const APPROVED_CLAIMS = {
     review_cycle_months: 12,
     status: "active",
     tags: ["charcoal", "absorption", "drug-interaction"],
+    reference_ids: ["chyka-2005"],
   },
   "retinol-teratogenicity": {
     domain: "pregnancy_teratogen",
@@ -62,6 +66,7 @@ const APPROVED_CLAIMS = {
     status: "active",
     tags: ["pregnancy", "retinol", "vitamin-a", "teratogen"],
     related_claims: ["isotretinoin-vitamin-a-toxicity", "fat-soluble-vitamin-accumulation", "pregnancy-herbal-safety-gaps"],
+    reference_ids: ["rothman-1995", "ods-vitamin-a-2023"],
   },
   "pregnancy-herbal-safety-gaps": {
     domain: "pregnancy_limited",
@@ -73,6 +78,7 @@ const APPROVED_CLAIMS = {
     review_cycle_months: 6,
     status: "active",
     tags: ["pregnancy", "herbal", "evidence-gap", "melatonin"],
+    reference_ids: ["briggs-2017"],
   },
   "isotretinoin-vitamin-a-toxicity": {
     domain: "isotretinoin_vita",
@@ -85,6 +91,7 @@ const APPROVED_CLAIMS = {
     status: "active",
     tags: ["isotretinoin", "accutane", "vitamin-a", "toxicity"],
     related_claims: ["retinol-teratogenicity", "hepatotoxicity-stacking"],
+    reference_ids: ["nj-fda-isotretinoin-2010"],
   },
   "fat-soluble-vitamin-accumulation": {
     domain: "stacking",
@@ -96,6 +103,7 @@ const APPROVED_CLAIMS = {
     review_cycle_months: 12,
     status: "active",
     tags: ["stacking", "fat-soluble", "vitamin-d", "prenatal"],
+    reference_ids: ["ods-vitamin-a-2023", "holick-2011"],
   },
   "cyp3a4-grapefruit-inhibition": {
     domain: "cyp3a4",
@@ -107,6 +115,7 @@ const APPROVED_CLAIMS = {
     review_cycle_months: 12,
     status: "active",
     tags: ["grapefruit", "cyp3a4", "drug-interaction", "statins"],
+    reference_ids: ["bailey-2013"],
   },
   "potassium-acei-hyperkalemia": {
     domain: "potassium_acei",
@@ -118,6 +127,7 @@ const APPROVED_CLAIMS = {
     review_cycle_months: 12,
     status: "active",
     tags: ["potassium", "ace-inhibitor", "hyperkalemia"],
+    reference_ids: ["palmer-2004", "juurlink-2003"],
   },
   "iodine-thyroid-dysfunction": {
     domain: "iodine_thyroid",
@@ -129,6 +139,7 @@ const APPROVED_CLAIMS = {
     review_cycle_months: 12,
     status: "active",
     tags: ["iodine", "thyroid", "hashimotos", "kelp"],
+    reference_ids: ["ods-iodine-2022"],
   },
   "niacin-statin-myopathy": {
     domain: "niacin_statin",
@@ -140,6 +151,7 @@ const APPROVED_CLAIMS = {
     review_cycle_months: 12,
     status: "active",
     tags: ["niacin", "statin", "myopathy", "rhabdomyolysis"],
+    reference_ids: ["aim-him-2011"],
   },
   "renal-magnesium-clearance": {
     domain: "renal_clearance",
@@ -151,6 +163,7 @@ const APPROVED_CLAIMS = {
     review_cycle_months: 12,
     status: "active",
     tags: ["renal", "magnesium", "ckd", "hypermagnesemia"],
+    reference_ids: ["ods-magnesium-2022"],
   },
   "ssri-discontinuation-syndrome": {
     domain: "ssri_discontinuation",
@@ -163,6 +176,7 @@ const APPROVED_CLAIMS = {
     status: "active",
     tags: ["ssri", "discontinuation", "5-htp", "withdrawal"],
     related_claims: ["serotonin-syndrome-clinical"],
+    reference_ids: ["ssri-discontinuation-warner-2006", "boyer-shannon-2005"],
   },
   "nsaid-anticoagulant-bleeding": {
     domain: "nsaid_anticoagulant",
@@ -175,6 +189,7 @@ const APPROVED_CLAIMS = {
     status: "active",
     tags: ["nsaid", "anticoagulant", "bleeding", "ibuprofen", "warfarin"],
     related_claims: ["anticoagulant-supplement-interaction", "triple-whammy-aki"],
+    reference_ids: ["lanas-2006"],
   },
   "triple-whammy-aki": {
     domain: "triple_whammy",
@@ -187,6 +202,7 @@ const APPROVED_CLAIMS = {
     status: "active",
     tags: ["triple-whammy", "nsaid", "ace-inhibitor", "diuretic", "kidney"],
     related_claims: ["nsaid-anticoagulant-bleeding", "lithium-nsaid-toxicity", "renal-magnesium-clearance"],
+    reference_ids: ["lapi-2013", "warner-2011"],
   },
   "lithium-nsaid-toxicity": {
     domain: "lithium_nsaid",
@@ -199,6 +215,7 @@ const APPROVED_CLAIMS = {
     status: "active",
     tags: ["lithium", "nsaid", "toxicity", "renal-clearance"],
     related_claims: ["triple-whammy-aki"],
+    reference_ids: ["handler-2006", "lexi-comp-2023"],
   },
   "metformin-alcohol-lactic-acidosis": {
     domain: "metformin_alcohol",
@@ -210,6 +227,33 @@ const APPROVED_CLAIMS = {
     review_cycle_months: 12,
     status: "active",
     tags: ["metformin", "alcohol", "lactic-acidosis", "diabetes"],
+    reference_ids: ["defrances-2008"],
+  },
+  "ototoxic-medication-hearing": {
+    domain: "ototoxic",
+    claim: "Several medication classes are known ototoxins: high-dose aspirin, loop diuretics (furosemide), aminoglycosides (gentamicin), and cisplatin. These can cause tinnitus and hearing loss, sometimes irreversibly.",
+    confidence: "high",
+    what_could_change: "Nothing foreseeable — well-established pharmacology.",
+    source_type: "clinical_consensus",
+    review_date: "2026-03-05",
+    review_cycle_months: 12,
+    status: "active",
+    tags: ["ototoxic", "tinnitus", "aspirin", "furosemide", "hearing-loss"],
+    related_claims: ["nsaid-chronic-risk"],
+    reference_ids: ["rybak-1995"],
+  },
+  "nsaid-chronic-risk": {
+    domain: "nsaid_chronic",
+    claim: "Chronic or daily NSAID use increases risks of GI bleeding/ulcers, kidney damage (especially with dehydration or existing renal impairment), and cardiovascular events at high doses/long duration.",
+    confidence: "high",
+    what_could_change: "Updated dose-duration risk quantification.",
+    source_type: "clinical_consensus",
+    review_date: "2026-03-05",
+    review_cycle_months: 12,
+    status: "active",
+    tags: ["nsaid", "chronic", "gi-bleeding", "kidney", "cardiovascular"],
+    related_claims: ["nsaid-anticoagulant-bleeding", "triple-whammy-aki", "ototoxic-medication-hearing"],
+    reference_ids: ["lanas-2006", "warner-2011"],
   },
   "stimulant-supplement-synergy": {
     domain: "stimulant",
@@ -221,6 +265,7 @@ const APPROVED_CLAIMS = {
     review_cycle_months: 12,
     status: "active",
     tags: ["stimulant", "caffeine", "adderall", "heart-rate"],
+    reference_ids: ["panossian-2010"],
   },
 };
 
@@ -323,4 +368,25 @@ function validateRelatedClaims() {
   return { valid: issues.length === 0, issues };
 }
 
-module.exports = { APPROVED_CLAIMS, getClaimById, getClaimsForDomain, validateClaimCoverage, getClaimsDueForReview, getClaimsByTag, validateGovernanceFields, getClaimBundle, validateRelatedClaims };
+/**
+ * Validate that every approved claim has at least one reference_id
+ * and that all reference_ids point to existing references.
+ */
+function validateReferenceCoverage() {
+  const { REFERENCES } = require("./references");
+  const issues = [];
+  for (const [id, claim] of Object.entries(APPROVED_CLAIMS)) {
+    if (!claim.reference_ids || claim.reference_ids.length === 0) {
+      issues.push(`${id}: missing reference_ids`);
+    } else {
+      for (const refId of claim.reference_ids) {
+        if (!REFERENCES[refId]) {
+          issues.push(`${id}: reference_id "${refId}" not found in REFERENCES`);
+        }
+      }
+    }
+  }
+  return { valid: issues.length === 0, issues };
+}
+
+module.exports = { APPROVED_CLAIMS, getClaimById, getClaimsForDomain, validateClaimCoverage, getClaimsDueForReview, getClaimsByTag, validateGovernanceFields, getClaimBundle, validateRelatedClaims, validateReferenceCoverage };

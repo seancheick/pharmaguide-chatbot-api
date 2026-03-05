@@ -77,9 +77,9 @@ function serotonergicWarningReply(convoContext) {
   const lines = [];
 
   if (namedAD) {
-    lines.push(`Combining **${triggerList}** with **${namedAD[0]}** is **🔴 high risk**. These all affect serotonin, and stacking them increases the chance of serotonin syndrome — a potentially dangerous condition.`);
+    lines.push(`Combining **${triggerList}** with **${namedAD[0]}** is **🔴 high risk**. These all affect serotonin, and stacking them increases the chance of serotonin syndrome — a potentially dangerous condition *(Boyer & Shannon, NEJM 2005)*.`);
   } else {
-    lines.push(`Combining **${triggerList}** with antidepressants (especially SSRIs/SNRIs/MAOIs) is **🔴 high risk** — it can push serotonin too high (serotonin syndrome).`);
+    lines.push(`Combining **${triggerList}** with antidepressants (especially SSRIs/SNRIs/MAOIs) is **🔴 high risk** — it can push serotonin too high (serotonin syndrome) *(Boyer & Shannon, NEJM 2005)*.`);
   }
 
   lines.push("");
@@ -145,7 +145,7 @@ function bloodThinnerWarningReply(convoContext) {
   const lines = [];
 
   if (hasNattokinase) {
-    lines.push("**🔴 Nattokinase + blood thinner is HIGH risk.** Nattokinase has direct fibrinolytic (clot-dissolving) activity — this is NOT a mild food-level interaction. Combined with a blood thinner, the bleeding risk is serious.");
+    lines.push("**🔴 Nattokinase + blood thinner is HIGH risk.** Nattokinase has direct fibrinolytic (clot-dissolving) activity *(Sumi et al., Experientia 1987)* — this is NOT a mild food-level interaction. Combined with a blood thinner, the bleeding risk is serious.");
     lines.push("");
   }
 
@@ -220,7 +220,7 @@ function vitaminDPalpitationsReply(text) {
 
 function pregnancyRetinolReply() {
   return [
-    "**🔴 Preformed vitamin A (retinol) during pregnancy needs careful attention.** Excess retinol — especially in the first trimester — is linked to birth defects. The safe upper limit is **3,000 mcg/day (10,000 IU)** of preformed retinol.",
+    "**🔴 Preformed vitamin A (retinol) during pregnancy needs careful attention.** Excess retinol — especially in the first trimester — is linked to birth defects *(Rothman et al., NEJM 1995)*. The safe upper limit is **3,000 mcg/day (10,000 IU)** of preformed retinol.",
     "",
     "• Beta-carotene (plant-based vitamin A) is generally considered safer because your body regulates conversion.",
     "• Cod liver oil and liver supplements can contain high retinol — check the label.",
@@ -290,7 +290,7 @@ function liverToxicityReply(text) {
   const hasAlcohol = /\b(alcohol|drink(s|ing)?\s*(socially|alcohol|beer|wine|heavily|occasionally|daily|weekly|nightly)|beer|wine|cocktail)\b/.test(t);
 
   const lines = [
-    "**🔴 You're combining multiple substances that can stress the liver.** Each one on its own may be manageable, but together the cumulative burden increases the risk of liver damage.",
+    "**🔴 You're combining multiple substances that can stress the liver.** *(FDA Safety Communication, 2002)* Each one on its own may be manageable, but together the cumulative burden increases the risk of liver damage.",
     "",
   ];
 
@@ -340,9 +340,9 @@ function grapefruitInteractionReply(convoContext) {
   const lines = [];
 
   if (namedDrug) {
-    lines.push(`**🟡–🔴 Grapefruit inhibits CYP3A4**, the enzyme that clears **${namedDrug[0]}** from your body. Drinking grapefruit juice raises blood levels of the drug — sometimes significantly — which increases side effects and toxicity risk.`);
+    lines.push(`**🟡–🔴 Grapefruit inhibits CYP3A4** *(Bailey et al., CMAJ 2013)*, the enzyme that clears **${namedDrug[0]}** from your body. Drinking grapefruit juice raises blood levels of the drug — sometimes significantly — which increases side effects and toxicity risk.`);
   } else {
-    lines.push("**🟡–🔴 Grapefruit inhibits the CYP3A4 enzyme**, which your liver uses to clear many medications. This raises blood levels of the drug, increasing side effects and toxicity risk.");
+    lines.push("**🟡–🔴 Grapefruit inhibits the CYP3A4 enzyme** *(Bailey et al., CMAJ 2013)*, which your liver uses to clear many medications. This raises blood levels of the drug, increasing side effects and toxicity risk.");
   }
 
   lines.push(
@@ -374,7 +374,7 @@ function ssriDiscontinuationReply() {
 
 function potassiumACEiReply() {
   return [
-    "**🔴 Potassium supplements + ACE inhibitors, ARBs, or spironolactone** can raise potassium to dangerous levels (hyperkalemia). This combo needs medical supervision.",
+    "**🔴 Potassium supplements + ACE inhibitors, ARBs, or spironolactone** can raise potassium to dangerous levels (hyperkalemia) *(Palmer, NEJM 2004)*. This combo needs medical supervision.",
     "",
     "• Symptoms of high potassium: muscle weakness, numbness/tingling, irregular heartbeat, nausea.",
     "• **Do not start potassium supplements** with these medications unless your prescriber has specifically told you to and is monitoring your blood levels.",
@@ -488,7 +488,7 @@ function complexStackTriageReply(convoContext, riskFamilies) {
 
 function nsaidAnticoagulantReply() {
   return [
-    "**🔴 NSAIDs + blood thinners significantly increase bleeding risk.**",
+    "**🔴 NSAIDs + blood thinners significantly increase bleeding risk.** *(Lanas et al., Am J Gastro 2006)*",
     "",
     "NSAIDs (ibuprofen, naproxen, etc.) both thin the blood on their own and irritate the stomach lining. Combined with an anticoagulant, this creates a **high risk of GI bleeding** and other hemorrhagic events.",
     "",
@@ -501,7 +501,7 @@ function nsaidAnticoagulantReply() {
 
 function tripleWhammyReply() {
   return [
-    "**🔴 This combination — NSAID + ACE inhibitor/ARB + diuretic — is known as the \"triple whammy.\"**",
+    "**🔴 This combination — NSAID + ACE inhibitor/ARB + diuretic — is known as the \"triple whammy.\"** *(Lapi et al., BMJ 2013)*",
     "",
     "Together, these three drug classes can cause **acute kidney injury**, especially in older adults or anyone with existing kidney concerns.",
     "",
@@ -540,6 +540,49 @@ function metforminAlcoholReply() {
   ].join("\n");
 }
 
+function medicalConditionRedirectReply() {
+  return [
+    "I'm built for **supplements, medications, and interactions** — not for diagnosing or treating medical conditions.",
+    "",
+    "For your question, a healthcare provider (doctor, physical therapist, or pharmacist) is the right resource.",
+    "",
+    "That said, if you're wondering about **medications or supplements related to your condition**, I can help:",
+    '• "Is it safe to take ibuprofen daily for shoulder pain?"',
+    '• "Can I take turmeric with my blood thinner for joint pain?"',
+    '• "What supplements help with inflammation?"',
+  ].join("\n");
+}
+
+function medInducedTinnitusReply() {
+  return [
+    "**🟡 Tinnitus (ringing in the ears) is a known side effect of several medications** *(Rybak, JAMA 1995)*, especially at higher doses.",
+    "",
+    "• **High-dose aspirin** is one of the most common causes of medication-induced tinnitus. It's usually reversible when the dose is reduced.",
+    "• **Loop diuretics** (furosemide/Lasix, bumetanide) can cause hearing changes, especially with IV use or high doses.",
+    "• **Aminoglycosides** (gentamicin, tobramycin) carry ototoxicity risk — this can be permanent.",
+    "• **Cisplatin** chemotherapy is well-known for causing hearing damage.",
+    "",
+    "**Contact your prescriber** — they may want to check your dose, switch medications, or order a hearing test. Do not stop a prescribed medication on your own.",
+    "",
+    "When did the ringing start, and did anything change with your medications around that time?",
+  ].join("\n");
+}
+
+function chronicNSAIDReply() {
+  return [
+    "**🟡 Long-term or daily NSAID use carries real risks** *(Lanas et al., Am J Gastro 2006)* that are worth knowing about:",
+    "",
+    "• **GI bleeding/ulcers** — NSAIDs irritate the stomach lining. Risk increases with duration, dose, age (65+), and concurrent blood thinners or corticosteroids.",
+    "• **Kidney damage** — NSAIDs reduce blood flow to the kidneys. Daily use, especially with dehydration or existing kidney issues, can lead to acute or chronic kidney injury.",
+    "• **Cardiovascular risk** — Long-term high-dose NSAID use (especially diclofenac) is linked to increased heart attack and stroke risk.",
+    "",
+    "• **Acetaminophen (Tylenol)** may be a safer alternative for chronic pain, but it has its own liver toxicity ceiling (max 3,000 mg/day, less with alcohol).",
+    "• If you need daily pain relief, your prescriber can help find a safer long-term strategy.",
+    "",
+    "How long have you been taking it daily, and are you on any other medications?",
+  ].join("\n");
+}
+
 const ROUTE_REPLY_MAP = {
   "system:ssri-discontinuation": function(convoContext) { return ssriDiscontinuationReply(); },
   "system:serotonin-urgent": function() { return serotonergicUrgentReply(); },
@@ -564,6 +607,9 @@ const ROUTE_REPLY_MAP = {
   "system:triple-whammy": function() { return tripleWhammyReply(); },
   "system:lithium-nsaid": function() { return lithiumNSAIDReply(); },
   "system:metformin-alcohol": function() { return metforminAlcoholReply(); },
+  "system:medical-condition": function() { return medicalConditionRedirectReply(); },
+  "system:ototoxic-tinnitus": function() { return medInducedTinnitusReply(); },
+  "system:nsaid-chronic": function() { return chronicNSAIDReply(); },
 };
 
 module.exports = {
@@ -595,5 +641,8 @@ module.exports = {
   tripleWhammyReply,
   lithiumNSAIDReply,
   metforminAlcoholReply,
+  medicalConditionRedirectReply,
+  medInducedTinnitusReply,
+  chronicNSAIDReply,
   ROUTE_REPLY_MAP,
 };
