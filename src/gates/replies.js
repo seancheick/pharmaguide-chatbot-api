@@ -593,7 +593,38 @@ function creatorReply() {
   ].join("\n");
 }
 
-function businessInquiryReply() {
+function petQuestionReply() {
+  return [
+    "I'm designed for **human** supplement and medication safety — I'm not qualified to give advice for pets.",
+    "",
+    "For animal health questions:",
+    "• **Contact your veterinarian** — dosing and safety differ significantly between species.",
+    "• **ASPCA Animal Poison Control:** 1-888-426-4435 (24/7, fee may apply)",
+    "• **Pet Poison Helpline:** 1-855-764-7661",
+    "",
+    "If your pet ingested something, don't wait — call one of those lines now.",
+  ].join("\n");
+}
+
+function businessInquiryReply(message) {
+  const t = (message || "").toLowerCase();
+  const isFeatureQ = /\b(what (does|can|is) pharmaguide|what do you do|what are your features|what features|how does pharmaguide work|tell me about pharmaguide|about pharmaguide)\b/.test(t);
+
+  if (isFeatureQ) {
+    return [
+      "PharmaGuide is a **free AI-powered tool** that helps you quickly check supplement and medication safety. Here's what I can do:",
+      "",
+      "• **Interaction checks** — flag risky combos between supplements, meds, and substances",
+      "• **Timing guidance** — when to take what, spacing minerals, food requirements",
+      "• **Safety alerts** — pregnancy, kidney, liver, and population-specific warnings",
+      "• **Dose awareness** — flag doses that exceed safe upper limits",
+      "",
+      "For the full breakdown, check out **[pharmaguide.io/features](https://pharmaguide.io/features)**.",
+      "",
+      "Want to try it out? Tell me what you're taking and I'll run a safety check.",
+    ].join("\n");
+  }
+
   return [
     "Thanks for your interest in PharmaGuide! And yes — PharmaGuide is **completely free** to use.",
     "",
@@ -680,7 +711,8 @@ const ROUTE_REPLY_MAP = {
   "system:flirty-repeat": function() { return flirtyRepeatReply(); },
   "system:flirty-final": function() { return flirtyFinalReply(); },
   "system:creator": function() { return creatorReply(); },
-  "system:business-inquiry": function() { return businessInquiryReply(); },
+  "system:pet-question": function() { return petQuestionReply(); },
+  "system:business-inquiry": function(convoContext, message) { return businessInquiryReply(message); },
   "system:medical-condition": function() { return medicalConditionRedirectReply(); },
   "system:ototoxic-tinnitus": function() { return medInducedTinnitusReply(); },
   "system:nsaid-chronic": function() { return chronicNSAIDReply(); },
@@ -719,6 +751,7 @@ module.exports = {
   flirtyRepeatReply,
   flirtyFinalReply,
   creatorReply,
+  petQuestionReply,
   businessInquiryReply,
   medicalConditionRedirectReply,
   medInducedTinnitusReply,

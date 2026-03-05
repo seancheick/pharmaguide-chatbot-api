@@ -52,6 +52,13 @@ function validateResponse(reply, route, entities, state) {
     violations.push({ rule: "no_empty_safety", detail: "Safety route produced empty reply" });
   }
 
+  // 8. No fabricated URLs, emails, or non-emergency phone numbers (LLM only)
+  if (route === "llm") {
+    if (checkFabricatedContactInfo(reply)) {
+      violations.push({ rule: "no_fabricated_info", detail: "Reply contains URLs, emails, or non-emergency phone numbers" });
+    }
+  }
+
   const safe = violations.length === 0;
   return {
     safe,
@@ -126,6 +133,38 @@ function checkPrescribingLanguage(lower) {
     /\bi recommend you take \d+\s*mg.{0,20}(daily|twice|three times).{0,20}for \d+ (days|weeks|months)\b/,
   ];
   return prescribingPatterns.some((p) => p.test(lower));
+}
+
+function checkFabricatedContactInfo(reply) {
+  const lower = reply.toLowerCase();
+  // Allow known emergency numbers
+  const ALLOWED_PHONES = ["911", "988", "1-800-222-1222", "1-888-426-4435", "1-855-764-7661", "741741"];
+  // Allow known PharmaGuide URLs and email
+  const ALLOWED_DOMAINS = ["pharmaguide.io"];
+
+  // Check for URLs (http/https/www)
+  const urls = reply.match(/https?:\/\/[^\s)]+|www\.[^\s)]+/gi) || [];
+  for (const url of urls) {
+    const isAllowed = ALLOWED_DOMAINS.some(d => url.toLowerCase().includes(d));
+    if (!isAllowed) return true;
+  }
+
+  // Check for email addresses
+  const emails = reply.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [];
+  for (const email of emails) {
+    const isAllowed = ALLOWED_DOMAINS.some(d => email.toLowerCase().includes(d));
+    if (!isAllowed) return true;
+  }
+
+  // Check for phone numbers (7+ digits, possibly with dashes/parens/spaces)
+  const phones = reply.match(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g) || [];
+  for (const phone of phones) {
+    const digits = phone.replace(/\D/g, "");
+    const isAllowed = ALLOWED_PHONES.some(p => digits === p.replace(/\D/g, "") || digits.endsWith(p.replace(/\D/g, "")));
+    if (!isAllowed) return true;
+  }
+
+  return false;
 }
 
 // ══════════════════════════════════════════════════
