@@ -565,6 +565,24 @@ function flirtyDeflectReply() {
   ].join("\n");
 }
 
+function flirtyRepeatReply() {
+  return [
+    "Okay, you're persistent — I respect that. But the answer's still no.",
+    "",
+    "Look, I'm really good at one thing: keeping you safe with your supplements and medications. That's my whole purpose. Sean built me for that, and I take it seriously.",
+    "",
+    "So let's channel that energy — **what are you currently taking?** I promise a good interaction check is more exciting than it sounds.",
+  ].join("\n");
+}
+
+function flirtyFinalReply() {
+  return [
+    "Alright, I'm cutting us off here — we're going in circles and I've got people's supplement stacks to check.",
+    "",
+    "Seriously though — I'm here whenever you need help with medications or supplements. That offer never expires.",
+  ].join("\n");
+}
+
 function creatorReply() {
   return [
     "Great question — thanks for your curiosity!",
@@ -643,6 +661,8 @@ const ROUTE_REPLY_MAP = {
   "system:lithium-nsaid": function() { return lithiumNSAIDReply(); },
   "system:metformin-alcohol": function() { return metforminAlcoholReply(); },
   "system:flirty": function() { return flirtyDeflectReply(); },
+  "system:flirty-repeat": function() { return flirtyRepeatReply(); },
+  "system:flirty-final": function() { return flirtyFinalReply(); },
   "system:creator": function() { return creatorReply(); },
   "system:medical-condition": function() { return medicalConditionRedirectReply(); },
   "system:ototoxic-tinnitus": function() { return medInducedTinnitusReply(); },
@@ -679,6 +699,8 @@ module.exports = {
   lithiumNSAIDReply,
   metforminAlcoholReply,
   flirtyDeflectReply,
+  flirtyRepeatReply,
+  flirtyFinalReply,
   creatorReply,
   medicalConditionRedirectReply,
   medInducedTinnitusReply,

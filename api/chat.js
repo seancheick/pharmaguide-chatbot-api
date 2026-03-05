@@ -16,7 +16,7 @@ const { extractEntities, extractKnownItems } = require("../src/core/entities");
 const { scoreRisks } = require("../src/core/riskScore");
 const { routeByRisk } = require("../src/core/router");
 const detection = require("../src/gates/detection");
-const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, creatorReply, medicalConditionRedirectReply } = require("../src/gates/replies");
+const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, flirtyRepeatReply, flirtyFinalReply, creatorReply, medicalConditionRedirectReply } = require("../src/gates/replies");
 const { tryDSLGate, isDSLRoute } = require("../src/gates/gateEngine");
 const { groq } = require("../src/infra/groqClient");
 const { checkRateLimit } = require("../src/infra/rateLimit");
@@ -91,6 +91,20 @@ module.exports = async function handler(req, res) {
 
     // ── 3b. Personality gates ──
     if (detection.isFlirty(message)) {
+      // Count prior flirty deflections in history
+      const flirtySignature = "supplement stack";
+      const repeatSignature = "going in circles";
+      const priorFlirtyCount = safeHistory.filter(m =>
+        m.role === "assistant" && (m.content.includes(flirtySignature) || m.content.includes(repeatSignature))
+      ).length;
+
+      if (priorFlirtyCount >= 2) {
+        logGate("system:flirty-final", message.length, hasConversation);
+        return res.status(200).json({ reply: flirtyFinalReply(), model: "system:flirty-final" });
+      } else if (priorFlirtyCount >= 1) {
+        logGate("system:flirty-repeat", message.length, hasConversation);
+        return res.status(200).json({ reply: flirtyRepeatReply(), model: "system:flirty-repeat" });
+      }
       logGate("system:flirty", message.length, hasConversation);
       return res.status(200).json({ reply: flirtyDeflectReply(), model: "system:flirty" });
     }
