@@ -1,7 +1,7 @@
 {
   "release_version": "1.2.0",
   "released_at": "2026-03-03",
-  "policy_version": "1.0.0",
+  "policy_version": "1.1.0",
   "claims_version": "1.1.0",
   "validator_version": "1.1.0",
   "model_ids": ["llama-3.3-70b-versatile"],
@@ -19,8 +19,8 @@
     "load": { "count": 45, "file": "test/load.test.js" }
   },
   "forbidden_analytics_keys": ["message", "raw_message", "ip", "entity_names", "meds", "supplements", "raw_ip", "doses", "lab_values"],
-  "claims_count": 19,
-  "domains_count": 19,
+  "claims_count": 21,
+  "domains_count": 21,
   "dsl_gate_count": 6,
   "approved_by": null,
   "notes": "Scaling release: gate DSL engine (6 gates), severity resolver, circuit breaker, response linter, claim bundles, session memory, load testing."

@@ -6,7 +6,7 @@ const ENTITY_PATTERNS = {
   stimulantMeds: /\b(adderall|ritalin|concerta|vyvanse|dexedrine|modafinil|methylphenidate|amphetamine)\b/g,
   minerals: /\b(magnesium|iron|zinc|calcium|vitamin\s*d|vitamin\s*c|b12|folate|biotin|iodine|potassium)\b/g,
   supplements: /\b(ashwagandha|rhodiola|l.?theanine|gaba|valerian|melatonin|5[\s-]?htp|st\.?\s*john|ginseng|maca|turmeric|curcumin|fish oil|omega|creatine|nac|coq10|glutathione|echinacea|kava|berberine|inositol|phenylpiracetam|alpha.?gpc)\b/g,
-  medications: /\b(warfarin|eliquis|xarelto|lisinopril|metformin|levothyroxine|atorvastatin|lipitor|simvastatin|metoprolol|propranolol|gabapentin|pregabalin|losartan|amlodipine|omeprazole|prednisone|aspirin|clopidogrel|spironolactone|isotretinoin|accutane)\b/g,
+  medications: /\b(warfarin|eliquis|xarelto|lisinopril|metformin|levothyroxine|atorvastatin|lipitor|simvastatin|metoprolol|propranolol|gabapentin|pregabalin|losartan|amlodipine|omeprazole|prednisone|aspirin|clopidogrel|spironolactone|isotretinoin|accutane|ibuprofen|advil|motrin|naproxen|aleve|diclofenac|celecoxib|celebrex|meloxicam|acetaminophen|tylenol|indomethacin|ketorolac)\b/g,
 };
 
 function extractKnownItems(text) {

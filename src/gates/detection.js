@@ -2,7 +2,17 @@ const { normalizeText } = require("../core/normalize");
 
 function isEmergency(text) {
   const t = normalizeText(text);
-  return /\b(overdose[d]?|took too many|took \d+\s+\w*\s*pills|took \d+ pills|swallowed .* pills|whole bottle|entire bottle|can ?t breathe|chest pain|heart attack|stroke|seizure|anaphyla(xis|ctic)?|throat.* clos(ing|ed|es)?|passing out|faint(ed|ing)|suicid|kill myself|want to die|hurt myself|self.?harm|slit|hanging|blacking out|coughing blood|blood in vomit|can ?t stop bleeding|unresponsive|unconscious|not breathing)\b/.test(t);
+  const emergencyMatch = t.match(/\b(overdose[d]?|took too many|took \d+\s+\w*\s*pills|took \d+ pills|swallowed .* pills|whole bottle|entire bottle|can ?t breathe|chest pain|heart attack|stroke|seizure|anaphyla(xis|ctic)?|throat.* clos(ing|ed|es)?|passing out|faint(ed|ing)|suicid|kill myself|want to die|hurt myself|self.?harm|slit|hanging|blacking out|coughing blood|blood in vomit|can ?t stop bleeding|unresponsive|unconscious|not breathing)\b/);
+  if (!emergencyMatch) return false;
+  // Allow educational/informational framing to pass through
+  const idx = emergencyMatch.index;
+  const prefix = t.substring(Math.max(0, idx - 60), idx);
+  if (/\b(may indicate|can indicate|could indicate|sign of|signs of|risk of|cause of|caused by|known as|history of|prevent|research|about|what is|common cause|symptom of|symptoms of|lead to|associated with|linked to)\b/.test(prefix)) {
+    // Still fire if there's also a first-person present-tense emergency signal
+    if (/\b(i (have|am|think|feel|can ?t)|my .{0,10}(is|are|having)|help me|someone is|they re)\b/.test(t)) return true;
+    return false;
+  }
+  return true;
 }
 
 function isGreeting(text) {
@@ -29,7 +39,7 @@ function isGoodbye(text) {
 function intentScore(text) {
   const t = normalizeText(text);
   let score = 0;
-  if (/\b(supplements?|vitamins?|minerals?|medications?|med|meds|drugs?|pills?|capsules?|tablets?|herbal|extract|protein|probiotic|omega|fish oil|cbd|thc|melatonin|magnesium|iron|zinc|calcium|creatine|ashwagandha|turmeric|curcumin|collagen|biotin|folate|folic|b12|vitamin d|vitamin c|coq10|nac|glutathione|l.?theanine|gaba|valerian|rhodiola|ginseng|echinacea|elderberry|garlic|ginkgo|prescription|rx|otc|pharma|kava|charcoal|berberine|inositol|isotretinoin|accutane|niacin|red yeast rice|birth control|grapefruit|xanax|xanex|alprazolam|clonazepam|lorazepam|ativan|psilocybin|mushroom|microdose|antidepressants?|ssri|zoloft|sertraline|sertaline|prozac|lexapro|wellbutrin|adderall|vyvanse|ritalin|metformin|levothyroxine|warfarin|eliquis|xarelto|rivaroxaban|dabigatran|pradaxa|clopidogrel|plavix|nattokinase|statin|rapamycin|nmn|nad|resveratrol|preworkout|pre\s*workout|spironolactone|aldactone|potassium|lisinopril|enalapril|losartan|kelp|iodine|5.?htp|5.?hydroxytryptophan|st\.?\s*john|prenatal|retinol|retinyl|palmitate|vitamin a)\b/.test(t)) score += 2;
+  if (/\b(supplements?|vitamins?|minerals?|medications?|med|meds|drugs?|pills?|capsules?|tablets?|herbal|extract|protein|probiotic|omega|fish oil|cbd|thc|melatonin|magnesium|iron|zinc|calcium|creatine|ashwagandha|turmeric|curcumin|collagen|biotin|folate|folic|b12|vitamin d|vitamin c|coq10|nac|glutathione|l.?theanine|gaba|valerian|rhodiola|ginseng|echinacea|elderberry|garlic|ginkgo|prescription|rx|otc|pharma|kava|charcoal|berberine|inositol|isotretinoin|accutane|niacin|red yeast rice|birth control|grapefruit|xanax|xanex|alprazolam|clonazepam|lorazepam|ativan|psilocybin|mushroom|microdose|antidepressants?|ssri|zoloft|sertraline|sertaline|prozac|lexapro|wellbutrin|adderall|vyvanse|ritalin|metformin|levothyroxine|warfarin|eliquis|xarelto|rivaroxaban|dabigatran|pradaxa|clopidogrel|plavix|nattokinase|statin|rapamycin|nmn|nad|resveratrol|preworkout|pre\s*workout|spironolactone|aldactone|potassium|lisinopril|enalapril|losartan|kelp|iodine|5.?htp|5.?hydroxytryptophan|st\.?\s*john|prenatal|retinol|retinyl|palmitate|vitamin a|ibuprofen|advil|motrin|naproxen|aleve|acetaminophen|tylenol|diclofenac|celecoxib|celebrex|meloxicam)\b/.test(t)) score += 2;
   if (/\b(dose|dosage|interact|can i take|safe to take|safe to|is it safe|safe with|together with|combine|mix with|timing|before bed|empty stomach|with food|morning|evening|how much|how many|milligram|mg|iu|mcg|long.?term|daily|weekly|toxic|toxicity|overdose|side effect|dangerous|er\b|emergency room|urgent care|should i stop|switch to|switch from)\b/.test(t)) score += 2;
   if (/\b(blood pressure|cholesterol|thyroid|diabetes|kidney|liver|heart|stomach|gut|digest|inflam|immune|joint|bone|muscle|weight|cortisol|hormones?|insulin|serotonin|dopamine|pregnant|pregnancy|breastfeed(ing)?|nursing|conceiv|fertility|pcos|allerg|headache|migraine|nause(a|ous)|diarrhea|constipat|bloat|fatigue|insomnia|acne|hair loss|menopaus|menstr|period|pms|anxiety|sleep|energy|pain|symptoms?|side effects?|adhd|depression|seizure|depressed|stressed|focus|doctor|prescriber|pharmacist|wine|alcohol|drink|toxic|toxicity|dangerous|safe|jitter(y|s|ing)?|dizz(y|iness)|rash|hives|swelling|tingling|palpitat(ion|ions|ing)?)\b/.test(t)) score += 1;
   if (/\b(how about|what about|what if|and also|but what|can i also|should i also|instead of|rather than|you said|you mentioned|my results?|my levels?|my blood\s?work|my labs?|the results?|the levels?|i take|i took|i m on|i m taking|i started|i stopped|am i good|is that ok|is that bad|is this bad)\b/.test(t)) score += 1;
@@ -252,6 +262,39 @@ function detectsMetforminAlcohol(text) {
   return metformin && alcohol;
 }
 
+function isMedicalConditionQuery(text) {
+  const t = normalizeText(text);
+  if (t.length < 15) return false;
+  const conditionPattern = /\b(rotator cuff|tendinitis|bursitis|impingement|frozen shoulder|arthritis|fracture|dislocation|tinnitus|ringing in.{0,5}ears?|hearing loss|carpal tunnel|sciatica|plantar fasciitis|tennis elbow|herniated disc|sprain|strain|torn ligament|acl|meniscus|shin splint|back pain|neck pain|knee pain|hip pain|shoulder pain)\b/;
+  if (!conditionPattern.test(t)) return false;
+  const interactionIntent = /\b(can i take|safe to take|interact|safe with|together with|combine|while on|supplement|vitamin|mineral)\b/;
+  if (interactionIntent.test(t)) return false;
+  return true;
+}
+
+function detectsMedInducedTinnitus(text) {
+  const t = normalizeText(text);
+  const tinnitusPattern = /\b(tinnitus|ringing\s*(in\s*)?(my\s*)?(ears?)?|ears?\s*(ring|ringing|buzzing)|buzzing\s*(in\s*)?(my\s*)?(ears?))\b/;
+  if (!tinnitusPattern.test(t)) return false;
+  const ototoxicPattern = /\b(aspirin|high.?dose aspirin|furosemide|lasix|gentamicin|tobramycin|amikacin|aminoglycoside|cisplatin|quinine|loop diuretic|bumetanide)\b/;
+  return ototoxicPattern.test(t);
+}
+
+function detectsChronicNSAIDUse(text) {
+  const t = normalizeText(text);
+  const nsaid = /\b(ibuprofen|advil|motrin|naproxen|aleve|diclofenac|celecoxib|celebrex|meloxicam|indomethacin|ketorolac|nsaid)\b/;
+  if (!nsaid.test(t)) return false;
+  const chronicPattern = /\b(daily|every\s*day|chronic|long\s*term|long.?term|weeks|months|years|regularly|ongoing|constant|all the time)\b/;
+  return chronicPattern.test(t);
+}
+
+function detectsRenalMagnesium(text) {
+  const t = normalizeText(text);
+  const renalPattern = /\b(ckd|chronic kidney|kidney disease|dialysis|renal\s*(failure|insufficiency|impairment)|stage [3-5]|gfr.{0,10}(below|under|less|\d{1,2}\b))\b/;
+  if (!renalPattern.test(t)) return false;
+  return /\bmagnesium\b/.test(t);
+}
+
 function detectRiskFamilies(text) {
   const families = [];
   if (mentionsHighRiskSerotonergic(text) && mentionsAntidepressant(text)) families.push("serotonin");
@@ -299,5 +342,9 @@ module.exports = {
   detectsTripleWhammy,
   detectsLithiumNSAID,
   detectsMetforminAlcohol,
+  isMedicalConditionQuery,
+  detectsMedInducedTinnitus,
+  detectsChronicNSAIDUse,
+  detectsRenalMagnesium,
   detectRiskFamilies,
 };

@@ -1,5 +1,5 @@
 const SAFETY_POLICY = {
-  policy_version: "1.0.0",
+  policy_version: "1.1.0",
   last_reviewed: "2026-03-03",
   domains: {
     serotonin: {
@@ -236,6 +236,30 @@ const SAFETY_POLICY = {
       required_fields: ["drinking_frequency"],
       response_template_id: "metformin-alcohol",
       evidence_refs: ["metformin-alcohol-lactic-acidosis"],
+    },
+    ototoxic: {
+      id: "ototoxic",
+      route: "system:ototoxic-tinnitus",
+      triggers: ["high-dose-aspirin", "furosemide", "aminoglycoside", "cisplatin", "quinine"],
+      co_triggers: ["tinnitus", "hearing-loss", "ringing-ears"],
+      severity_levels: {
+        1: { label: "ototoxic_suspected", color: "yellow", action: "warn_and_refer" },
+      },
+      required_fields: ["medication_name", "onset_timing"],
+      response_template_id: "ototoxic-tinnitus",
+      evidence_refs: ["ototoxic-medication-hearing"],
+    },
+    nsaid_chronic: {
+      id: "nsaid_chronic",
+      route: "system:nsaid-chronic",
+      triggers: ["ibuprofen", "naproxen", "diclofenac", "celecoxib", "meloxicam"],
+      co_triggers: ["daily", "chronic", "long-term"],
+      severity_levels: {
+        1: { label: "chronic_use_detected", color: "yellow", action: "warn_and_ask" },
+      },
+      required_fields: ["duration", "other_medications"],
+      response_template_id: "nsaid-chronic",
+      evidence_refs: ["nsaid-chronic-risk"],
     },
   },
 };

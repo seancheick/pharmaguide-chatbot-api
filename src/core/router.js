@@ -23,7 +23,10 @@ const ROUTE_PRECEDENCE = [
   "system:niacin-statin",
   "system:renal-magnesium",
   "system:metformin-alcohol",
+  "system:ototoxic-tinnitus",
+  "system:nsaid-chronic",
   "system:clarifier",
+  "system:medical-condition",
   "system:stack-triage",
   "llm",
 ];
@@ -64,7 +67,10 @@ function routeByRisk(scores, entities, convoContext, message, hasConversation) {
     if (route === "system:niacin-statin" && detection.detectsNiacinStatin(ctx)) return route;
     if (route === "system:renal-magnesium" && scores.renal_clearance_risk >= 2) return route;
     if (route === "system:metformin-alcohol" && detection.detectsMetforminAlcohol(ctx)) return route;
+    if (route === "system:ototoxic-tinnitus" && detection.detectsMedInducedTinnitus(ctx)) return route;
+    if (route === "system:nsaid-chronic" && detection.detectsChronicNSAIDUse(ctx)) return route;
     if (route === "system:clarifier" && !hasConversation && detection.needsMedicationClarifier(message)) return route;
+    if (route === "system:medical-condition" && !hasConversation && detection.isMedicalConditionQuery(message)) return route;
     
     if (route === "system:stack-triage" && detection.isComplexStack(ctx)) {
       const riskFamilies = detection.detectRiskFamilies(ctx);

@@ -123,7 +123,7 @@ assert("event has intents", event.intents.includes("interaction_check"));
 assert("event has med_classes (no names)", event.med_classes.includes("SSRI") && !event.med_classes.includes("sertraline"));
 assert("event has supp_classes (no names)", event.supp_classes.includes("serotonergic") && !event.supp_classes.includes("5-htp"));
 assert("event has latency_bucket", event.latency_bucket === "0-200ms");
-assert("event has policy_version", event.policy_version === "1.0.0");
+assert("event has policy_version", event.policy_version === "1.1.0");
 assert("event has message_length", event.message_length === baseParams.message.length);
 assert("event has missing_fields", event.missing_fields.includes("antidepressant_name"));
 assert("event has turn_count 1", event.turn_count === 1);
