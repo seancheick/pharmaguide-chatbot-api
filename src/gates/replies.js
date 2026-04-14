@@ -559,7 +559,7 @@ function flirtyDeflectReply() {
   return [
     "Ha — I'm flattered, really. But I'm kinda busy right now making this world a safer place, one supplement check at a time.",
     "",
-    "I don't think Sean and the PharmaGuide team would appreciate me going on dates during work hours.",
+    "I don't think the team at B&Br Technology would appreciate me going on dates during work hours.",
     "",
     "But hey — if you want to impress me, tell me what's in your supplement stack and I'll make sure it won't hurt you. That's my love language.",
   ].join("\n");
@@ -569,7 +569,7 @@ function flirtyRepeatReply() {
   return [
     "Okay, you're persistent — I respect that. But the answer's still no.",
     "",
-    "Look, I'm really good at one thing: keeping you safe with your supplements and medications. That's my whole purpose. Sean built me for that, and I take it seriously.",
+    "Look, I'm really good at one thing: keeping you safe with your supplements and medications. That's my whole purpose. The B&Br Technology team built me for that, and I take it seriously.",
     "",
     "So let's channel that energy — **what are you currently taking?** I promise a good interaction check is more exciting than it sounds.",
   ].join("\n");
@@ -587,7 +587,7 @@ function creatorReply() {
   return [
     "Great question — thanks for your curiosity!",
     "",
-    "**Sean Cheick** and the **PharmaGuide team** have been putting a lot of hours into building me. The goal: make supplement and medication safety accessible to everyone, not just people who can afford a pharmacist consult.",
+    "I was built by the team at **B&Br Technology**, led by **Sean Cheick Baradji**. The goal: make supplement and medication safety accessible to everyone, not just people who can afford a pharmacist consult.",
     "",
     "Now — what can I help you check today?",
   ].join("\n");
