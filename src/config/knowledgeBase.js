@@ -1283,6 +1283,233 @@ const KNOWLEDGE_BASE = {
     common_goals: ["energy", "fatigue", "nerve health", "anemia", "vegetarian/vegan nutrition", "brain health"],
     reference_ids: [],
   },
+
+  // ── Remaining high-traffic supplements ──
+
+  "l-theanine": {
+    canonical: "l-theanine",
+    aliases: ["l theanine", "theanine", "suntheanine"],
+    category: "supplement",
+    adult_dose_range: { min: 100, max: 400, unit: "mg/day" },
+    timing: { best_time: "any time (morning for focus, evening for calm)", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient data. Avoid supplemental doses." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Well tolerated. Good option for anxiety without sedation." },
+    },
+    interactions: [
+      { with: "blood pressure medications", severity: "moderate", mechanism: "L-theanine may slightly lower BP. Additive effect with antihypertensives.", timing_fix: null },
+    ],
+    common_goals: ["anxiety", "focus", "calm without drowsiness", "sleep quality", "stress"],
+    reference_ids: [],
+  },
+
+  echinacea: {
+    canonical: "echinacea",
+    aliases: ["echinacea purpurea", "echinacea angustifolia"],
+    category: "supplement",
+    adult_dose_range: { min: 300, max: 500, unit: "mg 3x/day (at cold onset)" },
+    timing: { best_time: "at first sign of cold, for 7-10 days max", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Limited data. Generally avoided in pregnancy." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Safe for short-term use. May modestly reduce cold duration." },
+    },
+    interactions: [
+      { with: "immunosuppressants", severity: "high", mechanism: "Immune-stimulating — may counteract immunosuppressive drugs (cyclosporine, tacrolimus).", timing_fix: null },
+      { with: "CYP3A4 substrates", severity: "moderate", mechanism: "May inhibit CYP3A4 and CYP1A2. Monitor drug levels.", timing_fix: null },
+    ],
+    common_goals: ["cold prevention", "cold shortening", "immune support"],
+    reference_ids: [],
+  },
+
+  gaba: {
+    canonical: "gaba",
+    aliases: ["gamma-aminobutyric acid", "gaba supplement", "pharmagaba"],
+    category: "supplement",
+    adult_dose_range: { min: 100, max: 750, unit: "mg/day" },
+    timing: { best_time: "evening or before stressful event", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient safety data. Avoid." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "May cause drowsiness. Start low." },
+    },
+    interactions: [
+      { with: "benzodiazepines", severity: "moderate", mechanism: "Both act on GABA receptors. Additive sedation possible.", timing_fix: null },
+      { with: "gabapentin/pregabalin", severity: "moderate", mechanism: "Both are GABAergic. Additive effects possible.", timing_fix: null },
+      { with: "blood pressure medications", severity: "moderate", mechanism: "GABA may lower BP. Additive hypotension.", timing_fix: null },
+    ],
+    common_goals: ["anxiety", "sleep", "calm", "stress relief"],
+    reference_ids: [],
+  },
+
+  maca: {
+    canonical: "maca",
+    aliases: ["maca root", "maca powder", "peruvian ginseng", "lepidium meyenii"],
+    category: "supplement",
+    adult_dose_range: { min: 1500, max: 3000, unit: "mg/day" },
+    timing: { best_time: "morning with food", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient safety data. Traditionally used but avoid supplemental doses." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Generally safe. May support energy and libido." },
+    },
+    interactions: [
+      { with: "hormone-sensitive conditions", severity: "moderate", mechanism: "May have mild hormonal effects. Caution with breast/prostate cancer, endometriosis.", timing_fix: null },
+    ],
+    common_goals: ["energy", "libido", "hormonal balance", "stamina", "fertility"],
+    reference_ids: [],
+  },
+
+  resveratrol: {
+    canonical: "resveratrol",
+    aliases: ["trans-resveratrol", "grape seed extract"],
+    category: "supplement",
+    adult_dose_range: { min: 150, max: 500, unit: "mg/day" },
+    timing: { best_time: "with food (fat-soluble)", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient data. Avoid in pregnancy." },
+      renal: { safe: true, notes: "No significant renal concerns at standard doses." },
+      elderly: { safe: true, notes: "Common anti-aging supplement. Watch for interactions." },
+    },
+    interactions: [
+      { with: "blood thinners", severity: "moderate", mechanism: "Antiplatelet effects. May increase bleeding risk.", timing_fix: null },
+      { with: "CYP-metabolized drugs", severity: "moderate", mechanism: "Inhibits CYP1A2, CYP3A4, CYP2D6. May raise blood levels of affected drugs.", timing_fix: null },
+    ],
+    common_goals: ["anti-aging", "cardiovascular", "antioxidant", "longevity"],
+    reference_ids: [],
+  },
+
+  "activated charcoal": {
+    canonical: "activated charcoal",
+    aliases: ["charcoal supplement", "charcoal capsules", "charcoal detox"],
+    category: "supplement",
+    adult_dose_range: { min: 250, max: 500, unit: "mg as needed (NOT daily)" },
+    timing: { best_time: "2+ hours away from ALL medications", with_food: false, separate_from: ["all medications", "all supplements"] },
+    populations: {
+      pregnancy: { safe: false, notes: "May bind prenatal vitamins. Only use under medical direction." },
+      renal: { safe: true, notes: "No direct renal concerns but may bind necessary medications." },
+      elderly: { safe: true, notes: "Risk of medication binding is higher with polypharmacy. Avoid daily use." },
+    },
+    interactions: [
+      { with: "ALL oral medications", severity: "high", mechanism: "Binds and reduces absorption of most oral drugs taken within 1-2 hours — including birth control, thyroid meds, and heart medications.", timing_fix: "2h+ separation from ALL meds" },
+    ],
+    common_goals: ["gas", "bloating", "food poisoning", "detox"],
+    reference_ids: [],
+  },
+
+  glutathione: {
+    canonical: "glutathione",
+    aliases: ["gsh", "liposomal glutathione", "reduced glutathione", "s-acetyl glutathione"],
+    category: "supplement",
+    adult_dose_range: { min: 250, max: 1000, unit: "mg/day (liposomal or S-acetyl forms best absorbed)" },
+    timing: { best_time: "empty stomach or with vitamin C", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient data. Avoid supplemental doses." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Natural levels decline with age. Safe to supplement." },
+    },
+    interactions: [],
+    common_goals: ["antioxidant", "skin lightening", "liver support", "detox", "anti-aging", "immune support"],
+    reference_ids: [],
+  },
+
+  selenium: {
+    canonical: "selenium",
+    aliases: ["selenium supplement", "selenomethionine", "sodium selenite"],
+    category: "mineral",
+    adult_dose_range: { min: 55, max: 200, unit: "mcg/day" },
+    upper_limit: { value: 400, unit: "mcg/day", source: "NIH ODS" },
+    timing: { best_time: "with food", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "RDA 60 mcg. Do not exceed 400 mcg. Important for thyroid function." },
+      renal: { safe: true, notes: "No dose adjustment needed at standard doses." },
+      elderly: { safe: true, notes: "May support thyroid and immune function. Do not exceed 200 mcg without testing." },
+    },
+    interactions: [
+      { with: "blood thinners", severity: "moderate", mechanism: "High-dose selenium may have antiplatelet effects.", timing_fix: null },
+      { with: "statins", severity: "moderate", mechanism: "Some evidence selenium may reduce statin effectiveness. Limited data.", timing_fix: null },
+    ],
+    common_goals: ["thyroid support", "immune", "antioxidant", "fertility"],
+    reference_ids: [],
+  },
+
+  "black cohosh": {
+    canonical: "black cohosh",
+    aliases: ["cimicifuga racemosa", "black cohosh extract"],
+    category: "supplement",
+    adult_dose_range: { min: 20, max: 40, unit: "mg standardized extract/day" },
+    timing: { best_time: "with food", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "May stimulate uterine contractions. Avoid in pregnancy." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Common for menopausal symptoms. Monitor liver function with long-term use." },
+    },
+    interactions: [
+      { with: "hepatotoxic drugs", severity: "moderate", mechanism: "Rare cases of liver damage reported. Avoid combining with other liver-stressing agents.", timing_fix: null },
+      { with: "hormone therapy", severity: "moderate", mechanism: "May have estrogenic activity. Discuss with provider if on HRT.", timing_fix: null },
+      { with: "tamoxifen", severity: "moderate", mechanism: "Estrogenic effects may theoretically counteract tamoxifen. Discuss with oncologist.", timing_fix: null },
+    ],
+    common_goals: ["menopause", "hot flashes", "night sweats", "hormonal support"],
+    reference_ids: [],
+  },
+
+  "evening primrose": {
+    canonical: "evening primrose",
+    aliases: ["evening primrose oil", "epo", "oenothera biennis"],
+    category: "supplement",
+    adult_dose_range: { min: 500, max: 1300, unit: "mg/day" },
+    timing: { best_time: "with food", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "May increase bleeding and has been associated with prolonged labor. Avoid." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Safe. May help with dry skin and mild inflammation." },
+    },
+    interactions: [
+      { with: "blood thinners", severity: "moderate", mechanism: "GLA (gamma-linolenic acid) may have mild antiplatelet effects.", timing_fix: null },
+      { with: "phenothiazines", severity: "moderate", mechanism: "May lower seizure threshold. Avoid with seizure-prone conditions.", timing_fix: null },
+    ],
+    common_goals: ["PMS", "breast tenderness", "eczema", "hormonal balance", "skin health"],
+    reference_ids: [],
+  },
+
+  dim: {
+    canonical: "dim",
+    aliases: ["diindolylmethane", "dim supplement"],
+    category: "supplement",
+    adult_dose_range: { min: 100, max: 200, unit: "mg/day" },
+    timing: { best_time: "with food", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Hormonal effects. Avoid in pregnancy." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "May support healthy estrogen metabolism." },
+    },
+    interactions: [
+      { with: "hormone therapy / birth control", severity: "moderate", mechanism: "DIM alters estrogen metabolism. May affect hormonal contraceptive or HRT effectiveness.", timing_fix: null },
+      { with: "tamoxifen", severity: "moderate", mechanism: "Both affect estrogen pathways. Discuss with oncologist.", timing_fix: null },
+    ],
+    common_goals: ["estrogen balance", "hormonal acne", "PMS", "breast health", "menopause support"],
+    reference_ids: [],
+  },
+
+  "alpha-gpc": {
+    canonical: "alpha-gpc",
+    aliases: ["alpha gpc", "alpha-glycerophosphocholine", "choline alfoscerate"],
+    category: "supplement",
+    adult_dose_range: { min: 300, max: 600, unit: "mg/day" },
+    timing: { best_time: "morning", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient data. Avoid supplemental doses." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Studied for cognitive decline. Generally well tolerated." },
+    },
+    interactions: [
+      { with: "anticholinergics", severity: "moderate", mechanism: "Opposing mechanisms — alpha-GPC increases acetylcholine, anticholinergics block it.", timing_fix: null },
+      { with: "cholinesterase inhibitors (donepezil)", severity: "moderate", mechanism: "Additive cholinergic effects. Monitor for GI side effects.", timing_fix: null },
+    ],
+    common_goals: ["focus", "memory", "cognitive function", "nootropic", "athletic power output"],
+    reference_ids: [],
+  },
 };
 
 // ── Lookup functions ──

@@ -120,7 +120,7 @@ const SYNONYM_MAP = [
   [/\bcalan\b/g, "verapamil"],
 
   // ── Common supplement name variants ──
-  [/\blion.?s?\s*mane\s*(mushroom|extract|supplement)?\b/g, "lions mane"],
+  [/\blion.?s?\s*mane(\s+(mushroom|extract|supplement))?\b/g, "lions mane"],
   [/\bhericium\s*erinaceus\b/g, "lions mane"],
   [/\bapple\s*cider\s*vinegar\b/g, "apple cider vinegar"],
   [/\bacv\s*(supplement|gummies?|pills?|capsules?)?\b/g, "apple cider vinegar"],

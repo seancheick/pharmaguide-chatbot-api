@@ -32,6 +32,7 @@ const { callWithFallback, scoreComplexity } = require("../src/infra/providerRout
 const { buildAugmentedMessages } = require("../src/core/kbLookup");
 const { extractDoses, getDoseSummary } = require("../src/core/doseExtractor");
 const { resolveConfidence } = require("../src/core/confidence");
+const { detectAndRecordGaps } = require("../src/infra/topicTracker");
 const { buildTemporalContext } = require("../src/core/temporalContext");
 const crypto = require("crypto");
 
@@ -160,6 +161,11 @@ module.exports = async function handler(req, res) {
     if (triageRoute !== "llm") {
       logGate(triageRoute, message.length, hasConversation);
 
+      // Track topic gaps for off-topic and clarifier routes
+      if (triageRoute === "system:off-topic" || triageRoute === "system:clarifier") {
+        detectAndRecordGaps(message, triageRoute, detection.intentScore(message), 0, entities);
+      }
+
       // Try DSL gate first, fall back to code gate
       let gateReply;
       const dslResult = tryDSLGate(triageRoute);
@@ -212,6 +218,10 @@ module.exports = async function handler(req, res) {
     // Build KB-augmented messages (need kbHits for complexity scoring)
     const { messages, kbHits } = buildAugmentedMessages(SYSTEM_PROMPT, safeHistory, message, entities);
     const complexity = scoreComplexity(message, entities, kbHits, convoContext);
+
+    // ── Topic gap tracking (detect missing coverage for future KB expansion) ──
+    const intentScore = detection.intentScore(message);
+    detectAndRecordGaps(message, "llm", intentScore, kbHits, entities);
 
     // Rebuild with complexity-aware context if complex
     let finalMessages = messages;

@@ -10,6 +10,8 @@ const geminiClient = require("../src/infra/geminiClient");
 const groqClient = require("../src/infra/groqClient");
 const groqCircuit = require("../src/infra/circuitBreaker");
 const geminiCircuit = require("../src/infra/geminiCircuitBreaker");
+const { getGapSnapshot } = require("../src/infra/topicTracker");
+const { getSnapshot: getAnalyticsSnapshot } = require("../src/infra/analytics");
 
 module.exports = function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -35,12 +37,26 @@ module.exports = function handler(req, res) {
     activeProvider = "groq";
   }
 
-  res.status(200).json({
+  // Include topic gap data and analytics if requested
+  const includeGaps = req.query?.gaps === "true" || req.query?.detailed === "true";
+  const includeAnalytics = req.query?.analytics === "true" || req.query?.detailed === "true";
+
+  const response = {
     status: 'ok',
     service: 'PharmaGuide AI Chatbot',
     timestamp: new Date().toISOString(),
     version: '2.0.0',
     providers,
     active_provider: activeProvider,
-  });
+  };
+
+  if (includeGaps) {
+    response.topic_gaps = getGapSnapshot();
+  }
+
+  if (includeAnalytics) {
+    response.analytics = getAnalyticsSnapshot();
+  }
+
+  res.status(200).json(response);
 };
