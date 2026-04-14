@@ -11,7 +11,7 @@
 const { setCors } = require("../src/config/cors");
 const { SYSTEM_PROMPT } = require("../src/config/systemPrompt");
 const { normalizeText } = require("../src/core/normalize");
-const { sanitizeHistory, getConversationContext } = require("../src/core/history");
+const { sanitizeHistory, getConversationContext, extractConversationState, mergeStateIntoEntities } = require("../src/core/history");
 const { extractEntities, extractKnownItems } = require("../src/core/entities");
 const { scoreRisks } = require("../src/core/riskScore");
 const { routeByRisk } = require("../src/core/router");
@@ -138,8 +138,13 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ reply: medicalConditionRedirectReply(), model: "system:medical-condition" });
     }
 
+    // ── Conversation state persistence ──
+    const previousState = body._state || null;
+    const conversationState = extractConversationState(message, safeHistory, previousState);
+
     // ── Risk triage pipeline ──
-    const entities = extractEntities(message, convoContext);
+    const rawEntities = extractEntities(message, convoContext);
+    const entities = mergeStateIntoEntities(rawEntities, conversationState);
     const doses = extractDoses(message);
     const doseSummary = getDoseSummary(doses);
     const scores = scoreRisks(entities, normalizeText(message), convoContext);
@@ -189,6 +194,7 @@ module.exports = async function handler(req, res) {
         reply: gateReply,
         model: triageRoute,
         confidence,
+        _state: conversationState,
       };
       if (process.env.NODE_ENV === "development") {
         payload._scores = scores;
@@ -318,7 +324,7 @@ module.exports = async function handler(req, res) {
     }));
 
     const { confidence: llmConf, label: llmConfLabel } = resolveConfidence("llm", kbHits, llmResult.provider);
-    const response = { reply, model: llmResult.modelId, confidence: llmConf };
+    const response = { reply, model: llmResult.modelId, confidence: llmConf, _state: conversationState };
     if (process.env.NODE_ENV === "development") {
       response.usage = llmResult.usage;
       response._validation = llmValidation;

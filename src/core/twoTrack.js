@@ -9,6 +9,8 @@ function determineSeverityColor(scores) {
   if (scores.absorption_risk >= 2) return "red";
   if (scores.pregnancy_teratogen_risk >= 2) return "red";
   if (scores.renal_clearance_risk >= 2) return "red";
+  if ((scores.cns_depression_risk || 0) >= 2) return "red";
+  if ((scores.myopathy_risk || 0) >= 2) return "red";
 
   // Any score >= 1 → yellow
   if (scores.serotonin_risk >= 1) return "yellow";
@@ -18,6 +20,8 @@ function determineSeverityColor(scores) {
   if (scores.absorption_risk >= 1) return "yellow";
   if (scores.pregnancy_teratogen_risk >= 1) return "yellow";
   if (scores.renal_clearance_risk >= 1) return "yellow";
+  if ((scores.cns_depression_risk || 0) >= 1) return "yellow";
+  if ((scores.myopathy_risk || 0) >= 1) return "yellow";
 
   return "green";
 }

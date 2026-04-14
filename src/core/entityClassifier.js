@@ -60,7 +60,32 @@ const MED_CLASS_MAP = {
   gabapentin: "anticonvulsant", neurontin: "anticonvulsant",
   pregabalin: "anticonvulsant", lyrica: "anticonvulsant",
   // Corticosteroid
-  prednisone: "corticosteroid",
+  prednisone: "corticosteroid", prednisolone: "corticosteroid",
+  // Benzodiazepine
+  alprazolam: "benzodiazepine", xanax: "benzodiazepine",
+  clonazepam: "benzodiazepine", klonopin: "benzodiazepine",
+  lorazepam: "benzodiazepine", ativan: "benzodiazepine",
+  diazepam: "benzodiazepine", valium: "benzodiazepine",
+  temazepam: "benzodiazepine", midazolam: "benzodiazepine",
+  // Diuretic
+  furosemide: "diuretic", lasix: "diuretic",
+  hydrochlorothiazide: "diuretic", hctz: "diuretic",
+  chlorthalidone: "diuretic",
+  // Antibiotic
+  amoxicillin: "antibiotic", azithromycin: "antibiotic",
+  doxycycline: "antibiotic", ciprofloxacin: "antibiotic",
+  metronidazole: "antibiotic", fluconazole: "antifungal",
+  // Analgesic
+  tramadol: "opioid_analgesic",
+  // NSAID
+  ibuprofen: "NSAID", naproxen: "NSAID", diclofenac: "NSAID",
+  celecoxib: "NSAID", meloxicam: "NSAID", indomethacin: "NSAID",
+  // Acetaminophen
+  acetaminophen: "acetaminophen", tylenol: "acetaminophen",
+  // Hormonal
+  "birth control": "hormonal_contraceptive",
+  "oral contraceptive": "hormonal_contraceptive",
+  finasteride: "5ARI",
 };
 
 // ── Supp class lookup ──
@@ -93,6 +118,29 @@ const SUPP_CLASS_MAP = {
   "fish oil": "omega", omega: "omega",
   // Antioxidant
   coq10: "antioxidant",
+  // Antiplatelet supplement
+  ginkgo: "antiplatelet_supp", "ginkgo biloba": "antiplatelet_supp",
+  garlic: "antiplatelet_supp",
+  // Women's health
+  vitex: "hormonal_herb", chasteberry: "hormonal_herb",
+  "black cohosh": "hormonal_herb", "evening primrose": "hormonal_herb",
+  dim: "hormonal_herb", "myo-inositol": "metabolic_supp",
+  // Men's health
+  "saw palmetto": "prostate_supp",
+  fenugreek: "hormonal_herb",
+  "l-carnitine": "amino_acid", "l-arginine": "amino_acid",
+  tongkat: "hormonal_herb", tribulus: "hormonal_herb",
+  // Gut/UTI
+  "d-mannose": "urinary_health", cranberry: "urinary_health",
+  "boric acid": "vaginal_health",
+  "milk thistle": "hepatoprotective", silymarin: "hepatoprotective",
+  // CBD
+  cbd: "cannabinoid",
+  // Joint
+  glucosamine: "joint_supp", chondroitin: "joint_supp",
+  // Protein
+  collagen: "protein",
+  probiotics: "probiotic", probiotic: "probiotic",
 };
 
 /**
