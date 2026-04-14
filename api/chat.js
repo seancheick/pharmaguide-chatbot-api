@@ -1,6 +1,6 @@
 /**
  * PharmaGuide AI Chatbot API (Vercel Serverless Function)
- * Powered by Groq (Llama 3.3 70B)
+ * Multi-provider: Gemini 2.5 Flash (primary) → Groq/Llama 3.3 70B (fallback)
  *
  * Endpoint: POST /api/chat
  * Body: { "message": "user question", "history": [...previous messages] }
@@ -18,7 +18,6 @@ const { routeByRisk } = require("../src/core/router");
 const detection = require("../src/gates/detection");
 const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, flirtyRepeatReply, flirtyFinalReply, creatorReply, petQuestionReply, businessInquiryReply, medicalConditionRedirectReply } = require("../src/gates/replies");
 const { tryDSLGate, isDSLRoute } = require("../src/gates/gateEngine");
-const { groq } = require("../src/infra/groqClient");
 const { checkRateLimit } = require("../src/infra/rateLimit");
 const { logGate } = require("../src/infra/logger");
 const { mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion } = require("../src/postprocess");
@@ -28,8 +27,7 @@ const { correctMisspellings, resolveBrandName, detectUnknownDosedItems } = requi
 const { findMissingFields } = require("../src/core/requiredFields");
 const { buildAnalyticsEvent, emitAnalyticsEvent } = require("../src/infra/analytics");
 const { buildCacheKey, isCacheable, getCachedResponse, setCachedResponse } = require("../src/infra/responseCache");
-const { allowRequest, recordSuccess, recordFailure } = require("../src/infra/circuitBreaker");
-const { getDegradedResponse } = require("../src/infra/gracefulDegradation");
+const { callWithFallback, scoreComplexity } = require("../src/infra/providerRouter");
 const { buildAugmentedMessages } = require("../src/core/kbLookup");
 const { extractDoses, getDoseSummary } = require("../src/core/doseExtractor");
 const { resolveConfidence } = require("../src/core/confidence");
@@ -201,10 +199,29 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(payload);
     }
 
+    // ── Query complexity scoring ──
+    const allEntityNames = [...(entities.meds || []), ...(entities.supplements || [])];
+
+    // Build KB-augmented messages (need kbHits for complexity scoring)
+    const { messages, kbHits } = buildAugmentedMessages(SYSTEM_PROMPT, safeHistory, message, entities);
+    const complexity = scoreComplexity(message, entities, kbHits, convoContext);
+
+    // Rebuild with complexity-aware context if complex
+    let finalMessages = messages;
+    if (complexity >= 3) {
+      const rebuilt = buildAugmentedMessages(SYSTEM_PROMPT, safeHistory, message, entities, complexity);
+      finalMessages = rebuilt.messages;
+    }
+
+    // Inject temporal context if any meds/supps have temporal data
+    const temporalBlock = buildTemporalContext(allEntityNames);
+    if (temporalBlock) {
+      finalMessages.splice(1, 0, { role: "system", content: temporalBlock });
+    }
+
     // ── Cache check ──
     const systemPromptHash = crypto.createHash("sha256").update(SYSTEM_PROMPT).digest("hex").slice(0, 12);
-    const modelId = "llama-3.3-70b-versatile";
-    const cacheKey = buildCacheKey(message, systemPromptHash, modelId);
+    const cacheKey = buildCacheKey(message, systemPromptHash, "multi-provider");
     const cached = getCachedResponse(cacheKey);
     if (cached) {
       logGate("llm", message.length, hasConversation);
@@ -217,57 +234,33 @@ module.exports = async function handler(req, res) {
         unknownDosedCount: unknownDosed.length, missingFields: [],
       }));
       const { confidence: cacheConf } = resolveConfidence("cache", 0);
-      return res.status(200).json({ reply: cached, model: modelId, confidence: cacheConf });
+      return res.status(200).json({ reply: cached, model: "cache", confidence: cacheConf });
     }
 
-    // ── Circuit breaker check ──
-    const circuit = allowRequest();
-    if (!circuit.allowed) {
-      logGate("llm", message.length, hasConversation);
-      const degradedReply = getDegradedResponse("llm_timeout");
+    // ── LLM call via provider router (Gemini → Groq → degraded) ──
+    logGate("llm", message.length, hasConversation);
+
+    if (process.env.NODE_ENV === "development") {
+      const estTokens = Math.ceil(finalMessages.reduce((sum, m) => sum + m.content.length, 0) / 4);
+      console.log(`[TOKEN EST] ~${estTokens} input tokens | history: ${safeHistory.length} msgs | KB hits: ${kbHits} | complexity: ${complexity}`);
+    }
+
+    const llmResult = await callWithFallback(finalMessages, { complexity, entities, kbHits });
+
+    if (llmResult.degraded) {
       emitAnalyticsEvent(buildAnalyticsEvent({
         route: "llm", scores, entities, message, safeHistory,
         latencyMs: Date.now() - requestStart,
-        validationResult: { safe: true, violations: [] }, source: "degraded", llmError: "circuit_open",
+        validationResult: { safe: true, violations: [] }, source: "degraded", llmError: "all_providers_failed",
         clientIP, misspellingCount: corrections.length,
         brandResolved: !!brandResult, clarifierTriggered: false,
         unknownDosedCount: unknownDosed.length, missingFields: [],
       }));
       const { confidence: degradedConf } = resolveConfidence("degraded", 0);
-      return res.status(200).json({ reply: degradedReply, model: "system:degraded", confidence: degradedConf });
+      return res.status(200).json({ reply: llmResult.text, model: "system:degraded", confidence: degradedConf });
     }
 
-    // ── LLM call ──
-    logGate("llm", message.length, hasConversation);
-    let llmError = null;
-
-    // Build KB-augmented messages
-    const { messages, kbHits } = buildAugmentedMessages(SYSTEM_PROMPT, safeHistory, message, entities);
-
-    // Inject temporal context if any meds/supps have temporal data
-    const allEntityNames = [...(entities.meds || []), ...(entities.supplements || [])];
-    const temporalBlock = buildTemporalContext(allEntityNames);
-    if (temporalBlock) {
-      // Insert as system message right after the main system prompt
-      messages.splice(1, 0, { role: "system", content: temporalBlock });
-    }
-
-    if (process.env.NODE_ENV === "development") {
-      const estTokens = Math.ceil(messages.reduce((sum, m) => sum + m.content.length, 0) / 4);
-      console.log(`[TOKEN EST] ~${estTokens} input tokens | history: ${safeHistory.length} msgs | KB hits: ${kbHits}`);
-    }
-
-    const completion = await groq.chat.completions.create({
-      model: modelId,
-      messages,
-      temperature: 0.45,
-      max_tokens: 650,
-      top_p: 0.9,
-      stream: false,
-    }, { timeout: 8000 });
-
-    recordSuccess();
-    let reply = completion.choices?.[0]?.message?.content?.trim() || "I couldn't generate a response. Please try again.";
+    let reply = llmResult.text || "I couldn't generate a response. Please try again.";
 
     // Strip disclaimers (UI footer handles it)
     reply = reply
@@ -305,24 +298,25 @@ module.exports = async function handler(req, res) {
     emitAnalyticsEvent(buildAnalyticsEvent({
       route: "llm", scores, entities, message, safeHistory,
       latencyMs: Date.now() - requestStart,
-      validationResult: llmValidation, source: "llm", llmError,
+      validationResult: llmValidation, source: llmResult.provider, llmError: null,
       clientIP, misspellingCount: corrections.length,
       brandResolved: !!brandResult, clarifierTriggered: false,
       unknownDosedCount: unknownDosed.length, missingFields: [],
     }));
 
-    const { confidence: llmConf, label: llmConfLabel } = resolveConfidence("llm", kbHits);
-    const response = { reply, model: modelId, confidence: llmConf };
+    const { confidence: llmConf, label: llmConfLabel } = resolveConfidence("llm", kbHits, llmResult.provider);
+    const response = { reply, model: llmResult.modelId, confidence: llmConf };
     if (process.env.NODE_ENV === "development") {
-      response.usage = completion.usage;
+      response.usage = llmResult.usage;
       response._validation = llmValidation;
       response._confidence_label = llmConfLabel;
       response._kb_hits = kbHits;
       response._dose_summary = doseSummary;
+      response._complexity = complexity;
+      response._provider = llmResult.provider;
     }
     return res.status(200).json(response);
   } catch (error) {
-    recordFailure();
     console.error("Chat API Error:", error);
     if (error?.status === 429) return res.status(429).json({ error: "Our AI service is busy right now. Please try again in a few moments.", retryAfter: 30 });
     if (error?.status === 401) return res.status(500).json({ error: "Service configuration error. Please contact support." });

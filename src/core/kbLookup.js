@@ -1,17 +1,22 @@
 /**
  * Knowledge-augmented LLM context builder.
- * Looks up entities in the knowledge base and builds a compact context block
- * (~300 tokens) injected as a system message before the user message.
+ * Looks up entities in the knowledge base and builds a context block
+ * injected as a system message before the user message.
+ *
+ * Context depth scales with query complexity:
+ *   - Simple queries: top 4 entries, ~300 tokens (fast)
+ *   - Complex queries: up to 6 entries, ~500 tokens (thorough)
  */
 
 const { getKBEntriesForEntities } = require("../config/knowledgeBase");
 
 /**
- * Build a compact KB context string for LLM injection.
+ * Build a KB context string for LLM injection.
  * @param {object} entities - from extractEntities()
+ * @param {number} complexity - query complexity score (1-5)
  * @returns {{ context: string, hits: number, entries: object[] }}
  */
-function buildKBContext(entities) {
+function buildKBContext(entities, complexity = 2) {
   if (!entities) return { context: "", hits: 0, entries: [] };
 
   const allNames = [
@@ -22,11 +27,21 @@ function buildKBContext(entities) {
   const entries = getKBEntriesForEntities(allNames);
   if (entries.length === 0) return { context: "", hits: 0, entries: [] };
 
+  // Scale context depth with complexity
+  const maxEntries = complexity >= 4 ? 6 : 4;
+  const includeFormDetails = complexity >= 3;
+  const includeAllInteractions = complexity >= 4;
+
   const blocks = [];
 
-  for (const entry of entries.slice(0, 4)) { // cap at 4 to stay under ~300 tokens
+  for (const entry of entries.slice(0, maxEntries)) {
     const lines = [];
     lines.push(`[${entry.canonical.toUpperCase()}]`);
+
+    // Category
+    if (entry.category) {
+      lines.push(`Category: ${entry.category}`);
+    }
 
     // Dose range
     if (entry.adult_dose_range) {
@@ -37,6 +52,21 @@ function buildKBContext(entities) {
     // Upper limit
     if (entry.upper_limit && entry.upper_limit.value) {
       lines.push(`Upper limit: ${entry.upper_limit.value} ${entry.upper_limit.unit}`);
+    }
+
+    // Form-specific details for complex queries
+    if (includeFormDetails && entry.forms) {
+      const formLines = Object.entries(entry.forms)
+        .slice(0, 3) // top 3 forms
+        .map(([name, f]) => {
+          const parts = [name];
+          if (f.absorption) parts.push(`absorption: ${f.absorption}`);
+          if (f.best_for) parts.push(`best for: ${f.best_for.join(", ")}`);
+          return parts.join(" — ");
+        });
+      if (formLines.length > 0) {
+        lines.push(`Forms: ${formLines.join(" | ")}`);
+      }
     }
 
     // Timing (one line)
@@ -64,22 +94,60 @@ function buildKBContext(entities) {
       }
     }
 
-    // Key interactions (top 2, brief)
+    // Interactions — show more for complex queries
     if (entry.interactions && entry.interactions.length > 0) {
+      const maxIx = includeAllInteractions ? 4 : 2;
       const topIx = entry.interactions
         .filter(ix => ix.severity === "high" || ix.severity === "moderate")
-        .slice(0, 2);
+        .slice(0, maxIx);
       for (const ix of topIx) {
-        lines.push(`⚠ ${ix.with}: ${ix.severity} — ${ix.mechanism}`);
+        const timingNote = ix.timing_fix ? ` (${ix.timing_fix})` : "";
+        lines.push(`⚠ ${ix.with}: ${ix.severity} — ${ix.mechanism}${timingNote}`);
       }
+    }
+
+    // Common goals (helps LLM understand user intent)
+    if (entry.common_goals && entry.common_goals.length > 0) {
+      lines.push(`Common uses: ${entry.common_goals.join(", ")}`);
     }
 
     blocks.push(lines.join("\n"));
   }
 
-  const context = "VERIFIED REFERENCE DATA (use to ground your response):\n" + blocks.join("\n\n");
+  // Cross-reference: flag known interactions between the entities the user mentioned
+  const crossInteractions = findCrossInteractions(entries, allNames);
+  if (crossInteractions.length > 0) {
+    blocks.push("CROSS-INTERACTIONS BETWEEN USER'S ITEMS:\n" + crossInteractions.join("\n"));
+  }
+
+  const context = "VERIFIED REFERENCE DATA (use to ground your response — prioritize this data over general knowledge):\n" + blocks.join("\n\n");
 
   return { context, hits: entries.length, entries };
+}
+
+/**
+ * Find interactions between the entities the user is asking about.
+ * This surfaces relevant pairwise interactions the LLM might otherwise miss.
+ */
+function findCrossInteractions(entries, allNames) {
+  const nameSet = new Set(allNames.map(n => n.toLowerCase()));
+  const results = [];
+
+  for (const entry of entries) {
+    if (!entry.interactions) continue;
+    for (const ix of entry.interactions) {
+      // Check if the "with" field matches any other entity the user mentioned
+      const ixWith = ix.with.toLowerCase();
+      for (const name of nameSet) {
+        if (name === entry.canonical) continue;
+        if (ixWith.includes(name) || name.includes(ixWith)) {
+          results.push(`⚠ ${entry.canonical} + ${ix.with}: ${ix.severity} — ${ix.mechanism}`);
+        }
+      }
+    }
+  }
+
+  return [...new Set(results)]; // deduplicate
 }
 
 /**
@@ -88,10 +156,11 @@ function buildKBContext(entities) {
  * @param {object[]} safeHistory - sanitized conversation history
  * @param {string} userMessage - current user message
  * @param {object} entities - from extractEntities()
+ * @param {number} complexity - query complexity score (1-5)
  * @returns {{ messages: object[], kbHits: number }}
  */
-function buildAugmentedMessages(systemPrompt, safeHistory, userMessage, entities) {
-  const { context, hits } = buildKBContext(entities);
+function buildAugmentedMessages(systemPrompt, safeHistory, userMessage, entities, complexity = 2) {
+  const { context, hits } = buildKBContext(entities, complexity);
 
   const messages = [
     { role: "system", content: systemPrompt },
@@ -111,4 +180,4 @@ function buildAugmentedMessages(systemPrompt, safeHistory, userMessage, entities
   return { messages, kbHits: hits };
 }
 
-module.exports = { buildKBContext, buildAugmentedMessages };
+module.exports = { buildKBContext, buildAugmentedMessages, findCrossInteractions };
