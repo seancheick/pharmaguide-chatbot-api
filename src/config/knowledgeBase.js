@@ -738,6 +738,199 @@ const KNOWLEDGE_BASE = {
     common_goals: ["pain", "inflammation", "fever", "headache"],
     reference_ids: ["lanas-2006", "warner-2011"],
   },
+
+  acetaminophen: {
+    canonical: "acetaminophen",
+    aliases: ["tylenol", "paracetamol", "apap"],
+    category: "medication",
+    adult_dose_range: { min: 325, max: 1000, unit: "mg per dose" },
+    upper_limit: { value: 3000, unit: "mg/day (4000 max, 3000 if alcohol)", source: "FDA" },
+    timing: { best_time: "as needed", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "Generally considered safest OTC analgesic in pregnancy. Avoid chronic high-dose use." },
+      renal: { safe: true, notes: "Preferred over NSAIDs in CKD. Standard dose limits still apply." },
+      elderly: { safe: true, notes: "Safer than NSAIDs. Max 3000 mg/day. Monitor with liver disease." },
+    },
+    interactions: [
+      { with: "alcohol", severity: "high", mechanism: "Combined liver toxicity. Max 2000 mg/day with regular alcohol use.", timing_fix: null },
+      { with: "warfarin", severity: "moderate", mechanism: "Regular use may increase INR. Occasional use OK but monitor.", timing_fix: null },
+    ],
+    common_goals: ["pain", "fever", "headache"],
+    reference_ids: [],
+  },
+
+  aspirin: {
+    canonical: "aspirin",
+    aliases: ["asa", "bayer", "ecotrin", "bufferin"],
+    category: "medication",
+    adult_dose_range: { min: 81, max: 650, unit: "mg (81 mg for cardiac, 325-650 mg for pain)" },
+    upper_limit: { value: 4000, unit: "mg/day", source: "FDA" },
+    timing: { best_time: "with food", with_food: true, separate_from: ["ibuprofen"] },
+    populations: {
+      pregnancy: { safe: false, notes: "Avoid in 3rd trimester. Low-dose (81 mg) sometimes used under OB supervision for preeclampsia prevention." },
+      renal: { safe: false, notes: "Reduces renal blood flow like other NSAIDs. Use caution in CKD." },
+      elderly: { safe: true, notes: "Low-dose widely used for cardiac prevention. Higher bleeding risk with age." },
+    },
+    interactions: [
+      { with: "warfarin/anticoagulants", severity: "high", mechanism: "Additive antiplatelet + anticoagulant = major bleeding risk.", timing_fix: null },
+      { with: "ibuprofen", severity: "moderate", mechanism: "Ibuprofen can block aspirin's antiplatelet effect if taken first. Take aspirin 30 min before ibuprofen.", timing_fix: "Take aspirin 30 min before NSAID" },
+      { with: "ginkgo", severity: "moderate", mechanism: "Additive antiplatelet effects. Increased bleeding risk.", timing_fix: null },
+    ],
+    common_goals: ["cardiac prevention", "pain", "anti-inflammatory", "fever"],
+    reference_ids: [],
+  },
+
+  omeprazole: {
+    canonical: "omeprazole",
+    aliases: ["prilosec", "nexium", "esomeprazole", "pantoprazole", "protonix", "lansoprazole", "prevacid", "ppi"],
+    category: "medication",
+    adult_dose_range: { min: 20, max: 40, unit: "mg/day" },
+    timing: { best_time: "30 min before breakfast", with_food: false, separate_from: ["iron", "calcium carbonate", "b12"] },
+    populations: {
+      pregnancy: { safe: true, notes: "Omeprazole category C. Lansoprazole may be preferred. Short-term use generally safe." },
+      renal: { safe: true, notes: "No dose adjustment needed. Watch for hypomagnesemia with long-term use." },
+      elderly: { safe: true, notes: "Long-term use: monitor B12, magnesium, bone density. Shortest effective duration." },
+    },
+    interactions: [
+      { with: "clopidogrel", severity: "high", mechanism: "Omeprazole inhibits CYP2C19 which activates clopidogrel. Reduced antiplatelet effect. Use pantoprazole instead.", timing_fix: null },
+      { with: "iron", severity: "moderate", mechanism: "Reduced stomach acid impairs iron absorption.", timing_fix: "Take iron 2h before PPI" },
+      { with: "calcium carbonate", severity: "moderate", mechanism: "Needs acid for absorption. Use calcium citrate instead with PPIs.", timing_fix: null },
+      { with: "B12", severity: "moderate", mechanism: "Long-term PPI reduces B12 absorption. Consider sublingual B12.", timing_fix: null },
+      { with: "magnesium", severity: "moderate", mechanism: "Long-term PPI use linked to hypomagnesemia. Monitor levels.", timing_fix: null },
+    ],
+    common_goals: ["acid reflux", "GERD", "ulcers", "heartburn"],
+    reference_ids: [],
+  },
+
+  ginkgo: {
+    canonical: "ginkgo",
+    aliases: ["ginkgo biloba", "ginko", "ginkgo extract"],
+    category: "supplement",
+    adult_dose_range: { min: 120, max: 240, unit: "mg standardized extract/day" },
+    upper_limit: { value: 240, unit: "mg/day", source: "EMA" },
+    timing: { best_time: "morning", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient safety data. Antiplatelet activity is a concern." },
+      renal: { safe: true, notes: "No significant renal concerns at standard doses." },
+      elderly: { safe: true, notes: "Common use for cognitive support. Watch for bleeding with polypharmacy." },
+    },
+    interactions: [
+      { with: "blood thinners (warfarin, aspirin, clopidogrel)", severity: "high", mechanism: "Antiplatelet activity. Additive bleeding risk.", timing_fix: null },
+      { with: "NSAIDs", severity: "moderate", mechanism: "Added bleeding risk. Monitor for bruising.", timing_fix: null },
+      { with: "SSRIs", severity: "moderate", mechanism: "Possible serotonergic interaction + bleeding risk (SSRIs also have antiplatelet effects).", timing_fix: null },
+    ],
+    common_goals: ["memory", "cognitive function", "circulation", "tinnitus"],
+    reference_ids: [],
+  },
+
+  "d-mannose": {
+    canonical: "d-mannose",
+    aliases: ["d mannose", "mannose"],
+    category: "supplement",
+    adult_dose_range: { min: 500, max: 2000, unit: "mg/day (preventive), up to 2g every 2-3h for acute UTI" },
+    timing: { best_time: "any time", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "Limited data but generally considered safe. Some OBs recommend for recurrent UTI prevention." },
+      renal: { safe: true, notes: "Excreted renally. No evidence of harm but limited CKD data." },
+      elderly: { safe: true, notes: "Safe. Useful for recurrent UTI prevention in post-menopausal women." },
+    },
+    interactions: [],
+    common_goals: ["UTI prevention", "urinary tract health", "bladder health"],
+    reference_ids: [],
+  },
+
+  "milk thistle": {
+    canonical: "milk thistle",
+    aliases: ["silymarin", "milk thistle extract"],
+    category: "supplement",
+    adult_dose_range: { min: 140, max: 420, unit: "mg silymarin/day" },
+    timing: { best_time: "with meals", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient safety data. Avoid unless directed by provider." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Generally well tolerated. May interact with CYP-metabolized drugs." },
+    },
+    interactions: [
+      { with: "CYP3A4/CYP2C9 substrates", severity: "moderate", mechanism: "May inhibit CYP enzymes, raising blood levels of certain drugs.", timing_fix: null },
+      { with: "metformin", severity: "moderate", mechanism: "May potentiate blood sugar lowering. Monitor glucose.", timing_fix: null },
+    ],
+    common_goals: ["liver support", "detox", "liver protection"],
+    reference_ids: [],
+  },
+
+  cbd: {
+    canonical: "cbd",
+    aliases: ["cannabidiol", "cbd oil", "hemp extract"],
+    category: "supplement",
+    adult_dose_range: { min: 10, max: 50, unit: "mg/day (typical supplement range)" },
+    timing: { best_time: "variable", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "FDA advises against CBD use during pregnancy. Insufficient safety data." },
+      renal: { safe: true, notes: "No significant renal concerns at supplement doses." },
+      elderly: { safe: true, notes: "Start low. Increased sensitivity to sedation. Monitor for drug interactions." },
+    },
+    interactions: [
+      { with: "clobazam", severity: "high", mechanism: "CBD inhibits CYP2C19. Significantly raises clobazam levels. Excessive sedation risk.", timing_fix: null },
+      { with: "blood thinners (warfarin)", severity: "moderate", mechanism: "CBD inhibits CYP2C9. May increase warfarin levels and INR.", timing_fix: null },
+      { with: "benzodiazepines", severity: "moderate", mechanism: "Additive sedation. Start with lower doses.", timing_fix: null },
+      { with: "SSRIs", severity: "moderate", mechanism: "CBD inhibits CYP2D6. May raise SSRI levels.", timing_fix: null },
+    ],
+    common_goals: ["anxiety", "pain", "sleep", "inflammation"],
+    reference_ids: [],
+  },
+
+  glucosamine: {
+    canonical: "glucosamine",
+    aliases: ["glucosamine sulfate", "glucosamine hcl", "glucosamine chondroitin"],
+    category: "supplement",
+    adult_dose_range: { min: 1500, max: 1500, unit: "mg glucosamine sulfate/day" },
+    timing: { best_time: "with food", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient safety data. Avoid." },
+      renal: { safe: true, notes: "No significant renal concerns at standard doses." },
+      elderly: { safe: true, notes: "Common use for osteoarthritis. May take 4-8 weeks for effect." },
+    },
+    interactions: [
+      { with: "warfarin", severity: "moderate", mechanism: "Case reports of increased INR. Monitor if on warfarin.", timing_fix: null },
+    ],
+    common_goals: ["joint health", "arthritis", "cartilage", "knee pain"],
+    reference_ids: [],
+  },
+
+  probiotics: {
+    canonical: "probiotics",
+    aliases: ["probiotic", "lactobacillus", "bifidobacterium", "saccharomyces"],
+    category: "supplement",
+    adult_dose_range: { min: 1, max: 100, unit: "billion CFU/day (strain-dependent)" },
+    timing: { best_time: "with food or 30 min before", with_food: true, separate_from: ["antibiotics (2h separation)"] },
+    populations: {
+      pregnancy: { safe: true, notes: "Generally safe. Lactobacillus and Bifidobacterium strains well-studied." },
+      renal: { safe: true, notes: "Safe. No renal concerns." },
+      elderly: { safe: true, notes: "Safe. May help with antibiotic-associated diarrhea." },
+    },
+    interactions: [
+      { with: "antibiotics", severity: "moderate", mechanism: "Antibiotics kill probiotics. Separate by 2+ hours. Continue probiotics 1-2 weeks after antibiotic course.", timing_fix: "2h separation from antibiotic dose" },
+      { with: "immunosuppressants", severity: "moderate", mechanism: "Theoretical infection risk in severely immunocompromised. Discuss with provider.", timing_fix: null },
+    ],
+    common_goals: ["gut health", "digestion", "immune support", "antibiotic recovery"],
+    reference_ids: [],
+  },
+
+  collagen: {
+    canonical: "collagen",
+    aliases: ["collagen peptides", "collagen powder", "hydrolyzed collagen", "marine collagen"],
+    category: "supplement",
+    adult_dose_range: { min: 5, max: 15, unit: "g/day" },
+    timing: { best_time: "any time", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "Generally considered safe. Hydrolyzed collagen is just protein." },
+      renal: { safe: true, notes: "High protein content — discuss with nephrologist if on protein restriction." },
+      elderly: { safe: true, notes: "May help with joint and skin health. Common use." },
+    },
+    interactions: [],
+    common_goals: ["skin", "hair", "nails", "joints", "gut health"],
+    reference_ids: [],
+  },
 };
 
 // ── Lookup functions ──

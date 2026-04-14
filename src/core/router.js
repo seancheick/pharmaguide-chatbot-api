@@ -23,6 +23,11 @@ const ROUTE_PRECEDENCE = [
   "system:niacin-statin",
   "system:renal-magnesium",
   "system:metformin-alcohol",
+  "system:beta-blocker-stimulant",
+  "system:ppi-nutrient",
+  "system:statin-myopathy",
+  "system:benzo-alcohol",
+  "system:ginkgo-bleeding",
   "system:ototoxic-tinnitus",
   "system:nsaid-chronic",
   "system:clarifier",
@@ -67,6 +72,11 @@ function routeByRisk(scores, entities, convoContext, message, hasConversation) {
     if (route === "system:niacin-statin" && detection.detectsNiacinStatin(ctx)) return route;
     if (route === "system:renal-magnesium" && scores.renal_clearance_risk >= 2) return route;
     if (route === "system:metformin-alcohol" && detection.detectsMetforminAlcohol(ctx)) return route;
+    if (route === "system:beta-blocker-stimulant" && detection.detectsBetaBlockerStimulant(ctx)) return route;
+    if (route === "system:ppi-nutrient" && detection.detectsPPINutrientDepletion(ctx)) return route;
+    if (route === "system:statin-myopathy" && detection.detectsStatinMyopathyRisk(ctx)) return route;
+    if (route === "system:benzo-alcohol" && detection.detectsBenzoAlcohol(ctx)) return route;
+    if (route === "system:ginkgo-bleeding" && detection.detectsGinkgoBleeding(ctx)) return route;
     if (route === "system:ototoxic-tinnitus" && detection.detectsMedInducedTinnitus(ctx)) return route;
     if (route === "system:nsaid-chronic" && detection.detectsChronicNSAIDUse(ctx)) return route;
     if (route === "system:clarifier" && !hasConversation && detection.needsMedicationClarifier(message)) return route;

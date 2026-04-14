@@ -2,11 +2,13 @@ const { normalizeText } = require("./normalize");
 const { mentionsPregnancyContext } = require("../gates/detection");
 
 const ENTITY_PATTERNS = {
-  antidepressants: /\b(sertraline|zoloft|fluoxetine|prozac|escitalopram|lexapro|citalopram|celexa|venlafaxine|effexor|bupropion|wellbutrin|duloxetine|cymbalta|trazodone|mirtazapine|paroxetine|paxil|phenelzine|tranylcypromine|selegiline|lithium|lamotrigine|quetiapine|aripiprazole|buspirone)\b/g,
-  stimulantMeds: /\b(adderall|ritalin|concerta|vyvanse|dexedrine|modafinil|methylphenidate|amphetamine)\b/g,
-  minerals: /\b(magnesium|iron|zinc|calcium|vitamin\s*d|vitamin\s*c|b12|folate|biotin|iodine|potassium)\b/g,
-  supplements: /\b(ashwagandha|rhodiola|l.?theanine|gaba|valerian|melatonin|5[\s-]?htp|st\.?\s*john|ginseng|maca|turmeric|curcumin|fish oil|omega|creatine|nac|coq10|glutathione|echinacea|kava|berberine|inositol|phenylpiracetam|alpha.?gpc)\b/g,
-  medications: /\b(warfarin|eliquis|xarelto|lisinopril|metformin|levothyroxine|atorvastatin|lipitor|simvastatin|metoprolol|propranolol|gabapentin|pregabalin|losartan|amlodipine|omeprazole|prednisone|aspirin|clopidogrel|spironolactone|isotretinoin|accutane|ibuprofen|advil|motrin|naproxen|aleve|diclofenac|celecoxib|celebrex|meloxicam|acetaminophen|tylenol|indomethacin|ketorolac)\b/g,
+  antidepressants: /\b(sertraline|zoloft|fluoxetine|prozac|escitalopram|lexapro|citalopram|celexa|venlafaxine|effexor|bupropion|wellbutrin|duloxetine|cymbalta|trazodone|mirtazapine|paroxetine|paxil|fluvoxamine|luvox|desvenlafaxine|pristiq|phenelzine|tranylcypromine|selegiline|lithium|lamotrigine|quetiapine|aripiprazole|buspirone)\b/g,
+  stimulantMeds: /\b(adderall|ritalin|concerta|vyvanse|dexedrine|modafinil|provigil|armodafinil|nuvigil|methylphenidate|amphetamine|lisdexamfetamine)\b/g,
+  benzodiazepines: /\b(alprazolam|xanax|clonazepam|klonopin|lorazepam|ativan|diazepam|valium|temazepam|restoril|oxazepam|chlordiazepoxide|librium|midazolam)\b/g,
+  betaBlockers: /\b(metoprolol|atenolol|propranolol|carvedilol|bisoprolol|nadolol|nebivolol|sotalol|labetalol|lopressor|tenormin|inderal|coreg)\b/g,
+  minerals: /\b(magnesium|iron|zinc|calcium|vitamin\s*d|vitamin\s*c|vitamin\s*a|vitamin\s*e|vitamin\s*k|b12|b6|folate|folic\s*acid|biotin|iodine|potassium|selenium|copper|chromium|manganese)\b/g,
+  supplements: /\b(ashwagandha|rhodiola|l.?theanine|gaba|valerian|melatonin|5[\s-]?htp|st\.?\s*john|ginseng|maca|turmeric|curcumin|fish oil|omega|creatine|nac|coq10|glutathione|echinacea|kava|berberine|inositol|phenylpiracetam|alpha.?gpc|ginkgo|garlic|quercetin|resveratrol|elderberry|saw palmetto|milk thistle|d.?mannose|probiotics?|collagen|cbd|glucosamine|chondroitin)\b/g,
+  medications: /\b(warfarin|coumadin|eliquis|apixaban|xarelto|rivaroxaban|pradaxa|dabigatran|lisinopril|enalapril|ramipril|quinapril|benazepril|metformin|levothyroxine|synthroid|armour thyroid|atorvastatin|lipitor|simvastatin|zocor|rosuvastatin|crestor|pravastatin|lovastatin|metoprolol|propranolol|gabapentin|neurontin|pregabalin|lyrica|losartan|valsartan|irbesartan|olmesartan|amlodipine|omeprazole|prilosec|pantoprazole|protonix|esomeprazole|nexium|lansoprazole|prevacid|famotidine|pepcid|prednisone|prednisolone|aspirin|clopidogrel|plavix|spironolactone|isotretinoin|accutane|ibuprofen|advil|motrin|naproxen|aleve|diclofenac|celecoxib|celebrex|meloxicam|acetaminophen|tylenol|indomethacin|ketorolac|hydrochlorothiazide|hctz|furosemide|lasix|chlorthalidone|tramadol|cyclobenzaprine|amiodarone|digoxin|diltiazem|verapamil)\b/g,
 };
 
 function extractKnownItems(text) {
@@ -25,9 +27,9 @@ function extractEntities(text, convoContext) {
   const ctx = convoContext || t;
   const detection = require("../gates/detection");
 
-  // Meds: antidepressants + stimulantMeds + medications patterns
+  // Meds: antidepressants + stimulantMeds + benzodiazepines + betaBlockers + medications patterns
   const meds = new Set();
-  for (const key of ["antidepressants", "stimulantMeds", "medications"]) {
+  for (const key of ["antidepressants", "stimulantMeds", "benzodiazepines", "betaBlockers", "medications"]) {
     const p = new RegExp(ENTITY_PATTERNS[key].source, "g");
     let m;
     while ((m = p.exec(ctx)) !== null) meds.add(m[0]);

@@ -334,7 +334,55 @@ function detectRiskFamilies(text) {
   if (mentionsAnticoagulantRiskSupplement(text) && mentionsBloodThinner(text)) families.push("bleeding");
   if (mentionsStimulantMed(text) && mentionsStimulantSupp(text)) families.push("stimulant");
   if (detectsLiverToxicityStack(text)) families.push("liver");
+  if (detectsBetaBlockerStimulant(text)) families.push("cardiovascular");
+  if (detectsPPINutrientDepletion(text)) families.push("absorption");
+  if (detectsStatinMyopathyRisk(text)) families.push("myopathy");
+  if (detectsBenzoAlcohol(text)) families.push("cns_depression");
   return families;
+}
+
+// ── Beta-blocker + stimulant interaction ──
+// Beta-blockers mask tachycardia signals from stimulants; risk of hypertensive episodes
+function detectsBetaBlockerStimulant(text) {
+  const t = normalizeText(text);
+  const betaBlocker = /\b(metoprolol|atenolol|propranolol|carvedilol|bisoprolol|nadolol|nebivolol|sotalol|labetalol|lopressor|tenormin|inderal|coreg|beta.?blocker)\b/.test(t);
+  const stimulant = /\b(adderall|ritalin|concerta|vyvanse|dexedrine|modafinil|provigil|armodafinil|nuvigil|methylphenidate|amphetamine|lisdexamfetamine|caffeine\s*(pill|supplement|tablet)|high.?dose caffeine)\b/.test(t);
+  return betaBlocker && stimulant;
+}
+
+// ── PPI + nutrient depletion ──
+// PPIs reduce absorption of B12, iron, calcium, magnesium with long-term use
+function detectsPPINutrientDepletion(text) {
+  const t = normalizeText(text);
+  const ppi = /\b(omeprazole|prilosec|pantoprazole|protonix|esomeprazole|nexium|lansoprazole|prevacid|rabeprazole|aciphex|dexlansoprazole|dexilant|ppi)\b/.test(t);
+  const nutrient = /\b(b12|iron|calcium|magnesium|vitamin\s*b12)\b/.test(t);
+  return ppi && nutrient;
+}
+
+// ── Statin + myopathy/rhabdomyolysis risk ──
+// Statin + fibrate (gemfibrozil), or statin + high-dose niacin, or statin + grapefruit
+function detectsStatinMyopathyRisk(text) {
+  const t = normalizeText(text);
+  const statin = /\b(atorvastatin|lipitor|simvastatin|zocor|rosuvastatin|crestor|pravastatin|lovastatin|pitavastatin|statin)\b/.test(t);
+  if (!statin) return false;
+  const riskFactor = /\b(gemfibrozil|lopid|fenofibrate|tricor|red yeast rice|niacin|grapefruit|muscle\s*(pain|ache|cramp|weakness)|rhabdomyolysis|myopathy|coq10)\b/.test(t);
+  return riskFactor;
+}
+
+// ── Benzodiazepine + alcohol (CNS depression) ──
+function detectsBenzoAlcohol(text) {
+  const t = normalizeText(text);
+  const benzo = /\b(alprazolam|xanax|clonazepam|klonopin|lorazepam|ativan|diazepam|valium|temazepam|restoril|benzodiazepine|benzo)\b/.test(t);
+  const alcohol = /\b(alcohol|beer|wine|vodka|whiskey|liquor|drinking|drunk|tequila|rum|cocktail)\b/.test(t);
+  return benzo && alcohol;
+}
+
+// ── Ginkgo + bleeding risk (anticoagulant interaction) ──
+function detectsGinkgoBleeding(text) {
+  const t = normalizeText(text);
+  const ginkgo = /\b(ginkgo|ginkgo\s*biloba|ginko)\b/.test(t);
+  const bleedRisk = /\b(warfarin|coumadin|eliquis|apixaban|xarelto|rivaroxaban|pradaxa|dabigatran|aspirin|clopidogrel|plavix|blood\s*thinner|anticoagulant)\b/.test(t);
+  return ginkgo && bleedRisk;
 }
 
 module.exports = {
@@ -380,6 +428,11 @@ module.exports = {
   detectsChronicNSAIDUse,
   detectsRenalMagnesium,
   detectRiskFamilies,
+  detectsBetaBlockerStimulant,
+  detectsPPINutrientDepletion,
+  detectsStatinMyopathyRisk,
+  detectsBenzoAlcohol,
+  detectsGinkgoBleeding,
   isFlirty,
   isCreatorQuestion,
   isPetQuestion,

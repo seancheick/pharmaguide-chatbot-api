@@ -111,7 +111,7 @@ expectRoute("#9 vitamin D 10000 daily",
 console.log("\n=== UX Scenario 10: Alcohol + Xanax ===");
 expectRoute("#10 Xanax + wine",
   "I take Xanax sometimes. Can I drink wine tonight?",
-  "llm"); // LLM with clinical knowledge (alcohol + benzos = 🔴)
+  "system:benzo-alcohol"); // Now caught by dedicated benzo+alcohol gate 🔴
 
 console.log("\n=== UX Scenario 11: Microdose Psilocybin + SSRI ===");
 expectRoute("#11 psilocybin + SSRI",
@@ -183,7 +183,7 @@ expectRoute("misspelled: sertaline (missing r)",
 
 expectRoute("misspelled: xanex",
   "can I drink alcohol with xanex",
-  "llm"); // Falls to LLM — acceptable since no gate for benzos+alcohol
+  "system:benzo-alcohol"); // Now caught by benzo+alcohol gate (synonym map resolves xanex → xanax)
 
 expectRoute("mg vs mcg confusion",
   "I take 5000mg of vitamin D",

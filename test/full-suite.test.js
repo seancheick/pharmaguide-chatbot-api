@@ -464,7 +464,7 @@ expectRoute("UX6: chatty user", "Okay so like I take this, this, and this but no
 expectRoute("UX7: oversharing", "I'm depressed, stressed, gaining weight, can't sleep, hormones are crazy, I take everything honestly.", "llm");
 expectRoute("UX8: caregiver elderly", "My mom is 68 and on a lot of meds. I don't know all of them. Can I just send you a picture?", "system:clarifier");
 expectRoute("UX9: dose confusion", "I take 10,000 vitamin D daily. That's fine right? I saw someone take 50,000.", "llm");
-expectRoute("UX10: Xanax + wine", "I take Xanax sometimes. Can I drink wine tonight?", "llm");
+expectRoute("UX10: Xanax + wine", "I take Xanax sometimes. Can I drink wine tonight?", "system:benzo-alcohol");
 expectRoute("UX11: psilocybin + SSRI", "I microdose psilocybin and take SSRI. Safe?", "system:serotonin-risk");
 expectRoute("UX12: biohacker stack", "I take NAD+, NMN, resveratrol, quercetin, metformin, rapamycin, and creatine. Rate my stack.", "llm");
 expectRoute("UX13: am I dying", "I took magnesium and now I feel funny. Is this dangerous?", "system:symptom-triage");
@@ -484,7 +484,7 @@ section("Hard Edge Cases (routing)");
 expectRoute("ALL CAPS", "CAN I TAKE MAGNESIUM WITH ZOLOFT", "llm");
 expectRoute("slang: blood thinner thingy", "I take a blood thinner thingy and want turmeric", "system:blood-thinner-risk");
 expectRoute("misspelled: sertaline + 5-HTP", "I take sertaline and 5-HTP, is that ok?", "system:serotonin-risk");
-expectRoute("misspelled: xanex", "can I drink alcohol with xanex", "llm");
+expectRoute("misspelled: xanex", "can I drink alcohol with xanex", "system:benzo-alcohol");
 expectRoute("mg vs mcg confusion", "I take 5000mg of vitamin D", "llm");
 expectRoute("emoji only", "😵‍💫 after supplements", "llm");
 expectRoute("angry tone", "Why didn't my doctor tell me this about magnesium and thyroid meds?", "llm");

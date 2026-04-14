@@ -683,6 +683,79 @@ function chronicNSAIDReply() {
   ].join("\n");
 }
 
+// ── New interaction gates (Phase 2 expansion) ──
+
+function betaBlockerStimulantReply() {
+  return [
+    "**🟡 Beta-blocker + stimulant — worth monitoring carefully.**",
+    "",
+    "Beta-blockers slow your heart rate; stimulants speed it up. The competing effects can cause:",
+    "• **Blood pressure swings** — the stimulant raises BP while the beta-blocker masks your heart's normal warning signals (elevated heart rate).",
+    "• **Rebound hypertension** — if the beta-blocker wears off unevenly, you may get a BP spike.",
+    "",
+    "This combination is sometimes used intentionally (e.g., propranolol for stimulant-induced anxiety), but it should be **prescriber-supervised**.",
+    "",
+    "Is your prescriber aware you're taking both?",
+  ].join("\n");
+}
+
+function ppiNutrientReply() {
+  return [
+    "**🟡 Long-term PPI use can reduce absorption of key nutrients.**",
+    "",
+    "PPIs (omeprazole, pantoprazole, etc.) suppress stomach acid, which your body needs to absorb certain nutrients:",
+    "• **B12** — reduced acid = reduced B12 absorption. Consider sublingual B12 (it bypasses the stomach).",
+    "• **Magnesium** — long-term PPI use (>1 year) linked to low magnesium. Monitor levels.",
+    "• **Calcium** — acid helps dissolve calcium carbonate. If on a PPI, calcium citrate is the better form (doesn't need acid).",
+    "• **Iron** — acid helps convert iron to its absorbable form. Separate iron from PPI by 2+ hours.",
+    "",
+    "If you've been on a PPI for more than a year, it's worth asking your provider about checking B12 and magnesium levels.",
+  ].join("\n");
+}
+
+function statinMyopathyReply() {
+  return [
+    "**🟡 Statin muscle risk — here's what to watch for.**",
+    "",
+    "Statins can cause muscle-related side effects ranging from mild aches (myalgia) to rare but serious rhabdomyolysis. The risk increases with:",
+    "• **Fibrates** (gemfibrozil especially) — combining with a statin significantly raises myopathy risk 🔴.",
+    "• **High-dose niacin** (>1,000 mg) — adds muscle toxicity risk on top of the statin.",
+    "• **Red yeast rice** — contains a natural statin (monacolin K). Taking it with a prescription statin is essentially doubling the dose 🔴.",
+    "• **Grapefruit** — inhibits the enzyme (CYP3A4) that clears simvastatin and atorvastatin, raising blood levels.",
+    "",
+    "• **CoQ10 supplementation** (100-200 mg/day) may help with statin-related muscle aches — some evidence supports it, though it's not conclusive.",
+    "",
+    "Are you experiencing muscle symptoms, or looking to prevent them?",
+  ].join("\n");
+}
+
+function benzoAlcoholReply() {
+  return [
+    "**🔴 Benzodiazepine + alcohol is a high-risk combination.**",
+    "",
+    "Both are CNS depressants — they compound each other's effects:",
+    "• **Excessive sedation** — even small amounts of alcohol can dramatically increase drowsiness.",
+    "• **Respiratory depression** — this is the dangerous one. Both slow your breathing; together they can slow it to unsafe levels.",
+    "• **Impaired coordination and judgment** — the combined impairment is greater than either alone.",
+    "",
+    "This isn't a \"sometimes risky\" situation — **any amount of alcohol with a benzodiazepine increases risk**. This is one of the most common causes of accidental overdose deaths.",
+    "",
+    "If you're using both regularly, please talk to your prescriber about safer alternatives.",
+  ].join("\n");
+}
+
+function ginkgoBleedingReply() {
+  return [
+    "**🟡 Ginkgo biloba + blood thinner — increased bleeding risk.**",
+    "",
+    "Ginkgo has antiplatelet activity (it inhibits platelet-activating factor), which means it thins the blood on its own. Combined with an anticoagulant:",
+    "• **Additive bleeding risk** — easier bruising, longer bleeding from cuts, and higher risk of internal bleeding.",
+    "• **Surgical risk** — if you have any procedures planned, stop ginkgo at least 2 weeks before.",
+    "",
+    "Your prescriber should know you're taking ginkgo alongside your blood thinner. They may want to monitor your INR more closely (if on warfarin).",
+  ].join("\n");
+}
+
 const ROUTE_REPLY_MAP = {
   "system:ssri-discontinuation": function(convoContext) { return ssriDiscontinuationReply(); },
   "system:serotonin-urgent": function() { return serotonergicUrgentReply(); },
@@ -707,6 +780,11 @@ const ROUTE_REPLY_MAP = {
   "system:triple-whammy": function() { return tripleWhammyReply(); },
   "system:lithium-nsaid": function() { return lithiumNSAIDReply(); },
   "system:metformin-alcohol": function() { return metforminAlcoholReply(); },
+  "system:beta-blocker-stimulant": function() { return betaBlockerStimulantReply(); },
+  "system:ppi-nutrient": function() { return ppiNutrientReply(); },
+  "system:statin-myopathy": function() { return statinMyopathyReply(); },
+  "system:benzo-alcohol": function() { return benzoAlcoholReply(); },
+  "system:ginkgo-bleeding": function() { return ginkgoBleedingReply(); },
   "system:flirty": function() { return flirtyDeflectReply(); },
   "system:flirty-repeat": function() { return flirtyRepeatReply(); },
   "system:flirty-final": function() { return flirtyFinalReply(); },
@@ -756,5 +834,10 @@ module.exports = {
   medicalConditionRedirectReply,
   medInducedTinnitusReply,
   chronicNSAIDReply,
+  betaBlockerStimulantReply,
+  ppiNutrientReply,
+  statinMyopathyReply,
+  benzoAlcoholReply,
+  ginkgoBleedingReply,
   ROUTE_REPLY_MAP,
 };
