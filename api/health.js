@@ -10,7 +10,7 @@ const geminiClient = require("../src/infra/geminiClient");
 const groqClient = require("../src/infra/groqClient");
 const groqCircuit = require("../src/infra/circuitBreaker");
 const geminiCircuit = require("../src/infra/geminiCircuitBreaker");
-const { getGapSnapshot } = require("../src/infra/topicTracker");
+const { getGapSnapshot, getPersistedGapSnapshot } = require("../src/infra/topicTracker");
 const { getSnapshot: getAnalyticsSnapshot } = require("../src/infra/analytics");
 
 module.exports = function handler(req, res) {
@@ -51,7 +51,16 @@ module.exports = function handler(req, res) {
   };
 
   if (includeGaps) {
-    response.topic_gaps = getGapSnapshot();
+    // Use persisted Redis data if available (async)
+    return getPersistedGapSnapshot().then(gaps => {
+      response.topic_gaps = gaps;
+      if (includeAnalytics) response.analytics = getAnalyticsSnapshot();
+      res.status(200).json(response);
+    }).catch(() => {
+      response.topic_gaps = getGapSnapshot();
+      if (includeAnalytics) response.analytics = getAnalyticsSnapshot();
+      res.status(200).json(response);
+    });
   }
 
   if (includeAnalytics) {

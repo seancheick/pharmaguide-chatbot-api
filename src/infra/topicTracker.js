@@ -6,6 +6,9 @@
  * PHI-safe: stores only hashed keyword clusters, intent categories,
  * and aggregate counts — never raw messages.
  *
+ * Persistence: Uses Upstash Redis (free tier) to store gap counts that
+ * survive serverless cold starts. Falls back to in-memory if Redis unavailable.
+ *
  * Gap signals:
  *   1. LLM route with 0 KB hits (answered from general knowledge, no grounding)
  *   2. Off-topic bounce (user asked something we rejected)
@@ -95,6 +98,9 @@ function recordGap(params) {
   if (process.env.ANALYTICS_ENABLED === "true" && process.env.NODE_ENV !== "test") {
     console.log(JSON.stringify({ _topic_gap: true, ...entry }));
   }
+
+  // Persist to Redis (fire-and-forget — never blocks the response)
+  persistGapToRedis(entry).catch(() => {});
 
   return entry;
 }
@@ -186,6 +192,133 @@ function getGapSnapshot() {
   };
 }
 
+// ══════════════════════════════════════════════════
+// Redis persistence (survives cold starts)
+// ══════════════════════════════════════════════════
+
+const { getRedis } = require("./redisClient");
+
+const REDIS_PREFIX = "pgchat:gaps:";
+const REDIS_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
+
+/**
+ * Persist a gap to Redis (fire-and-forget, never blocks the request).
+ * Stores two things:
+ *   1. Sorted set "pgchat:gaps:topics" — keyword cluster → count (for ranking)
+ *   2. Hash "pgchat:gaps:detail:{cluster}" — gap_types, last_seen, sample keywords
+ */
+async function persistGapToRedis(entry) {
+  const redis = getRedis();
+  if (!redis) return;
+
+  try {
+    const clusterKey = entry.keywords.join(" + ") || "(no keywords)";
+    const topicsKey = REDIS_PREFIX + "topics";
+    const detailKey = REDIS_PREFIX + "detail:" + entry.topic_cluster;
+    const typeCountKey = REDIS_PREFIX + "types";
+
+    // Increment the topic's count in the sorted set
+    await redis.zincrby(topicsKey, 1, clusterKey);
+    await redis.expire(topicsKey, REDIS_TTL_SECONDS);
+
+    // Store/update detail for this cluster
+    await redis.hset(detailKey, {
+      keywords: entry.keywords.join(","),
+      last_seen: entry.ts,
+      gap_type: entry.gap_type,
+      intent_score: String(entry.intent_score),
+      kb_hits: String(entry.kb_hits),
+    });
+    await redis.expire(detailKey, REDIS_TTL_SECONDS);
+
+    // Increment gap type counter
+    await redis.hincrby(typeCountKey, entry.gap_type, 1);
+    await redis.expire(typeCountKey, REDIS_TTL_SECONDS);
+  } catch (e) {
+    // Never let Redis errors break the request
+    if (process.env.NODE_ENV === "development") {
+      console.error("[TOPIC_TRACKER] Redis persist error:", e.message);
+    }
+  }
+}
+
+/**
+ * Get persisted top gaps from Redis.
+ * Returns the same format as getTopGaps() but from persistent storage.
+ *
+ * @param {number} n - max results
+ * @returns {Promise<object[]>} sorted by count descending
+ */
+async function getPersistedTopGaps(n = 20) {
+  const redis = getRedis();
+  if (!redis) return { source: "memory", gaps: getTopGaps(n) };
+
+  try {
+    const topicsKey = REDIS_PREFIX + "topics";
+
+    // Get top N from sorted set (highest count first)
+    const results = await redis.zrange(topicsKey, 0, n - 1, { rev: true, withScores: true });
+
+    const gaps = [];
+    for (let i = 0; i < results.length; i += 2) {
+      const keywords = results[i];
+      const count = results[i + 1];
+      gaps.push({
+        keywords: keywords === "(no keywords)" ? [] : keywords.split(" + "),
+        count: Number(count),
+      });
+    }
+
+    return { source: "redis", gaps };
+  } catch (e) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[TOPIC_TRACKER] Redis read error:", e.message);
+    }
+    return { source: "memory", gaps: getTopGaps(n) };
+  }
+}
+
+/**
+ * Get persisted gap type distribution from Redis.
+ */
+async function getPersistedGapTypes() {
+  const redis = getRedis();
+  if (!redis) return { source: "memory", types: getGapTypeDistribution() };
+
+  try {
+    const typeCountKey = REDIS_PREFIX + "types";
+    const types = await redis.hgetall(typeCountKey);
+
+    // Convert string values to numbers
+    const result = {};
+    for (const [key, val] of Object.entries(types || {})) {
+      result[key] = Number(val);
+    }
+    return { source: "redis", types: result };
+  } catch (e) {
+    return { source: "memory", types: getGapTypeDistribution() };
+  }
+}
+
+/**
+ * Get full persisted gap snapshot for the dashboard.
+ */
+async function getPersistedGapSnapshot() {
+  const [topGaps, gapTypes] = await Promise.all([
+    getPersistedTopGaps(20),
+    getPersistedGapTypes(),
+  ]);
+
+  return {
+    source: topGaps.source,
+    top_gaps: topGaps.gaps,
+    gap_types: gapTypes.types,
+    note: topGaps.source === "redis"
+      ? "Data persisted in Redis — survives cold starts, 30-day retention"
+      : "In-memory only — resets on cold start. Configure UPSTASH_REDIS_REST_URL for persistence.",
+  };
+}
+
 // ── Test helpers ──
 function _resetGaps() {
   gapBuffer.length = 0;
@@ -199,5 +332,10 @@ module.exports = {
   getTopGaps,
   getGapTypeDistribution,
   getGapSnapshot,
+  // Redis persistence
+  persistGapToRedis,
+  getPersistedTopGaps,
+  getPersistedGapTypes,
+  getPersistedGapSnapshot,
   _resetGaps,
 };
