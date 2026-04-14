@@ -66,6 +66,7 @@ const KNOWLEDGE_BASE = {
     interactions: [
       { with: "levothyroxine", severity: "moderate", mechanism: "Reduces thyroid hormone absorption.", timing_fix: "4h separation" },
       { with: "calcium", severity: "moderate", mechanism: "Competes for absorption.", timing_fix: "2h separation" },
+      { with: "dairy/milk", severity: "moderate", mechanism: "Calcium in dairy inhibits iron absorption. Take iron 2+ hours away from milk, cheese, yogurt.", timing_fix: "2h separation from dairy" },
       { with: "vitamin C", severity: "beneficial", mechanism: "Enhances iron absorption. Take together.", timing_fix: null },
     ],
     common_goals: ["iron deficiency", "anemia", "energy", "fatigue"],
@@ -1060,6 +1061,126 @@ const KNOWLEDGE_BASE = {
       { with: "hormonal contraceptives", severity: "moderate", mechanism: "Anti-androgenic effects may theoretically interact. Limited data.", timing_fix: null },
     ],
     common_goals: ["BPH", "prostate health", "urinary symptoms", "hair loss (men)"],
+    reference_ids: [],
+  },
+
+  // ── Allergy / Seasonal Support ──
+
+  quercetin: {
+    canonical: "quercetin",
+    aliases: ["quercetin dihydrate", "quercetin supplement"],
+    category: "supplement",
+    adult_dose_range: { min: 500, max: 1000, unit: "mg/day" },
+    timing: { best_time: "with meals", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient safety data during pregnancy. Avoid supplemental doses." },
+      renal: { safe: true, notes: "No significant renal concerns at standard doses." },
+      elderly: { safe: true, notes: "Generally well tolerated. May interact with some antibiotics." },
+    },
+    interactions: [
+      { with: "blood thinners", severity: "moderate", mechanism: "Quercetin may inhibit platelet aggregation. Monitor if on anticoagulants.", timing_fix: null },
+      { with: "cyclosporine", severity: "moderate", mechanism: "Quercetin inhibits CYP3A4. May raise cyclosporine levels.", timing_fix: null },
+      { with: "fluoroquinolone antibiotics", severity: "moderate", mechanism: "Quercetin may interfere with fluoroquinolone activity. Separate by 2+ hours.", timing_fix: "2h separation" },
+    ],
+    common_goals: ["seasonal allergies", "histamine support", "anti-inflammatory", "antioxidant", "immune support"],
+    reference_ids: [],
+  },
+
+  "stinging nettle": {
+    canonical: "stinging nettle",
+    aliases: ["nettle leaf", "nettle root", "urtica dioica", "nettle extract"],
+    category: "supplement",
+    adult_dose_range: { min: 300, max: 900, unit: "mg dried leaf extract/day" },
+    timing: { best_time: "with meals", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "May stimulate uterine contractions. Avoid in pregnancy." },
+      renal: { safe: true, notes: "Mild diuretic effect. Monitor fluid balance." },
+      elderly: { safe: true, notes: "Root form used for BPH. Leaf form for allergies. Generally well tolerated." },
+    },
+    interactions: [
+      { with: "blood thinners", severity: "moderate", mechanism: "Contains vitamin K. May reduce warfarin effectiveness.", timing_fix: null },
+      { with: "blood pressure medications", severity: "moderate", mechanism: "May lower BP. Additive hypotension risk.", timing_fix: null },
+      { with: "diabetes medications", severity: "moderate", mechanism: "May lower blood sugar. Monitor glucose.", timing_fix: null },
+      { with: "lithium", severity: "moderate", mechanism: "Diuretic effect may reduce lithium clearance.", timing_fix: null },
+    ],
+    common_goals: ["seasonal allergies", "histamine support", "BPH (root)", "anti-inflammatory"],
+    reference_ids: [],
+  },
+
+  bromelain: {
+    canonical: "bromelain",
+    aliases: ["pineapple enzyme", "bromelain supplement"],
+    category: "supplement",
+    adult_dose_range: { min: 500, max: 1000, unit: "mg/day (away from food for anti-inflammatory; with food for digestion)" },
+    timing: { best_time: "between meals for allergies, with meals for digestion", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "May increase bleeding risk. Avoid supplemental doses in pregnancy." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Generally well tolerated. Watch for GI upset." },
+    },
+    interactions: [
+      { with: "blood thinners", severity: "moderate", mechanism: "Antiplatelet activity. Additive bleeding risk.", timing_fix: null },
+      { with: "antibiotics (amoxicillin)", severity: "beneficial", mechanism: "May increase amoxicillin absorption and tissue levels.", timing_fix: null },
+    ],
+    common_goals: ["seasonal allergies", "sinus congestion", "inflammation", "digestion", "post-surgical swelling"],
+    reference_ids: [],
+  },
+
+  cetirizine: {
+    canonical: "cetirizine",
+    aliases: ["zyrtec", "levocetirizine", "xyzal"],
+    category: "medication",
+    adult_dose_range: { min: 5, max: 10, unit: "mg/day" },
+    timing: { best_time: "evening (may cause drowsiness)", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "Category B. One of the preferred antihistamines in pregnancy." },
+      renal: { safe: true, notes: "Reduce dose in severe CKD (5mg/day). Renally cleared." },
+      elderly: { safe: true, notes: "Less sedating than diphenhydramine. Preferred in elderly. Start at 5mg." },
+    },
+    interactions: [
+      { with: "alcohol", severity: "moderate", mechanism: "Additive sedation. Avoid or limit alcohol.", timing_fix: null },
+      { with: "CNS depressants", severity: "moderate", mechanism: "Additive drowsiness with benzodiazepines, sleep aids, opioids.", timing_fix: null },
+    ],
+    common_goals: ["seasonal allergies", "hay fever", "hives", "itchy eyes", "runny nose"],
+    reference_ids: [],
+  },
+
+  loratadine: {
+    canonical: "loratadine",
+    aliases: ["claritin", "desloratadine", "clarinex"],
+    category: "medication",
+    adult_dose_range: { min: 10, max: 10, unit: "mg/day" },
+    timing: { best_time: "morning (non-drowsy)", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "Category B. Considered safe in pregnancy. Preferred alongside cetirizine." },
+      renal: { safe: true, notes: "Reduce dose in severe CKD or liver disease." },
+      elderly: { safe: true, notes: "Non-sedating. Good first choice for elderly patients." },
+    },
+    interactions: [
+      { with: "erythromycin/ketoconazole", severity: "moderate", mechanism: "CYP3A4 inhibitors raise loratadine levels. Rarely clinically significant.", timing_fix: null },
+    ],
+    common_goals: ["seasonal allergies", "hay fever", "hives", "non-drowsy allergy relief"],
+    reference_ids: [],
+  },
+
+  diphenhydramine: {
+    canonical: "diphenhydramine",
+    aliases: ["benadryl", "diphenhydramine hcl"],
+    category: "medication",
+    adult_dose_range: { min: 25, max: 50, unit: "mg every 4-6h (max 300mg/day)" },
+    timing: { best_time: "as needed", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "Category B. Generally considered safe. Avoid in first trimester if possible." },
+      renal: { safe: true, notes: "Anticholinergic effects may worsen urinary retention." },
+      elderly: { safe: false, notes: "Beers List: AVOID in elderly. Anticholinergic — causes confusion, falls, urinary retention, dry mouth. Use cetirizine or loratadine instead." },
+    },
+    interactions: [
+      { with: "alcohol", severity: "high", mechanism: "Significant additive sedation. Impaired driving and coordination.", timing_fix: null },
+      { with: "benzodiazepines", severity: "high", mechanism: "Additive CNS depression. Respiratory depression risk.", timing_fix: null },
+      { with: "MAOIs", severity: "high", mechanism: "MAOIs prolong and intensify anticholinergic effects. Avoid combination.", timing_fix: null },
+      { with: "other anticholinergics", severity: "moderate", mechanism: "Additive anticholinergic burden (dry mouth, constipation, urinary retention, confusion).", timing_fix: null },
+    ],
+    common_goals: ["acute allergic reaction", "hives", "itching", "sleep aid", "motion sickness"],
     reference_ids: [],
   },
 };

@@ -75,6 +75,14 @@ const SYNONYM_MAP = [
   [/\bpravachol\b/g, "pravastatin"],
   [/\bmevacor\b/g, "lovastatin"],
   [/\blivalo\b/g, "pitavastatin"],
+  // Antihistamines
+  [/\bzyrtec\b/g, "cetirizine"],
+  [/\bclaritin\b/g, "loratadine"],
+  [/\ballegra\b/g, "fexofenadine"],
+  [/\bbenadryl\b/g, "diphenhydramine"],
+  [/\bxyzal\b/g, "levocetirizine"],
+  [/\bclarinex\b/g, "desloratadine"],
+  [/\ballergy\s*(med(s|ication)?|pill|tablet)\b/g, "antihistamine"],
   // Anticoagulants / antiplatelets
   [/\bjantoven\b/g, "warfarin"],
   [/\bcoumadin\b/g, "warfarin"],

@@ -393,6 +393,40 @@ const TEMPORAL_DATA = {
     category: "analgesic",
   },
 
+  // ── Antihistamines ──
+  cetirizine: {
+    canonical: "cetirizine",
+    half_life_hours: 8,
+    washout_days: 2,
+    onset_days: { min: 0, max: 0 },
+    notes: "Onset 1 hour. Duration 24h. Mildly sedating. Renally cleared — reduce dose in CKD.",
+    category: "antihistamine",
+  },
+  loratadine: {
+    canonical: "loratadine",
+    half_life_hours: 8,
+    washout_days: 2,
+    onset_days: { min: 0, max: 0 },
+    notes: "Onset 1-3 hours. Non-sedating. Active metabolite desloratadine (half-life 27h).",
+    category: "antihistamine",
+  },
+  fexofenadine: {
+    canonical: "fexofenadine",
+    half_life_hours: 14,
+    washout_days: 3,
+    onset_days: { min: 0, max: 0 },
+    notes: "Onset 1 hour. Truly non-sedating. Do NOT take with fruit juice (reduces absorption by 36%).",
+    category: "antihistamine",
+  },
+  diphenhydramine: {
+    canonical: "diphenhydramine",
+    half_life_hours: 6,
+    washout_days: 1,
+    onset_days: { min: 0, max: 0 },
+    notes: "Onset 15-30 min. Very sedating. Anticholinergic — avoid in elderly (Beers List). Duration 4-6h.",
+    category: "antihistamine_first_gen",
+  },
+
   // ── Supplements with temporal relevance ──
   "5-htp": {
     canonical: "5-htp",
@@ -464,6 +498,14 @@ const ALIAS_MAP = {
   glucophage: "metformin",
   neurontin: "gabapentin",
   ultram: "tramadol",
+  // Antihistamines
+  zyrtec: "cetirizine",
+  levocetirizine: "cetirizine",
+  xyzal: "cetirizine",
+  claritin: "loratadine",
+  clarinex: "loratadine",
+  allegra: "fexofenadine",
+  benadryl: "diphenhydramine",
 };
 
 /**

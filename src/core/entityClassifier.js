@@ -86,6 +86,14 @@ const MED_CLASS_MAP = {
   "birth control": "hormonal_contraceptive",
   "oral contraceptive": "hormonal_contraceptive",
   finasteride: "5ARI",
+  // Antihistamine
+  cetirizine: "antihistamine", zyrtec: "antihistamine",
+  loratadine: "antihistamine", claritin: "antihistamine",
+  fexofenadine: "antihistamine", allegra: "antihistamine",
+  diphenhydramine: "antihistamine_sedating", benadryl: "antihistamine_sedating",
+  levocetirizine: "antihistamine", xyzal: "antihistamine",
+  hydroxyzine: "antihistamine_sedating",
+  desloratadine: "antihistamine", clarinex: "antihistamine",
 };
 
 // ── Supp class lookup ──
@@ -141,6 +149,14 @@ const SUPP_CLASS_MAP = {
   // Protein
   collagen: "protein",
   probiotics: "probiotic", probiotic: "probiotic",
+  // Allergy support
+  quercetin: "antihistamine_natural",
+  "stinging nettle": "antihistamine_natural", "nettle leaf": "antihistamine_natural",
+  bromelain: "anti_inflammatory_enzyme",
+  butterbur: "antihistamine_natural",
+  spirulina: "immune_modulator",
+  "bee pollen": "immune_modulator",
+  "local honey": "immune_modulator",
 };
 
 /**
