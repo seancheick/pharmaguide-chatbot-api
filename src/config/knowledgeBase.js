@@ -931,6 +931,137 @@ const KNOWLEDGE_BASE = {
     common_goals: ["skin", "hair", "nails", "joints", "gut health"],
     reference_ids: [],
   },
+
+  // ── Women's Health / Reproductive Health ──
+
+  "boric acid": {
+    canonical: "boric acid",
+    aliases: ["boric acid suppository", "boric acid capsule"],
+    category: "supplement",
+    adult_dose_range: { min: 600, max: 600, unit: "mg vaginal suppository" },
+    timing: { best_time: "bedtime", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Contraindicated in pregnancy. Toxic if ingested or used on broken skin." },
+      renal: { safe: true, notes: "Vaginal use only. No systemic renal concerns at standard dose." },
+      elderly: { safe: true, notes: "Safe for vaginal use. Effective for recurrent yeast/BV." },
+    },
+    interactions: [],
+    common_goals: ["recurrent yeast infections", "bacterial vaginosis", "vaginal pH balance"],
+    reference_ids: [],
+  },
+
+  cranberry: {
+    canonical: "cranberry",
+    aliases: ["cranberry extract", "cranberry pills", "cranberry supplement", "cranberry capsules", "cranberry pacs"],
+    category: "supplement",
+    adult_dose_range: { min: 36, max: 72, unit: "mg PACs/day (proanthocyanidins)" },
+    timing: { best_time: "any time", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "Cranberry juice/supplements generally safe in pregnancy for UTI prevention." },
+      renal: { safe: true, notes: "Safe. May slightly acidify urine. Drink adequate water." },
+      elderly: { safe: true, notes: "Commonly used for recurrent UTI prevention in older women." },
+    },
+    interactions: [
+      { with: "warfarin", severity: "moderate", mechanism: "Cranberry may increase warfarin effect (INR). Monitor if consuming regularly.", timing_fix: null },
+    ],
+    common_goals: ["UTI prevention", "urinary tract health", "bladder health"],
+    reference_ids: [],
+  },
+
+  vitex: {
+    canonical: "vitex",
+    aliases: ["chasteberry", "vitex agnus-castus", "chaste tree"],
+    category: "supplement",
+    adult_dose_range: { min: 20, max: 40, unit: "mg standardized extract/day" },
+    timing: { best_time: "morning", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Avoid in pregnancy. Hormonal effects could affect pregnancy maintenance." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Generally safe. Less common use in post-menopausal women." },
+    },
+    interactions: [
+      { with: "birth control pills", severity: "moderate", mechanism: "May reduce effectiveness of hormonal contraceptives via dopaminergic effects.", timing_fix: null },
+      { with: "dopamine agonists/antagonists", severity: "moderate", mechanism: "Vitex has dopaminergic activity. May interact with Parkinson's meds or antipsychotics.", timing_fix: null },
+    ],
+    common_goals: ["PMS", "menstrual regulation", "cycle irregularity", "hormonal balance", "fertility"],
+    reference_ids: [],
+  },
+
+  "myo-inositol": {
+    canonical: "myo-inositol",
+    aliases: ["inositol", "myo inositol", "d-chiro-inositol"],
+    category: "supplement",
+    adult_dose_range: { min: 2000, max: 4000, unit: "mg/day (often 40:1 myo:d-chiro ratio for PCOS)" },
+    timing: { best_time: "divided doses (morning/evening)", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "Used in pregnancy for gestational diabetes prevention in PCOS. Generally safe." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Safe. Less common use outside metabolic/hormonal context." },
+    },
+    interactions: [
+      { with: "metformin", severity: "moderate", mechanism: "Both improve insulin sensitivity. Additive blood sugar lowering. Monitor glucose.", timing_fix: null },
+    ],
+    common_goals: ["PCOS", "insulin resistance", "fertility", "egg quality", "anxiety"],
+    reference_ids: [],
+  },
+
+  "l-carnitine": {
+    canonical: "l-carnitine",
+    aliases: ["carnitine", "acetyl l carnitine", "alcar", "l carnitine tartrate"],
+    category: "supplement",
+    adult_dose_range: { min: 500, max: 2000, unit: "mg/day" },
+    timing: { best_time: "morning or pre-workout", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "Limited data. Likely safe at dietary levels. Discuss with OB for supplemental doses." },
+      renal: { safe: true, notes: "Often deficient in dialysis patients. May be supplemented under supervision." },
+      elderly: { safe: true, notes: "May benefit cognitive function (acetyl-L-carnitine form). Safe." },
+    },
+    interactions: [
+      { with: "thyroid medications", severity: "moderate", mechanism: "L-carnitine may reduce thyroid hormone activity. Separate by 4+ hours if on levothyroxine.", timing_fix: "4h separation" },
+      { with: "blood thinners", severity: "moderate", mechanism: "May have mild antiplatelet effects. Monitor for bruising.", timing_fix: null },
+    ],
+    common_goals: ["sperm quality", "male fertility", "energy", "exercise performance", "cognitive function"],
+    reference_ids: [],
+  },
+
+  fenugreek: {
+    canonical: "fenugreek",
+    aliases: ["fenugreek seed", "fenugreek extract", "trigonella"],
+    category: "supplement",
+    adult_dose_range: { min: 500, max: 600, unit: "mg standardized extract/day" },
+    timing: { best_time: "with meals", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "May stimulate uterine contractions. Avoid in pregnancy." },
+      renal: { safe: true, notes: "No significant renal concerns at standard doses." },
+      elderly: { safe: true, notes: "May lower blood sugar. Monitor if diabetic." },
+    },
+    interactions: [
+      { with: "blood thinners", severity: "moderate", mechanism: "Contains coumarin compounds. May increase bleeding risk.", timing_fix: null },
+      { with: "diabetes medications", severity: "moderate", mechanism: "May lower blood sugar. Additive hypoglycemia risk with metformin/insulin.", timing_fix: null },
+    ],
+    common_goals: ["testosterone support", "libido", "lactation support", "blood sugar"],
+    reference_ids: [],
+  },
+
+  "saw palmetto": {
+    canonical: "saw palmetto",
+    aliases: ["saw palmetto extract", "serenoa repens"],
+    category: "supplement",
+    adult_dose_range: { min: 320, max: 320, unit: "mg standardized extract/day" },
+    timing: { best_time: "with food", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Anti-androgenic effects. Contraindicated in pregnancy." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Common use in older men for BPH symptoms. Safe." },
+    },
+    interactions: [
+      { with: "blood thinners", severity: "moderate", mechanism: "Theoretical antiplatelet effect. Monitor for bruising.", timing_fix: null },
+      { with: "finasteride (Proscar/Propecia)", severity: "moderate", mechanism: "Similar mechanism (5-alpha reductase inhibition). Additive effects possible.", timing_fix: null },
+      { with: "hormonal contraceptives", severity: "moderate", mechanism: "Anti-androgenic effects may theoretically interact. Limited data.", timing_fix: null },
+    ],
+    common_goals: ["BPH", "prostate health", "urinary symptoms", "hair loss (men)"],
+    reference_ids: [],
+  },
 };
 
 // ── Lookup functions ──
