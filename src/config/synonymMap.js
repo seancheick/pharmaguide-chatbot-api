@@ -119,6 +119,14 @@ const SYNONYM_MAP = [
   [/\bcardizem\b/g, "diltiazem"],
   [/\bcalan\b/g, "verapamil"],
 
+  // ── Common supplement name variants ──
+  [/\blion.?s?\s*mane\s*(mushroom|extract|supplement)?\b/g, "lions mane"],
+  [/\bhericium\s*erinaceus\b/g, "lions mane"],
+  [/\bapple\s*cider\s*vinegar\b/g, "apple cider vinegar"],
+  [/\bacv\s*(supplement|gummies?|pills?|capsules?)?\b/g, "apple cider vinegar"],
+  [/\bsleep\s*(aid|supplement|support)\b/g, "sleep supplement"],
+  [/\bnootropic\s*(supplement|stack)?\b/g, "nootropic supplement"],
+
   // ── Alcohol normalization ──
   [/\btequila\b/g, "alcohol"],
   [/\brum\b/g, "alcohol"],

@@ -1183,6 +1183,106 @@ const KNOWLEDGE_BASE = {
     common_goals: ["acute allergic reaction", "hives", "itching", "sleep aid", "motion sickness"],
     reference_ids: [],
   },
+
+  // ── Common Supplements (high-traffic, previously missing) ──
+
+  "vitamin c": {
+    canonical: "vitamin c",
+    aliases: ["ascorbic acid", "vitamin c supplement", "ester-c"],
+    category: "vitamin",
+    adult_dose_range: { min: 250, max: 1000, unit: "mg/day" },
+    upper_limit: { value: 2000, unit: "mg/day", source: "NIH ODS" },
+    timing: { best_time: "any time", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "RDA 85 mg/day. Supplemental doses up to 2000 mg considered safe." },
+      renal: { safe: true, notes: "High doses (>1000 mg) may increase oxalate — caution with kidney stone history." },
+      elderly: { safe: true, notes: "Safe. May support immune function and wound healing." },
+    },
+    interactions: [
+      { with: "iron", severity: "beneficial", mechanism: "Enhances non-heme iron absorption significantly. Take together.", timing_fix: null },
+      { with: "blood thinners (warfarin)", severity: "moderate", mechanism: "Very high doses (>2000 mg) may reduce warfarin effectiveness. Unlikely at normal doses.", timing_fix: null },
+      { with: "chemotherapy", severity: "moderate", mechanism: "Antioxidants may theoretically interfere with some chemo agents. Discuss with oncologist.", timing_fix: null },
+    ],
+    common_goals: ["immune support", "cold prevention", "antioxidant", "skin", "iron absorption"],
+    reference_ids: [],
+  },
+
+  elderberry: {
+    canonical: "elderberry",
+    aliases: ["sambucus", "elderberry syrup", "elderberry extract", "black elderberry"],
+    category: "supplement",
+    adult_dose_range: { min: 300, max: 600, unit: "mg standardized extract/day" },
+    timing: { best_time: "any time", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient safety data. Raw elderberry is toxic. Avoid supplemental doses." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Generally well tolerated. Popular for cold/flu support." },
+    },
+    interactions: [
+      { with: "immunosuppressants", severity: "moderate", mechanism: "Elderberry stimulates immune activity. May counteract immunosuppressant drugs.", timing_fix: null },
+      { with: "diabetes medications", severity: "moderate", mechanism: "May lower blood sugar. Monitor glucose.", timing_fix: null },
+    ],
+    common_goals: ["cold and flu", "immune support", "antioxidant"],
+    reference_ids: [],
+  },
+
+  "lions mane": {
+    canonical: "lions mane",
+    aliases: ["lion's mane", "lions mane mushroom", "hericium erinaceus"],
+    category: "supplement",
+    adult_dose_range: { min: 500, max: 3000, unit: "mg/day" },
+    timing: { best_time: "morning", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient safety data. Avoid during pregnancy." },
+      renal: { safe: true, notes: "No significant renal concerns at standard doses." },
+      elderly: { safe: true, notes: "Promising for cognitive support. Well tolerated." },
+    },
+    interactions: [
+      { with: "blood thinners", severity: "moderate", mechanism: "May have antiplatelet activity. Monitor for bruising.", timing_fix: null },
+      { with: "diabetes medications", severity: "moderate", mechanism: "May lower blood sugar. Monitor glucose.", timing_fix: null },
+    ],
+    common_goals: ["cognitive function", "focus", "memory", "brain health", "nerve support", "brain fog"],
+    reference_ids: [],
+  },
+
+  "apple cider vinegar": {
+    canonical: "apple cider vinegar",
+    aliases: ["acv", "acv supplement", "acv gummies"],
+    category: "supplement",
+    adult_dose_range: { min: 500, max: 1500, unit: "mg/day (supplement), or 1-2 tbsp diluted" },
+    timing: { best_time: "before meals", with_food: false, separate_from: ["potassium-lowering drugs"] },
+    populations: {
+      pregnancy: { safe: true, notes: "Diluted ACV in food amounts is fine. Supplemental doses: limited data." },
+      renal: { safe: true, notes: "May lower potassium. Monitor if on potassium-lowering medications." },
+      elderly: { safe: true, notes: "Dilute to protect tooth enamel. May interact with diuretics." },
+    },
+    interactions: [
+      { with: "diuretics", severity: "moderate", mechanism: "ACV may lower potassium. Additive hypokalemia risk with diuretics.", timing_fix: null },
+      { with: "diabetes medications", severity: "moderate", mechanism: "May lower blood sugar. Additive hypoglycemia risk with insulin/metformin.", timing_fix: null },
+      { with: "digoxin", severity: "moderate", mechanism: "Low potassium from ACV increases digoxin toxicity risk.", timing_fix: null },
+    ],
+    common_goals: ["digestion", "blood sugar", "weight management", "gut health", "detox"],
+    reference_ids: [],
+  },
+
+  "b12": {
+    canonical: "b12",
+    aliases: ["vitamin b12", "methylcobalamin", "cyanocobalamin", "hydroxocobalamin", "b-12"],
+    category: "vitamin",
+    adult_dose_range: { min: 500, max: 2500, unit: "mcg/day (sublingual or oral)" },
+    timing: { best_time: "morning", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "Essential in pregnancy. RDA 2.6 mcg. Deficiency causes neural tube defects." },
+      renal: { safe: true, notes: "Safe. High-dose supplementation common in CKD with anemia." },
+      elderly: { safe: true, notes: "Very commonly deficient in 65+ due to reduced absorption. Sublingual or injections bypass stomach acid." },
+    },
+    interactions: [
+      { with: "metformin", severity: "moderate", mechanism: "Metformin reduces B12 absorption by 10-30%. Long-term users should monitor levels.", timing_fix: null },
+      { with: "PPIs (omeprazole, etc.)", severity: "moderate", mechanism: "Long-term acid suppression reduces B12 absorption. Consider sublingual form.", timing_fix: null },
+    ],
+    common_goals: ["energy", "fatigue", "nerve health", "anemia", "vegetarian/vegan nutrition", "brain health"],
+    reference_ids: [],
+  },
 };
 
 // ── Lookup functions ──

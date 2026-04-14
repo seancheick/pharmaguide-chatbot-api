@@ -157,6 +157,14 @@ const SUPP_CLASS_MAP = {
   spirulina: "immune_modulator",
   "bee pollen": "immune_modulator",
   "local honey": "immune_modulator",
+  // Brain / cognitive
+  "lions mane": "nootropic", "lion's mane": "nootropic",
+  // Immune
+  elderberry: "immune_modulator",
+  // Digestive
+  "apple cider vinegar": "digestive_supp", acv: "digestive_supp",
+  // Protein
+  "whey protein": "protein", "protein powder": "protein",
 };
 
 /**
