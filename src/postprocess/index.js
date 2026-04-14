@@ -37,4 +37,29 @@ function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-module.exports = { mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion, escapeRegex };
+/**
+ * Dose-over-limit post-processor.
+ * Injects a warning into the reply if the user mentioned a dose that exceeds
+ * the known upper limit from the knowledge base.
+ *
+ * @param {string} reply - LLM or gate reply text
+ * @param {object[]} doses - from extractDoses()
+ * @returns {string} reply with dose warning appended if needed
+ */
+function addDoseWarnings(reply, doses) {
+  if (!doses || doses.length === 0) return reply;
+
+  const overLimit = doses.filter(d => d.exceeds_upper_limit === true);
+  if (overLimit.length === 0) return reply;
+
+  const warnings = overLimit.map(d => {
+    const name = (d.kb_entry || d.substance).charAt(0).toUpperCase() + (d.kb_entry || d.substance).slice(1);
+    const freqNote = d.frequency > 1 ? ` (${d.amount} ${d.unit} x${d.frequency}/day = ${d.daily_amount} ${d.unit}/day)` : "";
+    return `• **${name}**: ${d.daily_amount} ${d.unit}/day${freqNote} exceeds the recommended daily upper limit. Discuss with your prescriber or pharmacist before continuing at this dose.`;
+  });
+
+  const warningBlock = "\n\n**⚠ Dose flag:**\n" + warnings.join("\n");
+  return reply + warningBlock;
+}
+
+module.exports = { mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion, escapeRegex, addDoseWarnings };

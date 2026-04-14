@@ -152,9 +152,85 @@ function getRenalFormNote(text) {
   return null;
 }
 
+/**
+ * Suggest a better form based on the user's mentioned goal or context.
+ * Returns a targeted recommendation string or null.
+ *
+ * Example: "You mentioned magnesium oxide — if GI tolerance is a concern,
+ * glycinate is gentler and better absorbed."
+ */
+function getFormRecommendation(text, supplementName, entities) {
+  const kb = getKBEntry(supplementName);
+  if (!kb || !kb.forms) return null;
+
+  const detected = detectMentionedForm(text, supplementName);
+  if (!detected) return null;
+
+  const { form, formData } = detected;
+  const t = normalizeText(text);
+
+  // Build goal context from the message
+  const goals = [];
+  if (/\b(sleep|insomnia|can t sleep|trouble sleeping)\b/.test(t)) goals.push("sleep");
+  if (/\b(anxiety|anxious|stress|calm|relax)\b/.test(t)) goals.push("anxiety");
+  if (/\b(focus|cognitive|memory|brain)\b/.test(t)) goals.push("cognitive");
+  if (/\b(constipat|bowel|digest|stomach|gi|gut)\b/.test(t)) goals.push("constipation");
+  if (/\b(heart|cardio|blood pressure)\b/.test(t)) goals.push("cardiovascular");
+  if (/\b(muscle|cramp|leg cramp|restless leg)\b/.test(t)) goals.push("muscle cramps");
+  if (/\b(diarrhea|loose stool|upset stomach)\b/.test(t)) goals.push("gi_issues");
+
+  // Check if the user's form is suboptimal for their goal
+  const recommendations = [];
+
+  // Magnesium-specific recommendations
+  if (kb.canonical === "magnesium") {
+    if (form === "oxide") {
+      if (goals.includes("sleep") || goals.includes("anxiety")) {
+        recommendations.push("**Magnesium glycinate** is better absorbed and gentler on the stomach than oxide — it's the preferred form for sleep and anxiety.");
+      } else if (goals.includes("cognitive")) {
+        recommendations.push("**Magnesium threonate** (Magtein) crosses the blood-brain barrier more effectively — it's the go-to form for cognitive goals.");
+      } else if (!goals.includes("constipation")) {
+        recommendations.push("Magnesium oxide has low absorption (~4%). **Glycinate** or **citrate** are better absorbed if you're supplementing for anything other than constipation relief.");
+      }
+    }
+    if (form === "citrate" && goals.includes("sleep")) {
+      recommendations.push("Citrate is well-absorbed but can have a laxative effect. **Glycinate** is the preferred form for sleep — it's calming and very well tolerated.");
+    }
+    if (goals.includes("cardiovascular") && form !== "taurate") {
+      recommendations.push("**Magnesium taurate** is the form most studied for cardiovascular support — taurine itself has cardioprotective properties.");
+    }
+  }
+
+  // Iron-specific recommendations
+  if (kb.canonical === "iron") {
+    if (form === "ferrous sulfate" && goals.includes("gi_issues")) {
+      recommendations.push("Ferrous sulfate is the cheapest but hardest on the stomach. **Iron bisglycinate** (gentle iron) is much better tolerated with similar absorption.");
+    }
+  }
+
+  // Zinc-specific recommendations
+  if (kb.canonical === "zinc") {
+    if (goals.includes("gi_issues") || goals.includes("constipation")) {
+      recommendations.push("**Zinc carnosine** is the gentlest form and actually supports gut lining repair — ideal if you have GI sensitivity.");
+    }
+  }
+
+  // PPI context: recommend citrate forms for minerals
+  const onPPI = entities && entities.meds && entities.meds.some(m =>
+    /omeprazole|pantoprazole|esomeprazole|lansoprazole|prilosec|protonix|nexium|prevacid|ppi/.test(m)
+  );
+  if (onPPI && kb.canonical === "calcium") {
+    recommendations.push("Since you're on a PPI, use **calcium citrate** instead of calcium carbonate — citrate doesn't need stomach acid for absorption.");
+  }
+
+  if (recommendations.length === 0) return null;
+  return "• " + recommendations[0]; // Return the most relevant single recommendation
+}
+
 module.exports = {
   detectMentionedForm,
   getFormGuidance,
   getSafeItemClarification,
   getRenalFormNote,
+  getFormRecommendation,
 };

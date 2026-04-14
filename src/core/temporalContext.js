@@ -235,6 +235,164 @@ const TEMPORAL_DATA = {
     category: "thyroid",
   },
 
+  // ── Beta-blockers ──
+  metoprolol: {
+    canonical: "metoprolol",
+    half_life_hours: 4,
+    washout_days: 1,
+    onset_days: { min: 0, max: 1 },
+    notes: "Short-acting (tartrate) or extended-release (succinate). Do not stop abruptly — rebound tachycardia risk.",
+    category: "beta_blocker",
+  },
+  atenolol: {
+    canonical: "atenolol",
+    half_life_hours: 7,
+    washout_days: 2,
+    onset_days: { min: 0, max: 1 },
+    notes: "Renally cleared. Dose adjustment needed in CKD.",
+    category: "beta_blocker",
+  },
+  propranolol: {
+    canonical: "propranolol",
+    half_life_hours: 4,
+    washout_days: 1,
+    onset_days: { min: 0, max: 1 },
+    notes: "Non-selective beta-blocker. Used for anxiety, migraine, tremor. Do not stop abruptly.",
+    category: "beta_blocker",
+  },
+  carvedilol: {
+    canonical: "carvedilol",
+    half_life_hours: 7,
+    washout_days: 2,
+    onset_days: { min: 0, max: 7 },
+    notes: "Alpha/beta blocker. Take with food. Full BP effect in 7-14 days.",
+    category: "beta_blocker",
+  },
+
+  // ── ACE inhibitors / ARBs ──
+  lisinopril: {
+    canonical: "lisinopril",
+    half_life_hours: 12,
+    washout_days: 3,
+    onset_days: { min: 1, max: 7 },
+    notes: "Full BP effect in 2-4 weeks. Monitor potassium and creatinine.",
+    category: "ace_inhibitor",
+  },
+  losartan: {
+    canonical: "losartan",
+    half_life_hours: 6,
+    washout_days: 1,
+    onset_days: { min: 3, max: 21 },
+    notes: "ARB. Full effect in 3-6 weeks. Active metabolite (EXP3174) has 6-9h half-life.",
+    category: "arb",
+  },
+
+  // ── PPIs ──
+  omeprazole: {
+    canonical: "omeprazole",
+    half_life_hours: 1,
+    washout_days: 3, // Acid suppression lasts 72h due to irreversible enzyme binding
+    onset_days: { min: 1, max: 4 },
+    notes: "Short plasma half-life but irreversibly binds proton pumps — acid suppression lasts 72h. Full effect in 4 days.",
+    category: "ppi",
+  },
+
+  // ── Statins ──
+  atorvastatin: {
+    canonical: "atorvastatin",
+    half_life_hours: 14,
+    washout_days: 3,
+    onset_days: { min: 14, max: 28 },
+    notes: "Lipid changes visible in 2 weeks. Full effect in 4-6 weeks. Active metabolites.",
+    category: "statin",
+  },
+  rosuvastatin: {
+    canonical: "rosuvastatin",
+    half_life_hours: 19,
+    washout_days: 4,
+    onset_days: { min: 14, max: 28 },
+    notes: "Most potent statin. Longer half-life means timing is less critical.",
+    category: "statin",
+  },
+
+  // ── Diuretics ──
+  furosemide: {
+    canonical: "furosemide",
+    half_life_hours: 2,
+    washout_days: 1,
+    onset_days: { min: 0, max: 0 },
+    notes: "Loop diuretic. Onset 30-60 min oral. Can cause electrolyte depletion (K, Mg, Ca).",
+    category: "diuretic",
+  },
+  hydrochlorothiazide: {
+    canonical: "hydrochlorothiazide",
+    half_life_hours: 10,
+    washout_days: 2,
+    onset_days: { min: 1, max: 7 },
+    notes: "Thiazide diuretic. Full BP effect in 2-4 weeks. Monitor potassium.",
+    category: "diuretic",
+  },
+
+  // ── Common antibiotics ──
+  amoxicillin: {
+    canonical: "amoxicillin",
+    half_life_hours: 1,
+    washout_days: 1,
+    onset_days: { min: 0, max: 1 },
+    notes: "Short half-life. Complete the full course. Take probiotics 2h apart.",
+    category: "antibiotic",
+  },
+  azithromycin: {
+    canonical: "azithromycin",
+    half_life_hours: 68,
+    washout_days: 14,
+    onset_days: { min: 0, max: 1 },
+    notes: "Tissue half-life much longer than plasma. Effects persist 5-7 days after last dose. QT prolongation risk.",
+    category: "antibiotic",
+  },
+  doxycycline: {
+    canonical: "doxycycline",
+    half_life_hours: 18,
+    washout_days: 4,
+    onset_days: { min: 0, max: 1 },
+    notes: "Chelated by divalent cations (Ca, Mg, Fe, Zn). Separate from minerals by 2-3 hours.",
+    category: "antibiotic",
+  },
+
+  // ── Other common meds ──
+  metformin: {
+    canonical: "metformin",
+    half_life_hours: 5,
+    washout_days: 1,
+    onset_days: { min: 1, max: 14 },
+    notes: "Renally cleared. Hold before contrast dye procedures. GI side effects common first 2 weeks.",
+    category: "antidiabetic",
+  },
+  gabapentin: {
+    canonical: "gabapentin",
+    half_life_hours: 6,
+    washout_days: 2,
+    onset_days: { min: 3, max: 14 },
+    notes: "Must taper — abrupt discontinuation can cause seizures. Dose-dependent absorption (saturable).",
+    category: "anticonvulsant",
+  },
+  prednisone: {
+    canonical: "prednisone",
+    half_life_hours: 3,
+    washout_days: 1,
+    onset_days: { min: 0, max: 1 },
+    notes: "Short half-life but biological effects last 12-36h. Courses >2 weeks need tapering to avoid adrenal suppression.",
+    category: "corticosteroid",
+  },
+  tramadol: {
+    canonical: "tramadol",
+    half_life_hours: 6,
+    washout_days: 2,
+    onset_days: { min: 0, max: 1 },
+    notes: "Weak opioid + serotonin/norepinephrine reuptake inhibition. Serotonin syndrome risk with SSRIs. Seizure risk.",
+    category: "analgesic",
+  },
+
   // ── Supplements with temporal relevance ──
   "5-htp": {
     canonical: "5-htp",
@@ -279,6 +437,33 @@ const ALIAS_MAP = {
   aleve: "naproxen",
   synthroid: "levothyroxine",
   lithobid: "lithium",
+  // Beta-blockers
+  lopressor: "metoprolol",
+  toprol: "metoprolol",
+  tenormin: "atenolol",
+  inderal: "propranolol",
+  coreg: "carvedilol",
+  // ACE-i/ARBs
+  zestril: "lisinopril",
+  prinivil: "lisinopril",
+  cozaar: "losartan",
+  // PPIs
+  prilosec: "omeprazole",
+  pantoprazole: "omeprazole",
+  nexium: "omeprazole",
+  // Statins
+  lipitor: "atorvastatin",
+  crestor: "rosuvastatin",
+  // Diuretics
+  lasix: "furosemide",
+  hctz: "hydrochlorothiazide",
+  // Antibiotics
+  zithromax: "azithromycin",
+  "z-pack": "azithromycin",
+  // Other
+  glucophage: "metformin",
+  neurontin: "gabapentin",
+  ultram: "tramadol",
 };
 
 /**

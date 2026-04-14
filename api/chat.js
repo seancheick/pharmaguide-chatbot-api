@@ -17,10 +17,11 @@ const { scoreRisks } = require("../src/core/riskScore");
 const { routeByRisk } = require("../src/core/router");
 const detection = require("../src/gates/detection");
 const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, flirtyRepeatReply, flirtyFinalReply, creatorReply, petQuestionReply, businessInquiryReply, medicalConditionRedirectReply } = require("../src/gates/replies");
+const { getFormRecommendation } = require("../src/core/formAdvisor");
 const { tryDSLGate, isDSLRoute } = require("../src/gates/gateEngine");
 const { checkRateLimit } = require("../src/infra/rateLimit");
 const { logGate } = require("../src/infra/logger");
-const { mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion } = require("../src/postprocess");
+const { mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion, addDoseWarnings } = require("../src/postprocess");
 const { validateResponse, SAFE_FALLBACK_REPLY } = require("../src/postprocess/safetyValidator");
 const { classifyEntities } = require("../src/core/entityClassifier");
 const { correctMisspellings, resolveBrandName, detectUnknownDosedItems } = require("../src/core/unknownResolver");
@@ -279,6 +280,18 @@ module.exports = async function handler(req, res) {
 
     // Single question enforcement
     reply = enforceOneQuestion(reply);
+
+    // Dose-over-limit warnings
+    reply = addDoseWarnings(reply, doses);
+
+    // Form-specific recommendations (e.g., "oxide → try glycinate for sleep")
+    for (const supp of (entities.supplements || [])) {
+      const formRec = getFormRecommendation(convoContext, supp, entities);
+      if (formRec) {
+        reply = reply + "\n\n" + formRec;
+        break; // One form rec per response to avoid clutter
+      }
+    }
 
     // Post-response safety validation
     const llmValidation = validateResponse(reply, "llm", entities, null);

@@ -17,9 +17,38 @@ const DOSE_PATTERNS = [
   new RegExp("(\\d[\\d,]*\\.?\\d*)\\s*(mg|mcg|iu|g|ml)\\s+(?:of\\s+)?" + SUBSTANCE_RE, "gi"),
   // "magnesium 500mg", "vitamin D 5000IU", "iron 65 mg"
   new RegExp(SUBSTANCE_RE + "\\s+(\\d[\\d,]*\\.?\\d*)\\s*(mg|mcg|iu|g|ml)", "gi"),
-  // "50,000 IU/week of vitamin D"
-  new RegExp("(\\d[\\d,]*\\.?\\d*)\\s*(mg|mcg|iu|g)\\s*/\\s*(day|week|month)\\s+(?:of\\s+)?" + SUBSTANCE_RE, "gi"),
+  // "50,000 IU/week of vitamin D" or "50,000 IU per week of vitamin D"
+  new RegExp("(\\d[\\d,]*\\.?\\d*)\\s*(mg|mcg|iu|g)\\s*(?:/|\\s+per\\s+)(day|week|month)\\s+(?:of\\s+)?" + SUBSTANCE_RE, "gi"),
 ];
+
+// ── Frequency parsing ──
+// Matches "twice daily", "3 times a day", "3x/day", "every other day", "2x weekly", etc.
+const FREQUENCY_PATTERNS = [
+  { pattern: /\b(twice|2x|2\s*times)\s*(a\s*)?(day|daily)\b/i, multiplier: 2 },
+  { pattern: /\b(three\s*times|3x|3\s*times)\s*(a\s*)?(day|daily)\b/i, multiplier: 3 },
+  { pattern: /\b(four\s*times|4x|4\s*times)\s*(a\s*)?(day|daily)\b/i, multiplier: 4 },
+  { pattern: /\b(once|1x|1\s*time)\s*(a\s*)?(day|daily)\b/i, multiplier: 1 },
+  { pattern: /\bevery\s*(other|2nd)\s*day\b/i, multiplier: 0.5 },
+  { pattern: /\b(twice|2x|2\s*times)\s*(a\s*)?(week|weekly)\b/i, multiplier: 2 / 7 },
+  { pattern: /\b(three\s*times|3x|3\s*times)\s*(a\s*)?(week|weekly)\b/i, multiplier: 3 / 7 },
+  { pattern: /\b(once|1x|1\s*time)\s*(a\s*)?(week|weekly)\b/i, multiplier: 1 / 7 },
+  { pattern: /\bonce\s*daily\b/i, multiplier: 1 },
+  { pattern: /\bdaily\b/i, multiplier: 1 },
+  { pattern: /\bevery\s*morning\b/i, multiplier: 1 },
+  { pattern: /\bevery\s*night\b/i, multiplier: 1 },
+  { pattern: /\b(morning and (night|evening)|am and pm|twice)\b/i, multiplier: 2 },
+];
+
+/**
+ * Extract frequency multiplier from text surrounding a dose mention.
+ * Returns the daily multiplier (e.g., "twice daily" → 2).
+ */
+function extractFrequency(text) {
+  for (const { pattern, multiplier } of FREQUENCY_PATTERNS) {
+    if (pattern.test(text)) return multiplier;
+  }
+  return 1; // default: assume once daily
+}
 
 /**
  * Parse a numeric string that may contain commas.
@@ -49,6 +78,7 @@ function extractDoses(text) {
 
   const results = [];
   const seen = new Set();
+  const freqMultiplier = extractFrequency(text);
 
   // Pattern 1: "500 mg magnesium"
   const p1 = new RegExp(DOSE_PATTERNS[0].source, "gi");
@@ -57,7 +87,7 @@ function extractDoses(text) {
     const key = `${m[1]}-${m[2]}-${m[3]}`.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    const r = buildDoseResult(m[1], m[2], m[3].trim(), "day");
+    const r = buildDoseResult(m[1], m[2], m[3].trim(), "day", freqMultiplier);
     if (r) results.push(r);
   }
 
@@ -67,7 +97,7 @@ function extractDoses(text) {
     const key = `${m[2]}-${m[3]}-${m[1]}`.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    const r = buildDoseResult(m[2], m[3], m[1].trim(), "day");
+    const r = buildDoseResult(m[2], m[3], m[1].trim(), "day", freqMultiplier);
     if (r) results.push(r);
   }
 
@@ -77,7 +107,8 @@ function extractDoses(text) {
     const key = `${m[1]}-${m[2]}-${m[4]}`.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    const r = buildDoseResult(m[1], m[2], m[4].trim(), m[3].toLowerCase());
+    // Period is explicit (week/month), frequency multiplier doesn't apply
+    const r = buildDoseResult(m[1], m[2], m[4].trim(), m[3].toLowerCase(), 1);
     if (r) results.push(r);
   }
 
@@ -96,7 +127,7 @@ function extractDoses(text) {
 }
 
 // Words to strip from captured substance names
-const NOISE_WORDS = /\b(and|or|with|plus|daily|twice|once|every|per|the|a|an|of|i|my|am|is|take|taking|took|started|been)\b/gi;
+const NOISE_WORDS = /\b(and|or|with|plus|daily|twice|once|every|per|the|a|an|of|i|my|am|is|take|taking|took|started|been|other|day|night|morning|evening|times?|three|four|at)\b/gi;
 
 function cleanSubstance(raw) {
   return raw
@@ -105,16 +136,19 @@ function cleanSubstance(raw) {
     .trim();
 }
 
-function buildDoseResult(amountStr, unitStr, substance, period) {
+function buildDoseResult(amountStr, unitStr, substance, period, freqMultiplier = 1) {
   const amount = parseNumber(amountStr);
   const unit = normalizeUnit(unitStr);
   substance = cleanSubstance(substance);
   if (!substance || substance.length < 2) return null;
 
-  // Convert to daily amount
+  // Convert to daily amount: apply period conversion then frequency
   let dailyAmount = amount;
   if (period === "week") dailyAmount = amount / 7;
   else if (period === "month") dailyAmount = amount / 30;
+
+  // Apply frequency multiplier (e.g., "400mg 3x daily" → 1200mg/day)
+  dailyAmount = dailyAmount * freqMultiplier;
 
   // Look up in KB
   const kbEntry = getKBEntry(substance);
@@ -133,6 +167,7 @@ function buildDoseResult(amountStr, unitStr, substance, period) {
     unit,
     substance,
     period,
+    frequency: freqMultiplier,
     daily_amount: Math.round(dailyAmount * 100) / 100,
     kb_entry: kbEntry ? kbEntry.canonical : null,
     exceeds_upper_limit: exceedsUpperLimit,
