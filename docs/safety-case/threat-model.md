@@ -140,4 +140,4 @@ PharmaGuide is a supplement and medication interaction advisory chatbot. It is *
 | LLM hallucinates a plausible but incorrect interaction | Medium | Mitigated by gate system (high-risk combos never reach LLM) but low-risk combos rely on LLM accuracy |
 | Novel supplement not in entity patterns | Low | Falls through to LLM with system prompt guidance; no gate protection |
 | Coordinated adversarial campaign discovering new bypasses | Low | Regex-based detection has known limitations; periodic review needed |
-| Upstream model change (Groq/Llama) alters behavior | Medium | Model independence layer enables switching; system prompt is model-agnostic |
+| Upstream model change (Gemini 2.5 Flash primary, Groq Llama 3.3 70B fallback) alters behavior | Medium | Multi-provider chain in `src/infra/providerRouter.js` plus per-provider circuit breakers absorb single-provider drift; system prompt is model-agnostic. Gemini 2.5 Flash + 2.5 Flash-Lite shut down 2026-10-16 — track Google's deprecation schedule. |

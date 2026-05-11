@@ -307,7 +307,17 @@ module.exports = async function handler(req, res) {
         unknownDosedCount: unknownDosed.length, missingFields: [],
       }));
       const { confidence: degradedConf } = resolveConfidence("degraded", 0);
-      return res.status(200).json({ reply: llmResult.text, model: "system:degraded", confidence: degradedConf });
+      // Surface chain-failure detail in the response so we can debug
+      // without Vercel log access. Production-safe (no PII; just
+      // provider names + HTTP status + truncated error message).
+      const degradedPayload = {
+        reply: llmResult.text,
+        model: "system:degraded",
+        confidence: degradedConf,
+        _provider_failures: llmResult._failures || [],
+        _providers_skipped: llmResult._skipped || [],
+      };
+      return res.status(200).json(degradedPayload);
     }
 
     let reply = llmResult.text || "I couldn't generate a response. Please try again.";

@@ -10,34 +10,34 @@ This document catalogs known failure modes, their impact, and PharmaGuide's resp
 
 | Field | Value |
 |-------|-------|
-| Trigger | Groq API does not respond within 8 seconds |
-| Impact | User gets no answer to their question |
-| Severity | Low — safety gates already handled high-risk scenarios before LLM call |
-| Response | Return `DEGRADED_RESPONSES.llm_timeout` with pharmacist/prescriber referral |
-| Detection | `withGracefulFallback()` timeout race |
-| Recovery | User retries; no state corruption |
+| Trigger | Active provider (Gemini, then Groq) does not respond within timeout (Gemini 12 s, Groq 8 s) |
+| Impact | User gets no answer to their question — provided BOTH chain members time out |
+| Severity | Low — safety gates already handled high-risk scenarios before LLM call; chain falls back to next provider transparently |
+| Response | Return `DEGRADED_RESPONSES.llm_timeout` with pharmacist/prescriber referral once all providers fail |
+| Detection | Per-provider timeout via AbortController; `callWithFallback` walks the chain until success or exhaustion |
+| Recovery | User retries; no state corruption. Circuit breaker opens after threshold to bypass the failing provider on subsequent requests. |
 
 ### FM-2: LLM Provider Error (500, 503)
 
 | Field | Value |
 |-------|-------|
-| Trigger | Groq API returns server error |
-| Impact | User gets no answer |
-| Severity | Low — same as FM-1 |
-| Response | Return `DEGRADED_RESPONSES.llm_error` |
-| Detection | Catch block in handler |
-| Recovery | Automatic — next request may succeed |
+| Trigger | Primary provider (Gemini) returns server error |
+| Impact | None to user — chain falls through to Groq fallback transparently |
+| Severity | Low — only escalates if BOTH providers error simultaneously |
+| Response | Try next provider; only return `DEGRADED_RESPONSES.llm_error` if all chain members fail |
+| Detection | Per-provider try/catch in `callWithFallback`; failure increments that provider's circuit breaker |
+| Recovery | Automatic — Groq fallback typically succeeds; circuit breaker opens Gemini after threshold failures to avoid retry cost |
 
 ### FM-3: LLM Provider Rate Limit (429)
 
 | Field | Value |
 |-------|-------|
-| Trigger | Groq API quota exceeded |
-| Impact | All users affected until quota resets |
-| Severity | Medium — extended outage possible |
-| Response | Return 429 with `retryAfter: 30` and message about AI service being busy |
-| Detection | `error.status === 429` check in handler |
-| Recovery | Wait for quota reset; consider provider fallback |
+| Trigger | Gemini 2.5 Flash daily quota exceeded (free tier: 250 RPD per project) OR Groq daily quota exceeded (free tier: 1,000 RPD) |
+| Impact | If Gemini 429s: no user impact — chain falls back to Groq. If BOTH 429: users see degraded reply until quota resets. |
+| Severity | Low under normal traffic with both providers healthy; Medium if both hit ceiling simultaneously. |
+| Response | Try next provider; return `DEGRADED_RESPONSES.llm_error` only if both providers 429 |
+| Detection | `error.status === 429` in per-provider catch; failure recorded against that provider's circuit |
+| Recovery | Quota reset (24h for free tier) OR enable paid billing on the rate-limited provider to lift ceiling |
 
 ### FM-4: LLM Generates Unsafe Content
 
@@ -109,12 +109,12 @@ This document catalogs known failure modes, their impact, and PharmaGuide's resp
 
 | Field | Value |
 |-------|-------|
-| Trigger | GROQ_API_KEY missing or invalid |
-| Impact | All LLM calls fail; gate routes still work |
-| Severity | High for LLM route; no impact on gate routes |
-| Response | 500 error with "Service configuration error" message |
-| Detection | `error.status === 401` check |
-| Recovery | Fix environment variable |
+| Trigger | `GEMINI_API_KEY` AND/OR `GROQ_API_KEY` missing or invalid |
+| Impact | If one is missing: chain still works with the other. If BOTH missing: all LLM calls fail; gate routes still work. |
+| Severity | High only when both providers misconfigured; gate routes (emergency, serotonin-risk, etc.) remain functional regardless. |
+| Response | Degraded reply with pharmacist/prescriber/911 guidance when no provider available |
+| Detection | `isAvailable()` check per provider in `buildProviderChain()`; `error.status === 401` from upstream surfaces an invalid-key state |
+| Recovery | Fix the relevant environment variable in Vercel and redeploy (env-var changes require redeploy to take effect) |
 
 ## Degradation Priority
 

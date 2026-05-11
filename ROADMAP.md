@@ -15,7 +15,7 @@ PharmaGuide AI is a **free, clinician-grade supplement and medication safety too
 
 ## Architecture Overview
 
-PharmaGuide uses a **dual-path architecture**: deterministic safety gates (instant, <50ms) handle known high-risk patterns with verified clinical data, while an LLM (Groq/Llama 3.3 70B) handles general queries augmented with our knowledge base. Every response passes through a post-response safety validator.
+PharmaGuide uses a **dual-path architecture**: deterministic safety gates (instant, <50ms) handle known high-risk patterns with verified clinical data, while a **multi-provider LLM chain** handles general queries augmented with our knowledge base. The chain is **Gemini 2.5 Flash (primary)** → **Groq Llama 3.3 70B (fallback)** → deterministic degraded reply if both fail. Every response passes through a post-response safety validator.
 
 ```
 User Message
@@ -572,8 +572,10 @@ done
 
 - **Hosting:** Vercel (serverless functions)
 - **Endpoint:** `POST /api/chat` — the single API endpoint
-- **LLM Provider:** Groq (Llama 3.3 70B Versatile)
-- **Environment variables:** `GROQ_API_KEY`, `ANALYTICS_ENABLED`, `ANALYTICS_SALT`, `NODE_ENV`
+- **LLM chain:** Gemini 2.5 Flash (primary) → Groq Llama 3.3 70B Versatile (fallback) → deterministic degraded reply. Per-provider circuit breakers + transparent failover in `src/infra/providerRouter.js`.
+- **Environment variables:** `GEMINI_API_KEY` (required, primary), `GROQ_API_KEY` (required, fallback), `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` (rate-limit storage), `ANALYTICS_ENABLED`, `ANALYTICS_SALT`, `NODE_ENV`
+- **Free-tier ceilings:** Gemini 2.5 Flash 250 RPD / 10 RPM; Groq 1,000 RPD / 30 RPM. Plan paid Gemini billing before launch (also opts out of training-data use).
+- **Model lifecycle:** `gemini-2.5-flash` shutdown 2026-10-16 — migrate before then. `gemini-2.0-flash` shutdown 2026-06-01 — do not use.
 - **Build:** No build step — vanilla Node.js, `require()` imports
 - **Config:** `vercel.json` handles routing and output directory
 

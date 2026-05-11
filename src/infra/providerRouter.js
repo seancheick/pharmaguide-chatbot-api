@@ -85,6 +85,25 @@ async function callWithFallback(messages, opts = {}) {
   const params = getGenerationParams(complexity);
 
   const providers = buildProviderChain();
+  // Capture WHICH providers were tried and how each failed. Surfaces
+  // in the degraded response (production-visible) so we can debug
+  // chain failures without needing Vercel log access. Also logged
+  // via console.warn for the Vercel Functions tab.
+  const attempts = [];
+  const skipped = [];
+
+  if (gemini.isAvailable()) {
+    const c = allowGemini();
+    if (!c.allowed) skipped.push({ provider: "gemini", reason: "circuit_open", state: c.state });
+  } else {
+    skipped.push({ provider: "gemini", reason: "not_configured" });
+  }
+  if (groqClient.isAvailable()) {
+    const c = allowGroq();
+    if (!c.allowed) skipped.push({ provider: "groq", reason: "circuit_open", state: c.state });
+  } else {
+    skipped.push({ provider: "groq", reason: "not_configured" });
+  }
 
   for (const provider of providers) {
     try {
@@ -99,20 +118,28 @@ async function callWithFallback(messages, opts = {}) {
       };
     } catch (err) {
       provider.onFailure();
-      if (process.env.NODE_ENV === "development") {
-        console.log(`[PROVIDER] ${provider.name} failed: ${err.message}`);
-      }
+      const reason = err && err.status ? `status_${err.status}` : (err && err.message) || "unknown";
+      attempts.push({
+        provider: provider.name,
+        status: err && err.status ? err.status : null,
+        message: (err && err.message) ? String(err.message).slice(0, 220) : "unknown",
+      });
+      // Always-on log so failures show in Vercel Functions tab.
+      console.warn(`[PROVIDER] ${provider.name} failed: ${reason}`);
       // Continue to next provider
     }
   }
 
   // All providers failed → degraded response
+  console.warn(`[PROVIDER] all providers exhausted. attempts=${JSON.stringify(attempts)} skipped=${JSON.stringify(skipped)}`);
   return {
     text: getDegradedResponse("llm_error"),
     provider: "degraded",
     modelId: "system:degraded",
     usage: {},
     degraded: true,
+    _failures: attempts,
+    _skipped: skipped,
   };
 }
 

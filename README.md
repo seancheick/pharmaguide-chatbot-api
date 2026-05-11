@@ -3,11 +3,29 @@
 ## 🎯 Overview
 
 This is a complete AI chatbot solution for PharmaGuide.io featuring:
-- **Backend**: Vercel serverless function using Groq's high-speed API (Llama 3.3 70B)
+- **Backend**: Vercel serverless function with a **multi-provider LLM chain** — **Gemini 2.5 Flash (primary)** with **Groq Llama 3.3 70B (fallback)** and a deterministic degraded-response final layer.
 - **Frontend**: Premium glassmorphism chat widget
 - **Safety Engine**: Deterministic risk routing, symptom triage, and post-response validation
-- **Infrastructure**: Upstash Redis rate limiting, response caching, and circuit breakers
-- **Free Tier**: ~6,000 requests/day on Groq's generous free tier
+- **Infrastructure**: Upstash Redis rate limiting, response caching, and per-provider circuit breakers
+- **Why Gemini primary**: stronger clinical reasoning (~80% MMLU, beats Llama on FACTS / GPQA / medication interaction reasoning). Quality is the right tradeoff for a YMYL chatbot at low/medium traffic.
+- **Why Groq fallback**: when Gemini hits its rate limit or upstream errors, Groq Llama 3.3 70B picks up — fast inference (~2 s), still strong on supplement-domain queries.
+
+### Free-tier capacity (as of 2026-05)
+
+| Provider | Free RPM | Free RPD | Notes |
+|---|---|---|---|
+| Gemini 2.5 Flash | 10 | 250 | Primary. Free content may be used by Google for product improvement; paid tier opts out. |
+| Gemini 2.5 Flash-Lite | 15 | 1,000 | Available for routing low-risk wellness queries later. |
+| Groq Llama 3.3 70B | 30 | 1,000 | Fallback. TPM 12K / TPD 100K caps token throughput. |
+
+Sources: [ai.google.dev/gemini-api/docs/rate-limits](https://ai.google.dev/gemini-api/docs/rate-limits), [console.groq.com rate limits](https://console.groq.com).
+
+### Model lifecycle
+
+- `gemini-2.5-flash` shutdown date: **October 16, 2026** — plan migration before then.
+- `gemini-2.5-flash-lite` shutdown date: October 16, 2026.
+- `gemini-2.0-flash` shutdown date: **June 1, 2026** — do not migrate to this.
+- For production launch, **enable Gemini paid billing** before opening to real traffic. Free tier is acceptable for beta only.
 
 ---
 
@@ -62,11 +80,12 @@ pharmaguide-chatbot/
 
 5. **Set environment variables**:
    ```bash
-   vercel env add GROQ_API_KEY
+   vercel env add GEMINI_API_KEY   # primary LLM (required for first-tier responses)
+   vercel env add GROQ_API_KEY     # fallback LLM (required — used when Gemini fails or rate-limits)
    vercel env add UPSTASH_REDIS_REST_URL
    vercel env add UPSTASH_REDIS_REST_TOKEN
    ```
-   *Note: Provide your Groq API key for the AI to function. The Upstash Redis variables are for multi-region rate limiting. If omitted, the API will safely fall back to an in-memory rate limiter.*
+   *Notes:* Both `GEMINI_API_KEY` and `GROQ_API_KEY` are required for the multi-provider chain. If only one is set the chain still works but loses redundancy. The Upstash Redis variables are for multi-region rate limiting; if omitted, the API safely falls back to an in-memory rate limiter.
    Select: Production, Preview, Development (all three)
 
 6. **Redeploy with the environment variable**:
@@ -86,7 +105,8 @@ pharmaguide-chatbot/
 3. **Configure Environment Variables**:
    - Go to Project Settings → Environment Variables
    - Add the following keys:
-     - `GROQ_API_KEY` (Required for AI responses)
+     - `GEMINI_API_KEY` (Required — primary LLM)
+     - `GROQ_API_KEY` (Required — fallback LLM, used when Gemini fails or rate-limits)
      - `UPSTASH_REDIS_REST_URL` (Required/Recommended for multi-region rate limiting)
      - `UPSTASH_REDIS_REST_TOKEN` (Required/Recommended for multi-region rate limiting)
    - Check all environments (Production, Preview, Development)
@@ -196,25 +216,39 @@ The API includes advanced rate limiting via **Upstash Redis** (Sliding Window: 1
 
 ## 📊 Monitoring & Limits
 
-### Groq Free Tier Limits
-- ~6,000 requests per day
-- 6,000 tokens per minute
-- Llama 3.3 70B model
+### Free-tier ceilings (as of 2026-05)
 
-### Check Your Usage
-1. Go to: https://console.groq.com
-2. Login with your account
-3. View usage in the dashboard
+**Gemini 2.5 Flash (primary)**
+- 10 requests / minute
+- 250 requests / day per project
+- 250K tokens / minute
+- Free-tier content may be used by Google for product improvement; enable paid billing to opt out.
+- Console: [aistudio.google.com](https://aistudio.google.com)
 
-### If You Hit Limits
-The API will return a 429 error, and users will see:
-"Too many requests. Please wait a moment and try again."
+**Groq Llama 3.3 70B Versatile (fallback)**
+- 30 requests / minute
+- 1,000 requests / day
+- 12K tokens / minute
+- 100K tokens / day
+- Console: [console.groq.com](https://console.groq.com)
+
+### What happens when limits hit
+
+1. Gemini returns 429 → per-provider circuit-breaker tracks the failure
+2. Provider router transparently falls back to Groq Llama 3.3 70B
+3. If Groq also fails or rate-limits → user sees the deterministic `system:degraded` reply with provider/911/Poison-Control guidance
+4. `/api/health` exposes per-provider `configured` + `circuit` state for monitoring
+5. `console.warn("[PROVIDER]")` logs in Vercel show each failure with model + error message
+
+### Production planning
+- For real user traffic, enable **paid Gemini billing** in Google Cloud Console — opts out of training-data use and lifts the 250 RPD ceiling to 1,000 RPD on Tier 1 paid (and higher on Tier 2/3).
+- Groq's paid tier (Dev/Production) lifts the 1,000 RPD ceiling significantly.
 
 ---
 
 ## 🛡️ Security Notes
 
-1. **API Key Security**: Your Groq API key is stored securely in Vercel's environment variables, never exposed to the frontend.
+1. **API Key Security**: Your `GEMINI_API_KEY` and `GROQ_API_KEY` are stored in Vercel's environment variables, never exposed to the frontend bundle. The chat handler reads them server-side only.
 
 2. **Rate Limiting**: Built-in protection against abuse.
 
@@ -228,8 +262,13 @@ The API will return a 429 error, and users will see:
 ## 🐛 Troubleshooting
 
 ### "Connection error" in chat
-- Check if API is deployed: visit `https://pharmaguideai.vercel.app/api/health`
-- Verify GROQ_API_KEY is set in Vercel
+- Check if API is deployed: visit `/api/health` — it returns per-provider `configured` + `circuit` state
+- Verify BOTH `GEMINI_API_KEY` and `GROQ_API_KEY` are set in Vercel (chain needs the primary AND the fallback)
+
+### `system:degraded` reply when both should be healthy
+- Hit `/api/health` and read the `providers` block — confirms each provider's `configured` flag and circuit state
+- Check Vercel function logs for `[PROVIDER]` warnings — each upstream failure logs with the provider name + error message
+- Common causes: stale env var after rotating a key (redeploy after env-var change), per-project Gemini RPD ceiling hit, or Groq key invalid
 
 ### Chat bubble doesn't appear
 - Check browser console for JavaScript errors
@@ -237,9 +276,9 @@ The API will return a 429 error, and users will see:
 - Try clearing browser cache
 
 ### Slow responses
-- This is rare with Groq (it's very fast)
-- Check your internet connection
-- Groq may be experiencing high traffic
+- Gemini typically responds in ~1.5–2.5 s, Groq in ~0.3–0.8 s
+- If responses suddenly slow → Gemini circuit may be flapping; check `/api/health`
+- Outright timeouts after 12 s → upstream is genuinely unhealthy, fallback to Groq should kick in
 
 ### 429 "Too many requests"
 - Wait 60 seconds and try again
@@ -268,7 +307,8 @@ Send a message to the AI.
 ```json
 {
   "reply": "Vitamin D is essential for...",
-  "model": "llama-3.3-70b-versatile",
+  "model": "gemini-2.5-flash",
+  "confidence": "moderate",
   "usage": {
     "prompt_tokens": 150,
     "completion_tokens": 200,
@@ -276,6 +316,15 @@ Send a message to the AI.
   }
 }
 ```
+
+The `model` field reflects which provider actually answered:
+- `gemini-2.5-flash` — Gemini answered (primary)
+- `llama-3.3-70b-versatile` — Groq fallback answered (Gemini was unavailable/rate-limited)
+- `system:degraded` — both providers failed, deterministic graceful reply
+- `system:<route>` — a deterministic safety gate answered (no LLM call), e.g. `system:nitrate-vasodilator`
+- `cache` — answer served from the in-memory response cache
+
+(The website-side proxy strips `model` and `_state` from responses sent to the browser to keep the engine opaque under the "PharmaGuide AI" brand.)
 
 ### GET /api/health
 

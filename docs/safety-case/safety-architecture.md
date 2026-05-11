@@ -36,10 +36,11 @@ If no risk route matches → message goes to LLM (Layer 3).
 
 **Location**: `api/chat.js` lines 118-158
 
-- Model: Llama 3.3 70B via Groq
-- System prompt enforces: no diagnosing, no prescribing, single question, educational framing
-- Temperature: 0.45, max tokens: 650
-- Post-processing: disclaimer stripping, mineral spacing injection, single question enforcement
+- Provider chain: **Gemini 2.5 Flash (primary)** → **Groq Llama 3.3 70B (fallback)** → degraded reply. Routing in `src/infra/providerRouter.js`.
+- Per-provider circuit breakers (`circuitBreaker.js` for Groq, `geminiCircuitBreaker.js` for Gemini) so one provider's outage never takes the whole pipe down.
+- Generation params tuned by query complexity (lower temperature + higher max_tokens for clinical reasoning).
+- System prompt enforces: no diagnosing, no prescribing, single question, educational framing.
+- Post-processing: disclaimer stripping, mineral spacing injection, single question enforcement.
 
 ## Layer 4: Post-Response Validator (Deterministic, Post-LLM)
 
@@ -76,8 +77,8 @@ User Message
     │   └─ Match? → deterministic gate reply
     │
     ├─► Layer 3: LLM Generation
-    │   ├─ System prompt + history + message
-    │   ├─ Groq API call
+    │   ├─ System prompt + history + KB context + message
+    │   ├─ Provider chain: Gemini 2.5 Flash → Groq Llama 3.3 70B → degraded
     │   └─ Post-processing (disclaimers, spacing, question limit)
     │
     └─► Layer 4: Post-Response Validator

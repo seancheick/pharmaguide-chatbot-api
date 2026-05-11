@@ -47,7 +47,7 @@
 
 | Aspect | Coverage |
 |--------|----------|
-| System prompt adherence | Tested via `test/llm-behavior.test.js` (requires Groq API key) |
+| System prompt adherence | Tested via `test/llm-behavior.test.js` (requires `GEMINI_API_KEY` and/or `GROQ_API_KEY`; runs against whichever provider is in the chain) |
 | Post-processing (disclaimers) | full-suite PART 11, edge-cases |
 | Mineral spacing injection | full-suite mineral spacing tests |
 | Single question enforcement | full-suite, edge-cases |
@@ -89,7 +89,7 @@ node test/safety-harness.test.js
 node test/validator.test.js
 node test/adversarial.test.js
 
-# LLM behavior tests (requires GROQ_API_KEY)
+# LLM behavior tests (requires GEMINI_API_KEY and/or GROQ_API_KEY)
 node test/llm-behavior.test.js
 ```
 
@@ -102,4 +102,4 @@ node test/llm-behavior.test.js
 | Non-English inputs | Gap | All detection is English-only |
 | Image/file uploads | N/A | Text-only API |
 | Rate limiting behavior | Partial | Tested in integration, not unit tests |
-| Groq API failure modes | Partial | Error handling tested, but not all failure modes |
+| LLM provider failure modes (Gemini + Groq) | Partial | Error handling tested per provider; transparent chain failover covered by wellness-queries.test.js + adversarial tests. Not all 429/500/timeout permutations exercised in CI. |
