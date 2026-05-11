@@ -5,6 +5,8 @@
 **A clinician-reviewed conversational AI for supplement &amp; medication safety.**
 Built as a four-layer defense-in-depth pipeline — gates, retrieval, LLM, validator — so the high-stakes questions never reach an LLM and the safe ones come back grounded.
 
+<sub>Part of the **[pharmaguide.io](https://pharmaguide.io)** supplement-intelligence platform · this chatbot is one surface of the product</sub>
+
 <br />
 
 [![Status](https://img.shields.io/badge/Status-Production-12B886?style=for-the-badge)](#)
@@ -22,6 +24,23 @@ Built as a four-layer defense-in-depth pipeline — gates, retrieval, LLM, valid
 [![License](https://img.shields.io/badge/license-Proprietary-CB2030?style=flat-square)](#license)
 
 </div>
+
+---
+
+## Beyond the chatbot — the full PharmaGuide platform
+
+This API answers questions. **[PharmaGuide](https://pharmaguide.io)** answers the harder question: *what does my entire supplement &amp; medication stack actually do together?*
+
+The full mobile + web product extends the same safety pipeline into a catalog-grade intelligence layer:
+
+- **Cross-reference your full stack** — every supplement and medication you take, continuously checked against each other for interactions, medication-nutrient depletions (statins → CoQ10, metformin → B12, PPIs → magnesium), dose accumulation across products, and timing conflicts that don't show up on any single label.
+- **180,000+ product catalog** with a 4-pillar PG Score (ingredient quality, safety &amp; purity, evidence, brand trust) — including the proprietary blends most apps can't decompose.
+- **Live FDA recall monitoring** on the products you've actually scanned — Adverse Event Reporting System (FAERS) signals surface alongside the warning before most users hear about it.
+- **Personal Fit** — every recommendation profile-gated against your conditions, medications, populations (pregnancy / renal / elderly), and goals.
+- **Privacy by architecture** — your stack and conditions stay encrypted on-device. AES-256 locally, nothing about your body is uploaded to a server we control, nothing to subpoena, nothing to leak.
+- **Clinician-reviewed** — every interaction and depletion mapping is signed off by a licensed PharmD before it ships.
+
+This chatbot is one surface. The mobile app does the heavier lifting — opening in waves through 2026. **Join the beta at [pharmaguide.io](https://pharmaguide.io)**, or just ask the assistant any supplement / medication / interaction question right there. Same engine, same safety pipeline.
 
 ---
 
