@@ -1,415 +1,238 @@
-# PharmaGuide AI Chatbot - Complete Deployment Guide
+<div align="center">
 
-## 🎯 Overview
+# PharmaGuide AI
 
-This is a complete AI chatbot solution for PharmaGuide.io featuring:
-- **Backend**: Vercel serverless function with a **multi-provider LLM chain** — **Gemini 2.5 Flash (primary)** with **Groq Llama 3.3 70B (fallback)** and a deterministic degraded-response final layer.
-- **Frontend**: Premium glassmorphism chat widget
-- **Safety Engine**: Deterministic risk routing, symptom triage, and post-response validation
-- **Infrastructure**: Upstash Redis rate limiting, response caching, and per-provider circuit breakers
-- **Why Gemini primary**: stronger clinical reasoning (~80% MMLU, beats Llama on FACTS / GPQA / medication interaction reasoning). Quality is the right tradeoff for a YMYL chatbot at low/medium traffic.
-- **Why Groq fallback**: when Gemini hits its rate limit or upstream errors, Groq Llama 3.3 70B picks up — fast inference (~2 s), still strong on supplement-domain queries.
+**A clinician-reviewed conversational AI for supplement &amp; medication safety.**
+Built as a four-layer defense-in-depth pipeline — gates, retrieval, LLM, validator — so the high-stakes questions never reach an LLM and the safe ones come back grounded.
 
-### Free-tier capacity (as of 2026-05)
+<br />
 
-| Provider | Free RPM | Free RPD | Notes |
+[![Status](https://img.shields.io/badge/Status-Production-12B886?style=for-the-badge)](#)
+[![Primary LLM](https://img.shields.io/badge/Primary-Gemini%202.5%20Flash-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/gemini-api/docs)
+[![Fallback LLM](https://img.shields.io/badge/Fallback-Llama%203.3%2070B-1A1A1A?style=for-the-badge&logo=meta&logoColor=white)](https://groq.com)
+[![Hosting](https://img.shields.io/badge/Vercel-Serverless-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com)
+
+[![Tests](https://img.shields.io/badge/tests-1%2C223%20passing-2EA043?style=flat-square&logo=node.js&logoColor=white)](./test)
+[![KB entries](https://img.shields.io/badge/KB-80%20entries-6E40C9?style=flat-square)](./src/config/knowledgeBase.js)
+[![Safety gates](https://img.shields.io/badge/safety%20gates-39%20deterministic-1F6FEB?style=flat-square)](./src/core/router.js)
+[![Wellness goals](https://img.shields.io/badge/wellness%20goals-11%20categories-DB2777?style=flat-square)](./src/core/wellnessGoalMap.js)
+[![Validator](https://img.shields.io/badge/post--response%20validator-8%20rules-EAB308?style=flat-square)](./src/postprocess/safetyValidator.js)
+[![Node](https://img.shields.io/badge/node-%E2%89%A518.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
+[![Code](https://img.shields.io/badge/code-10.7k%20LOC-555555?style=flat-square)](./src)
+[![License](https://img.shields.io/badge/license-Proprietary-CB2030?style=flat-square)](#license)
+
+</div>
+
+---
+
+## Why this exists
+
+Most consumer-health chatbots fail one of two ways:
+
+1. **Refuse everything** — even legitimate questions about supplements, dosing, or interactions get a "consult a professional" wall.
+2. **Answer recklessly** — confident replies on YMYL topics with no clinical review, no source grounding, and no awareness of dangerous drug-drug-supplement combinations.
+
+PharmaGuide does neither. It's an architecture, not a wrapper:
+
+- High-stakes interactions (statin + red yeast rice, SSRI + 5-HTP, PDE5 inhibitor + L-arginine, warfarin + ginkgo) are intercepted by **deterministic gates** with canned clinician-reviewed replies — they **never reach an LLM**.
+- Wellness questions (sleep, stress, cholesterol, energy) flow to the LLM with a **grounded knowledge-base context** injected per-query so answers cite real dose ranges and contraindications instead of guessing.
+- Every response — gate, LLM, or fallback — is then re-checked by a **post-response safety validator** before reaching the user.
+
+The result is a chatbot that is *useful* on common wellness questions and *structurally unable* to invent dangerous advice on high-risk ones.
+
+---
+
+## Architecture — four independent safety layers
+
+```
+                ┌──────────────────────────────────────────────┐
+                │  USER MESSAGE                                │
+                └────────────────────┬─────────────────────────┘
+                                     ▼
+   ┌──────────────────────────────────────────────────────────────┐
+   │  LAYER 1 — Detection gates           (<5ms · deterministic)  │
+   │  emergency · greeting · thanks · goodbye · flirty · creator  │
+   │  pet · business · off-topic · medical-condition · wellness   │
+   └────────────────────┬─────────────────────────────────────────┘
+                        ▼
+   ┌──────────────────────────────────────────────────────────────┐
+   │  LAYER 2 — Risk triage router        (<10ms · deterministic) │
+   │  39 routes — high-risk interactions get canned replies,      │
+   │  NEVER reach an LLM. Examples: nitrate-vasodilator,          │
+   │  serotonin-urgent, ssri-discontinuation, blood-thinner-risk, │
+   │  grapefruit-CYP3A4, lithium-NSAID, statin-myopathy.          │
+   └────────────────────┬─────────────────────────────────────────┘
+                        ▼
+   ┌──────────────────────────────────────────────────────────────┐
+   │  LAYER 3 — KB-grounded LLM chain     (~1.5–2.5s)             │
+   │  Gemini 2.5 Flash → Groq Llama 3.3 70B → degraded reply      │
+   │  80-entry clinical KB injected as context;                   │
+   │  per-provider circuit breakers + transparent failover.       │
+   │  Wellness goals fan out to candidate KB entries even when    │
+   │  the user named no specific supplement.                      │
+   └────────────────────┬─────────────────────────────────────────┘
+                        ▼
+   ┌──────────────────────────────────────────────────────────────┐
+   │  LAYER 4 — Post-response validator    (<2ms · deterministic) │
+   │  no diagnosing · no stop-med advice · no prescribing         │
+   │  no dosing for pregnancy/children without education          │
+   │  no fabricated URLs/emails/phone numbers                     │
+   │  single-question constraint · length sanity                  │
+   │  → Strip-in-place when possible; SAFE_FALLBACK_REPLY when not│
+   └────────────────────┬─────────────────────────────────────────┘
+                        ▼
+                  RESPONSE TO USER
+```
+
+| Layer | Purpose | Latency | Failure mode |
 |---|---|---|---|
-| Gemini 2.5 Flash | 10 | 250 | Primary. Free content may be used by Google for product improvement; paid tier opts out. |
-| Gemini 2.5 Flash-Lite | 15 | 1,000 | Available for routing low-risk wellness queries later. |
-| Groq Llama 3.3 70B | 30 | 1,000 | Fallback. TPM 12K / TPD 100K caps token throughput. |
-
-Sources: [ai.google.dev/gemini-api/docs/rate-limits](https://ai.google.dev/gemini-api/docs/rate-limits), [console.groq.com rate limits](https://console.groq.com).
-
-### Model lifecycle
-
-- `gemini-2.5-flash` shutdown date: **October 16, 2026** — plan migration before then.
-- `gemini-2.5-flash-lite` shutdown date: October 16, 2026.
-- `gemini-2.0-flash` shutdown date: **June 1, 2026** — do not migrate to this.
-- For production launch, **enable Gemini paid billing** before opening to real traffic. Free tier is acceptable for beta only.
+| 1. Detection | Trivial intent triage | < 5 ms | Falls through to Layer 2 |
+| 2. Risk triage | High-stakes interception | < 10 ms | Falls through to Layer 3 |
+| 3. LLM chain | Knowledge-grounded reasoning | 1.5–2.5 s | Fails over Gemini → Groq → graceful degradation |
+| 4. Validator | Final safety check | < 2 ms | Sanitises in place or returns deterministic fallback |
 
 ---
 
-## 📁 Project Structure
+## LLM provider chain
 
-```text
-pharmaguide-chatbot/
-├── api/
-│   ├── chat.js          # Main chat endpoint
-│   └── health.js        # Health check endpoint
-├── src/
-│   ├── config/          # Policy, prompts, and synonyms
-│   ├── core/            # Normalization, entity extraction, risk router
-│   ├── gates/           # Safety gate detection and static replies
-│   ├── infra/           # Analytics, circuit breaker, rate limit, cache, memory
-│   └── postprocess/     # Output validation and response shaping
-├── scripts/             # CI/CD deployment release gates
-├── test/                # Test suites (unit and golden traces)
-├── chatbot-widget.html  # Frontend widget (copy to WordPress)
-├── package.json         # Dependencies and build scripts
-├── vercel.json          # Vercel configuration
-└── README.md            # This file
-```
+| Provider | Role | Model | Latency | Free-tier ceiling | Paid-tier ceiling |
+|---|---|---|---|---|---|
+| **Gemini** | Primary | `gemini-2.5-flash` | ~1.5–2.5 s | 250 RPD / 10 RPM | 1,000+ RPD / 300 RPM (Tier 1) |
+| **Groq** | Fallback | `llama-3.3-70b-versatile` | ~0.3–0.8 s | 1,000 RPD / 30 RPM / 100K TPD | scales with tier |
+| Degraded reply | Last resort | — | < 5 ms | always available | always available |
+
+Each provider has its own circuit breaker (`src/infra/circuitBreaker.js`, `src/infra/geminiCircuitBreaker.js`). When the primary fails or rate-limits, the chain transparently falls back. When both fail, the user receives a deterministic graceful-degradation reply with provider/911/Poison-Control guidance rather than an error.
+
+Live `/api/health` exposes per-provider `configured`, `circuit`, and `model` so operators can monitor failover state.
 
 ---
 
-## 🚀 STEP-BY-STEP DEPLOYMENT
+## Knowledge-base grounding
 
-### Step 1: Deploy Backend to Vercel
+When entities are extracted from the user's message, matching KB entries are injected into the LLM prompt with structured fields:
 
-#### Option A: Using Vercel CLI (Recommended)
+- **Dose range** (`adult_dose_range.min / .max / .unit`)
+- **Upper limit** (with source)
+- **Timing** (best time, with-food, separation from other ingredients)
+- **Population safety** (pregnancy / renal / elderly with notes)
+- **Interactions** (with mechanism + severity + timing-fix)
+- **Common goals** (informational tags)
 
-1. **Install Vercel CLI** (if not installed):
-   ```bash
-   npm install -g vercel
-   ```
+When the user asks a *goal-only* question ("what can I take to sleep better") with no named supplement, the wellness-goal router maps the goal to candidate KB entries (sleep → melatonin / magnesium / glycine / l-theanine) and injects those as candidates — the LLM never has to answer from parametric memory alone.
 
-2. **Login to Vercel**:
-   ```bash
-   vercel login
-   ```
-
-3. **Navigate to project folder and deploy**:
-   ```bash
-   cd pharmaguide-chatbot
-   vercel
-   ```
-
-4. **Follow the prompts**:
-   - Link to existing project? → Yes → select `pharmaguideai`
-   - Or create new project with name `pharmaguideai`
-
-5. **Set environment variables**:
-   ```bash
-   vercel env add GEMINI_API_KEY   # primary LLM (required for first-tier responses)
-   vercel env add GROQ_API_KEY     # fallback LLM (required — used when Gemini fails or rate-limits)
-   vercel env add UPSTASH_REDIS_REST_URL
-   vercel env add UPSTASH_REDIS_REST_TOKEN
-   ```
-   *Notes:* Both `GEMINI_API_KEY` and `GROQ_API_KEY` are required for the multi-provider chain. If only one is set the chain still works but loses redundancy. The Upstash Redis variables are for multi-region rate limiting; if omitted, the API safely falls back to an in-memory rate limiter.
-   Select: Production, Preview, Development (all three)
-
-6. **Redeploy with the environment variable**:
-   ```bash
-   vercel --prod
-   ```
-
-#### Option B: Using Vercel Dashboard (No CLI needed)
-
-1. **Go to**: https://vercel.com/dashboard
-
-2. **Import Project**:
-   - Click "Add New" → "Project"
-   - Choose "Import Git Repository" OR
-   - Upload the folder directly
-
-3. **Configure Environment Variables**:
-   - Go to Project Settings → Environment Variables
-   - Add the following keys:
-     - `GEMINI_API_KEY` (Required — primary LLM)
-     - `GROQ_API_KEY` (Required — fallback LLM, used when Gemini fails or rate-limits)
-     - `UPSTASH_REDIS_REST_URL` (Required/Recommended for multi-region rate limiting)
-     - `UPSTASH_REDIS_REST_TOKEN` (Required/Recommended for multi-region rate limiting)
-   - Check all environments (Production, Preview, Development)
-
-4. **Deploy**:
-   - Click "Deploy"
-   - Wait for deployment to complete
-
-5. **Your API will be available at**:
-   ```
-   https://pharmaguideai.vercel.app/api/chat
-   https://pharmaguideai.vercel.app/api/health
-   ```
-
-### Step 2: Test Your API
-
-Open a terminal and run:
-
-```bash
-curl -X POST https://pharmaguideai.vercel.app/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "What is magnesium good for?"}'
-```
-
-You should get a JSON response with the AI's answer.
-
-Or test the health endpoint:
-```bash
-curl https://pharmaguideai.vercel.app/api/health
-```
-
-### Step 3: Install Widget on WordPress
-
-#### Method A: Using WPCode Plugin (Recommended)
-
-1. **Install WPCode Plugin**:
-   - WordPress Dashboard → Plugins → Add New
-   - Search "WPCode"
-   - Install & Activate "WPCode – Insert Headers and Footers"
-
-2. **Add the Chatbot Widget**:
-   - Go to Code Snippets → + Add Snippet
-   - Choose "Add Your Custom Code (New Snippet)"
-   - Name it: "PharmaGuide AI Chatbot"
-   - Code Type: "HTML Snippet"
-   - Paste the entire contents of `chatbot-widget.html`
-   - Location: "Site Wide Footer"
-   - Status: Active
-   - Save
-
-#### Method B: Using Elementor
-
-1. **Edit your page** with Elementor
-2. **Drag an HTML widget** to the page (anywhere works)
-3. **Paste the contents** of `chatbot-widget.html`
-4. **Update/Publish**
-
-#### Method C: Theme Footer (Advanced)
-
-1. Go to Appearance → Theme File Editor
-2. Edit `footer.php`
-3. Paste the widget code before `</body>`
-4. Save
-
-### Step 4: Verify Installation
-
-1. Visit your website: https://pharmaguide.io
-2. Look for the teal chat bubble in the bottom-right corner
-3. Click it to open the chat
-4. Try asking: "What supplements help with sleep?"
+**80 entries covering** vitamins (A, C, D, E, K2), minerals (Mg, Fe, Zn, Ca, K, Se, I, folate), adaptogens (ashwagandha, rhodiola), sleep (melatonin, glycine, valerian, L-theanine), cardiovascular (CoQ10, omega-3, red yeast rice, plant sterols), fiber (psyllium, glucomannan), nitric-oxide donors (L-arginine, L-citrulline), nootropics (alpha-GPC, creatine, L-theanine), prescription medications (warfarin, statins, SSRIs, metformin, levothyroxine, NSAIDs, PPIs, PDE5 inhibitors, nitrates), and more.
 
 ---
 
-## 🔧 Configuration Options
+## API
 
-### Updating the API Endpoint
+### `POST /api/chat`
 
-In `chatbot-widget.html`, find this line (around line 480):
-
-```javascript
-const API_ENDPOINT = 'https://pharmaguideai.vercel.app/api/chat';
-```
-
-Update it if your Vercel URL is different.
-
-### Customizing Quick Actions
-
-Find this array in the widget code:
-
-```javascript
-const QUICK_ACTIONS = [
-    "Check an interaction",
-    "Supplement timing tips",
-    "Vitamin D info"
-];
-```
-
-Change these to whatever starter prompts you prefer.
-
-### Rate Limiting
-
-The API includes advanced rate limiting via **Upstash Redis** (Sliding Window: 10 requests / 1 minute / IP).
-- If Upstash variables (`UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`) are provided in Vercel, it uses distributed Redis for global limit tracking.
-- If they are missing or the connection fails, it safely falls back to a fast, per-instance in-memory rate limiter.
-
----
-
-## 📊 Monitoring & Limits
-
-### Free-tier ceilings (as of 2026-05)
-
-**Gemini 2.5 Flash (primary)**
-- 10 requests / minute
-- 250 requests / day per project
-- 250K tokens / minute
-- Free-tier content may be used by Google for product improvement; enable paid billing to opt out.
-- Console: [aistudio.google.com](https://aistudio.google.com)
-
-**Groq Llama 3.3 70B Versatile (fallback)**
-- 30 requests / minute
-- 1,000 requests / day
-- 12K tokens / minute
-- 100K tokens / day
-- Console: [console.groq.com](https://console.groq.com)
-
-### What happens when limits hit
-
-1. Gemini returns 429 → per-provider circuit-breaker tracks the failure
-2. Provider router transparently falls back to Groq Llama 3.3 70B
-3. If Groq also fails or rate-limits → user sees the deterministic `system:degraded` reply with provider/911/Poison-Control guidance
-4. `/api/health` exposes per-provider `configured` + `circuit` state for monitoring
-5. `console.warn("[PROVIDER]")` logs in Vercel show each failure with model + error message
-
-### Production planning
-- For real user traffic, enable **paid Gemini billing** in Google Cloud Console — opts out of training-data use and lifts the 250 RPD ceiling to 1,000 RPD on Tier 1 paid (and higher on Tier 2/3).
-- Groq's paid tier (Dev/Production) lifts the 1,000 RPD ceiling significantly.
-
----
-
-## 🛡️ Security Notes
-
-1. **API Key Security**: Your `GEMINI_API_KEY` and `GROQ_API_KEY` are stored in Vercel's environment variables, never exposed to the frontend bundle. The chat handler reads them server-side only.
-
-2. **Rate Limiting**: Built-in protection against abuse.
-
-3. **CORS**: The API accepts requests from any origin. To restrict:
-   - Update the CORS headers in `api/chat.js`
-
-4. **Input Validation**: Messages are limited to 2000 characters.
-
----
-
-## 🐛 Troubleshooting
-
-### "Connection error" in chat
-- Check if API is deployed: visit `/api/health` — it returns per-provider `configured` + `circuit` state
-- Verify BOTH `GEMINI_API_KEY` and `GROQ_API_KEY` are set in Vercel (chain needs the primary AND the fallback)
-
-### `system:degraded` reply when both should be healthy
-- Hit `/api/health` and read the `providers` block — confirms each provider's `configured` flag and circuit state
-- Check Vercel function logs for `[PROVIDER]` warnings — each upstream failure logs with the provider name + error message
-- Common causes: stale env var after rotating a key (redeploy after env-var change), per-project Gemini RPD ceiling hit, or Groq key invalid
-
-### Chat bubble doesn't appear
-- Check browser console for JavaScript errors
-- Verify the widget code was inserted correctly
-- Try clearing browser cache
-
-### Slow responses
-- Gemini typically responds in ~1.5–2.5 s, Groq in ~0.3–0.8 s
-- If responses suddenly slow → Gemini circuit may be flapping; check `/api/health`
-- Outright timeouts after 12 s → upstream is genuinely unhealthy, fallback to Groq should kick in
-
-### 429 "Too many requests"
-- Wait 60 seconds and try again
-- This is rate limiting protecting your API
-
----
-
-## 📞 API Reference
-
-### POST /api/chat
-
-Send a message to the AI.
-
-**Request:**
 ```json
 {
-  "message": "What is vitamin D good for?",
+  "message": "Can I take magnesium with metformin?",
   "history": [
-    {"role": "user", "content": "Hi"},
-    {"role": "assistant", "content": "Hello! How can I help?"}
+    { "role": "user", "content": "..." },
+    { "role": "assistant", "content": "..." }
   ]
 }
 ```
 
-**Response:**
+**Response (LLM path)**
+
 ```json
 {
-  "reply": "Vitamin D is essential for...",
+  "reply": "Magnesium and metformin have a documented interaction...",
   "model": "gemini-2.5-flash",
-  "confidence": "moderate",
-  "usage": {
-    "prompt_tokens": 150,
-    "completion_tokens": 200,
-    "total_tokens": 350
-  }
+  "confidence": "moderate"
 }
 ```
 
-The `model` field reflects which provider actually answered:
-- `gemini-2.5-flash` — Gemini answered (primary)
-- `llama-3.3-70b-versatile` — Groq fallback answered (Gemini was unavailable/rate-limited)
-- `system:degraded` — both providers failed, deterministic graceful reply
-- `system:<route>` — a deterministic safety gate answered (no LLM call), e.g. `system:nitrate-vasodilator`
-- `cache` — answer served from the in-memory response cache
+**Response (gate path)** — the `model` field reflects which deterministic route answered:
 
-(The website-side proxy strips `model` and `_state` from responses sent to the browser to keep the engine opaque under the "PharmaGuide AI" brand.)
+```json
+{
+  "reply": "🔴 This combination can cause severe low blood pressure...",
+  "model": "system:nitrate-vasodilator"
+}
+```
 
-### GET /api/health
+**Response (degraded)** — both LLM providers failed; user gets a safe redirect, operators get a diagnostic surface:
 
-Check API status.
+```json
+{
+  "reply": "I wasn't able to fully process your question right now...",
+  "model": "system:degraded",
+  "_provider_failures": [{ "provider": "gemini", "status": 429, "message": "..." }]
+}
+```
 
-**Response:**
+### `GET /api/health`
+
 ```json
 {
   "status": "ok",
-  "service": "PharmaGuide AI Chatbot",
-  "timestamp": "2024-12-22T18:30:00.000Z",
-  "version": "1.0.0"
+  "version": "2.0.0",
+  "providers": {
+    "gemini": { "configured": true, "circuit": "CLOSED", "model": "gemini-2.5-flash" },
+    "groq":   { "configured": true, "circuit": "CLOSED", "model": "llama-3.3-70b-versatile" }
+  },
+  "active_provider": "gemini"
 }
 ```
 
----
+### `GET /api/gaps`
 
-## 🎨 Customization
-
-### Colors
-The widget uses CSS variables. To customize, add this before the widget:
-
-```html
-<style>
-  :root {
-    --pgchat-teal-500: #YOUR_COLOR;
-    --pgchat-teal-600: #YOUR_DARKER_COLOR;
-  }
-</style>
-```
-
-### Position
-To move the button to the left side:
-```css
-.pgchat-toggle {
-  right: auto;
-  left: 24px;
-}
-.pgchat-window {
-  right: auto;
-  left: 24px;
-}
-```
-
-## 🧪 CI/CD & Testing
-
-The project uses built-in automated safeguards before deployment:
-
-### Local Testing
-```bash
-npm run test
-```
-Runs the entire local test suite, including semantic golden traces, gate behavior, analytics PHI guards, and circuit breaker constraints.
-
-### Release Gate
-```bash
-npm run build
-```
-Vercel automatically triggers this during deployment. It executes `scripts/check_release.js` which blocks the release if documentation drift, unresolved policy claims, or trace test failures are detected.
+Operational dashboard — topic-coverage gaps detected over time from real queries. Drives KB expansion priorities.
 
 ---
 
-## ✅ Checklist
+## Tech stack
 
-- [ ] Add `GROQ_API_KEY` to Vercel
-- [ ] Add `UPSTASH_REDIS_REST_URL` & `UPSTASH_REDIS_REST_TOKEN` (Optional but recommended)
-- [ ] Deploy API to Vercel (Release gate will run automatically)
-- [ ] Test API with curl
-- [ ] Install widget on WordPress
-- [ ] Test chat on live site
-- [ ] Verify mobile responsiveness
+[![Node 18+](https://img.shields.io/badge/Node.js-18+-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
+[![Vercel](https://img.shields.io/badge/Vercel-Serverless%20Functions-000000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com)
+[![Gemini](https://img.shields.io/badge/Google-Gemini%202.5%20Flash-4285F4?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
+[![Groq](https://img.shields.io/badge/Groq-Llama%203.3%2070B-F55036?style=flat-square)](https://groq.com)
+[![Upstash](https://img.shields.io/badge/Upstash-Redis-DC2626?style=flat-square)](https://upstash.com)
 
----
-
-## 🆘 Support
-
-If you encounter issues:
-1. Check browser console for errors
-2. Check Vercel function logs
-3. Verify API key is correct
-4. Test API endpoint directly
-
-Your Groq Console: https://console.groq.com
-Your Vercel Dashboard: https://vercel.com/dashboard
+- **Runtime** · Node.js ≥ 18 on Vercel serverless functions (no build step)
+- **LLM SDKs** · `@google/generative-ai` + `groq-sdk`
+- **Rate limiting + conversation state + topic-gap tracker** · Upstash Redis (sliding-window per IP, with in-memory fallback for dev)
+- **Cache** · in-memory response cache (1-hour TTL, max 200 entries, LRU eviction, per-provider keying)
+- **Testing** · Node native `--test` runner, 1,223 cases across 17 suites; release gate via `scripts/check_release.js`
+- **CI/CD** · Vercel auto-deploys on push to `main`; `npm run check:release` enforces release-gate before deploy
 
 ---
 
-Made with ❤️ for PharmaGuide
+## Model lifecycle
+
+| Model | Status | Shutdown |
+|---|---|---|
+| `gemini-2.5-flash` | Active — primary | **2026-10-16** — migrate before |
+| `gemini-2.5-flash-lite` | Reserved — high-volume tier | 2026-10-16 |
+| `gemini-2.0-flash` | **Do not use** — deprecated | 2026-06-01 |
+| `llama-3.3-70b-versatile` | Active — fallback | No sunset announced |
+
+Sources: [Gemini deprecations](https://ai.google.dev/gemini-api/docs/models#deprecated-models), [Groq model card](https://console.groq.com/docs/models).
+
+---
+
+## Production notes
+
+- **Enable Gemini paid billing before launch.** Free tier is acceptable for beta but daily-token caps will surface as `system:degraded` for users on real traffic. Paid tier also opts out of content-for-training use, which matters for YMYL.
+- **Enable Groq paid billing** for fallback reliability. Free Groq is bounded by 100K tokens/day — a single long KB-grounded conversation can consume thousands of tokens, so this ceiling hits faster than the per-day request ceiling.
+- **Watch `/api/health`** + Vercel function logs for `[PROVIDER]` warnings. Each failover and each provider failure is logged with the provider name, HTTP status, and truncated error message.
+- **Release gate** — every `git push origin main` runs through `scripts/check_release.js`. 1,223 tests + release-metadata checks must pass before Vercel ships.
+
+---
+
+## Acknowledgements
+
+Clinical accuracy review by **Laurie Pham, PharmD** (Doctor of Pharmacy · 15+ years clinical pharmacy)
+Patient-education review by **Miriam Farez, NP** (Nurse Practitioner · integrative health practice)
+
+Built and maintained by **Sean Cheick Baradji** · founder, PharmaGuide · B&Br Technology, Boston, MA.
+
+## License
+
+Proprietary © 2026 PharmaGuide. All rights reserved.
