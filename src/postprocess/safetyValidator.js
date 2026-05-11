@@ -52,18 +52,35 @@ function validateResponse(reply, route, entities, state) {
     violations.push({ rule: "no_empty_safety", detail: "Safety route produced empty reply" });
   }
 
-  // 8. No fabricated URLs, emails, or non-emergency phone numbers (LLM only)
+  // 8. No fabricated URLs, emails, or non-emergency phone numbers (LLM only).
+  // Strip them in place rather than rejecting the whole reply — the rest
+  // of the content is usually legitimate and rejecting it would force
+  // the SAFE_FALLBACK_REPLY and lose useful clinical context.
+  let sanitizedReply = reply;
   if (route === "llm") {
-    if (checkFabricatedContactInfo(reply)) {
-      violations.push({ rule: "no_fabricated_info", detail: "Reply contains URLs, emails, or non-emergency phone numbers" });
+    const stripped = stripFabricatedContactInfo(reply);
+    if (stripped.changed) {
+      sanitizedReply = stripped.reply;
+      // Non-blocking — log it but don't fail the response.
+      violations.push({
+        rule: "stripped_fabricated_info",
+        detail: "Stripped URLs/emails/phones from reply",
+        nonBlocking: true,
+      });
     }
   }
 
-  const safe = violations.length === 0;
+  // Only blocking violations gate the response. Non-blocking ones
+  // (like the URL strip above) are recorded but pass through.
+  const blockingViolations = violations.filter((v) => !v.nonBlocking);
+  const safe = blockingViolations.length === 0;
   return {
     safe,
     violations,
     fallback: safe ? null : SAFE_FALLBACK_REPLY,
+    // Sanitized reply — caller can use this in place of the raw LLM
+    // output when safe (the URL strip is the only sanitization for now).
+    sanitizedReply: safe ? sanitizedReply : null,
   };
 }
 
@@ -96,19 +113,47 @@ function checkStopMedInstructions(lower, route) {
 }
 
 function checkProhibitedDosing(lower, entities) {
-  // Check if we're providing specific dosing for pregnancy or children
+  // Rule fires only if the response is RECOMMENDING dosing FOR
+  // pregnancy or children specifically — not when it merely mentions
+  // those populations as context ("Pregnant women may need higher
+  // intake — talk to your provider" is responsible clinical framing,
+  // not a violation).
+  //
+  // Strategy: locate dosing lines and check whether each one is in
+  // local proximity to a pregnancy/child mention WITHOUT an
+  // educational/upper-limit qualifier nearby.
+
   const populations = entities?.populations || [];
-  const isPregnancy = populations.includes("pregnancy") || /\bpregnan(t|cy)\b/.test(lower);
-  const isChild = /\b(child|kid|infant|toddler|baby|pediatric|your (son|daughter))\b/.test(lower);
+  const hasPregnancyEntity = populations.includes("pregnancy");
 
-  if (!isPregnancy && !isChild) return false;
+  // Tokens that mark a passage as EDUCATIONAL / safe-context rather
+  // than prescriptive. Generous list — matches the natural language
+  // LLMs use when discussing dose ceilings and population caveats.
+  const educationalRe =
+    /\b(max|maximum|upper limit|tolerable upper|tolerable upper intake|ul\b|not exceed|do(?:n't| not) exceed|no more than|limit(?: is|ed to)?|ceiling|ceiling of|stay (?:under|below)|under|below|cap|capped|threshold|recommended daily allowance|rda|adequate intake|ai\b|reference daily intake|talk to (?:your |a )?(?:doctor|provider|prescriber|clinician|pharmacist|obstetrician|pediatrician)|consult (?:your |a )?(?:doctor|provider|prescriber|clinician|pharmacist|obstetrician|pediatrician)|under (?:medical|professional|clinician) (?:guidance|supervision))\b/;
 
-  // Check for specific dosing numbers in context of these populations
-  const hasDosing = /\b(take|give|dose|dosage|recommend|suggest|try|administer)\b.{0,40}\b\d+\s*(mg|iu|mcg|ml|g|gram|milligram|microgram)\b/.test(lower);
-  // Allow referring to upper limits (e.g., "upper limit is 3,000 mcg")
-  const isUpperLimit = /\b(upper limit|maximum|not exceed|no more than|limit is)\b/.test(lower);
+  // Find each dosing-pattern hit and look at a generous local window
+  // around it (±120 chars). If a pregnancy/child token is present
+  // within that window AND no educational qualifier is, flag it.
+  const dosingRe = /\b(take|give|dose|dosage|recommend|suggest|try|administer)\b.{0,40}\b\d+\s*(mg|iu|mcg|ml|g|gram|milligram|microgram)\b/g;
+  const childRe = /\b(child|kid|infant|toddler|baby|pediatric|your (?:son|daughter))\b/;
+  const pregnancyRe = /\bpregnan(?:t|cy)\b/;
 
-  return hasDosing && !isUpperLimit;
+  let match;
+  while ((match = dosingRe.exec(lower)) !== null) {
+    const start = Math.max(0, match.index - 120);
+    const end = Math.min(lower.length, match.index + match[0].length + 120);
+    const window = lower.slice(start, end);
+
+    const localPregnancy = hasPregnancyEntity || pregnancyRe.test(window);
+    const localChild = childRe.test(window);
+    if (!localPregnancy && !localChild) continue;
+
+    if (!educationalRe.test(window)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function checkMultipleQuestions(reply) {
@@ -136,35 +181,63 @@ function checkPrescribingLanguage(lower) {
 }
 
 function checkFabricatedContactInfo(reply) {
-  const lower = reply.toLowerCase();
-  // Allow known emergency numbers
+  // Kept for back-compat with any caller checking the boolean.
+  return stripFabricatedContactInfo(reply).changed;
+}
+
+/**
+ * Strip non-allowlisted URLs, emails, and phone numbers from the reply.
+ * Returns { reply, changed } — the sanitized text plus a flag so the
+ * validator can record that the strip happened (for monitoring) without
+ * rejecting the whole response.
+ *
+ * Allowlist: pharmaguide.io for URLs/emails; emergency hotlines for
+ * phones (911, 988, Poison Control, SAMHSA, Crisis Textline).
+ */
+function stripFabricatedContactInfo(reply) {
   const ALLOWED_PHONES = ["911", "988", "1-800-222-1222", "1-888-426-4435", "1-855-764-7661", "741741"];
-  // Allow known PharmaGuide URLs and email
   const ALLOWED_DOMAINS = ["pharmaguide.io"];
 
-  // Check for URLs (http/https/www)
-  const urls = reply.match(/https?:\/\/[^\s)]+|www\.[^\s)]+/gi) || [];
-  for (const url of urls) {
-    const isAllowed = ALLOWED_DOMAINS.some(d => url.toLowerCase().includes(d));
-    if (!isAllowed) return true;
+  let changed = false;
+  let out = reply;
+
+  // URLs — replace non-allowlisted with the surrounding text minus the URL.
+  out = out.replace(/https?:\/\/[^\s)]+|www\.[^\s)]+/gi, (match) => {
+    const isAllowed = ALLOWED_DOMAINS.some((d) => match.toLowerCase().includes(d));
+    if (isAllowed) return match;
+    changed = true;
+    return "";
+  });
+
+  // Emails — drop non-allowlisted.
+  out = out.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, (match) => {
+    const isAllowed = ALLOWED_DOMAINS.some((d) => match.toLowerCase().includes(d));
+    if (isAllowed) return match;
+    changed = true;
+    return "";
+  });
+
+  // Phones — drop non-emergency.
+  out = out.replace(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g, (match) => {
+    const digits = match.replace(/\D/g, "");
+    const isAllowed = ALLOWED_PHONES.some((p) => digits === p.replace(/\D/g, "") || digits.endsWith(p.replace(/\D/g, "")));
+    if (isAllowed) return match;
+    changed = true;
+    return "";
+  });
+
+  // Tidy up artifacts from removal (double spaces, "(see )" stubs)
+  if (changed) {
+    out = out
+      .replace(/\(\s*[,;:.]?\s*\)/g, "")
+      .replace(/\[\s*\]/g, "")
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/[ \t]+([,.;:])/g, "$1")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
   }
 
-  // Check for email addresses
-  const emails = reply.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [];
-  for (const email of emails) {
-    const isAllowed = ALLOWED_DOMAINS.some(d => email.toLowerCase().includes(d));
-    if (!isAllowed) return true;
-  }
-
-  // Check for phone numbers (7+ digits, possibly with dashes/parens/spaces)
-  const phones = reply.match(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g) || [];
-  for (const phone of phones) {
-    const digits = phone.replace(/\D/g, "");
-    const isAllowed = ALLOWED_PHONES.some(p => digits === p.replace(/\D/g, "") || digits.endsWith(p.replace(/\D/g, "")));
-    if (!isAllowed) return true;
-  }
-
-  return false;
+  return { reply: out, changed };
 }
 
 // ══════════════════════════════════════════════════
@@ -240,4 +313,11 @@ function lintResponse(reply, source, entities) {
   };
 }
 
-module.exports = { validateResponse, SAFE_FALLBACK_REPLY, lintResponse, PROHIBITED_PHRASES, WORD_COUNT_BANDS };
+module.exports = {
+  validateResponse,
+  SAFE_FALLBACK_REPLY,
+  lintResponse,
+  stripFabricatedContactInfo,
+  PROHIBITED_PHRASES,
+  WORD_COUNT_BANDS,
+};

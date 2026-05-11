@@ -177,9 +177,12 @@ module.exports = async function handler(req, res) {
       }
       const validation = validateResponse(gateReply, triageRoute, entities, null);
       if (!validation.safe) {
-        if (process.env.NODE_ENV === "development") {
-          console.log(`[VALIDATOR] Gate ${triageRoute} failed:`, validation.violations);
-        }
+        // Production-visible so regressions in gate replies are
+        // debuggable from Vercel logs without redeploying.
+        console.warn(
+          `[VALIDATOR] Gate ${triageRoute} rejected:`,
+          (validation.violations || []).map((v) => v.rule)
+        );
         gateReply = validation.fallback;
       }
 
@@ -309,12 +312,31 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // Post-response safety validation
+    // Post-response safety validation. Two outcomes:
+    //   • safe: replace `reply` with the sanitized version (URL strip
+    //     + tidy artifacts) so the user sees a clean answer.
+    //   • unsafe: log the violations (always — not just dev) so we can
+    //     see what's failing in prod logs, then fall back to the
+    //     generic safe reply.
     const llmValidation = validateResponse(reply, "llm", entities, null);
-    if (!llmValidation.safe) {
-      if (process.env.NODE_ENV === "development") {
-        console.log("[VALIDATOR] LLM response failed:", llmValidation.violations);
+    if (llmValidation.safe) {
+      if (llmValidation.sanitizedReply && llmValidation.sanitizedReply !== reply) {
+        reply = llmValidation.sanitizedReply;
       }
+      // Non-blocking violations (e.g. stripped URLs) still get logged.
+      const nonBlocking = (llmValidation.violations || []).filter((v) => v.nonBlocking);
+      if (nonBlocking.length > 0) {
+        console.warn("[VALIDATOR] LLM response sanitized:", nonBlocking.map((v) => v.rule));
+      }
+    } else {
+      // Production-visible: log the rules that fired so regressions
+      // are debuggable from Vercel logs without rebuilding.
+      console.warn(
+        "[VALIDATOR] LLM response rejected:",
+        (llmValidation.violations || []).map((v) => v.rule),
+        "| message:",
+        message.slice(0, 120)
+      );
       reply = llmValidation.fallback;
     }
 
