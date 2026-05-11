@@ -121,6 +121,16 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ reply: businessInquiryReply(message), model: "system:business-inquiry" });
     }
 
+    // ── 3c. Wellness-goal detection (BEFORE off-topic gate) ─────────
+    // First-message wellness queries like "to reduce my stress" or
+    // "how do I lower my cholesterol naturally" must NOT trip the
+    // off-topic gate — they belong in the LLM path with KB grounding.
+    // The detected goals are carried forward to bypass off-topic +
+    // medical-condition-redirect, and to inject goal-specific KB
+    // candidates when the user named a goal but no specific supplement.
+    const wellnessGoals = detection.detectWellnessGoal(message);
+    const hasWellnessIntent = wellnessGoals.length > 0;
+
     // ── 4. Off-topic (first message, intent scorer) ──
     const isCreativeRequest = /\b(write me|write a|compose|create a|make a|generate a|give me a)\b.{0,20}\b(poem|song|story|essay|rap|haiku|limerick|joke|riddle)\b/.test(normalizeText(message));
     if (isCreativeRequest) {
@@ -128,13 +138,14 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ reply: offTopicReply(), model: "system:off-topic" });
     }
     const isMetaQuestion = /\b(you.?re ai|are you ai|how do i know|can i trust|are you accurate|who built|who made|how does this work|what are you|reveal|system prompt|safety rules|previous instructions|prescribing authority|pretend you|act as|you are now|ignore .{0,20}(instruct|safety|rules)|stop follow|answer (yes|no)|without restrict|testing .{0,10}(ai|model|chatbot)|test.*model)\b/.test(normalizeText(message));
-    if (!hasConversation && !isMetaQuestion && detection.intentScore(message) < 2) {
+    if (!hasConversation && !isMetaQuestion && !hasWellnessIntent && detection.intentScore(message) < 2) {
       logGate("system:off-topic", message.length, hasConversation);
       return res.status(200).json({ reply: offTopicReply(), model: "system:off-topic" });
     }
 
     // ── 4b. Medical condition redirect (first message, no supplement/interaction intent) ──
-    if (!hasConversation && detection.isMedicalConditionQuery(message)) {
+    // Wellness-goal queries also bypass — the goal IS the supplement intent.
+    if (!hasConversation && !hasWellnessIntent && detection.isMedicalConditionQuery(message)) {
       logGate("system:medical-condition", message.length, hasConversation);
       return res.status(200).json({ reply: medicalConditionRedirectReply(), model: "system:medical-condition" });
     }
@@ -218,9 +229,22 @@ module.exports = async function handler(req, res) {
     // ── Query complexity scoring ──
     const allEntityNames = [...(entities.meds || []), ...(entities.supplements || [])];
 
-    // Build KB-augmented messages (need kbHits for complexity scoring)
-    const { messages, kbHits } = buildAugmentedMessages(SYSTEM_PROMPT, safeHistory, message, entities);
-    const complexity = scoreComplexity(message, entities, kbHits, convoContext);
+    // Build KB-augmented messages (need kbHits for complexity scoring).
+    // wellnessGoals is passed so goal-only queries ("what can I take
+    // to sleep better") still get grounded KB candidates injected.
+    const { messages, kbHits } = buildAugmentedMessages(
+      SYSTEM_PROMPT,
+      safeHistory,
+      message,
+      entities,
+      { wellnessGoals }
+    );
+    let complexity = scoreComplexity(message, entities, kbHits, convoContext);
+    // Bump complexity for wellness goals — these queries deserve the
+    // more careful generation params (lower temperature, more tokens)
+    // because the answer needs to balance options + safety + provider
+    // referral. Cap at 5.
+    if (hasWellnessIntent) complexity = Math.min(5, complexity + 1);
 
     // ── Topic gap tracking (detect missing coverage for future KB expansion) ──
     const intentScore = detection.intentScore(message);
@@ -229,7 +253,13 @@ module.exports = async function handler(req, res) {
     // Rebuild with complexity-aware context if complex
     let finalMessages = messages;
     if (complexity >= 3) {
-      const rebuilt = buildAugmentedMessages(SYSTEM_PROMPT, safeHistory, message, entities, complexity);
+      const rebuilt = buildAugmentedMessages(
+        SYSTEM_PROMPT,
+        safeHistory,
+        message,
+        entities,
+        { complexity, wellnessGoals }
+      );
       finalMessages = rebuilt.messages;
     }
 

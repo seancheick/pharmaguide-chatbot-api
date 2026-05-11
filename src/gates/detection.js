@@ -388,6 +388,80 @@ function detectsGinkgoBleeding(text) {
   return ginkgo && bleedRisk;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// Wellness-goal detection
+//
+// Detects when a user is asking about a wellness goal (sleep, stress,
+// weight, cholesterol, sexual health, energy, focus, immunity,
+// cardiovascular, joint, hormonal). Runs BEFORE the off-topic gate so
+// these queries never get gated out — they belong in the LLM path
+// with KB grounding. Returns an array of goal category IDs.
+//
+// Categories aim to cover the most-common consumer wellness questions
+// without overfitting. The regexes are intentionally broad on natural
+// phrasings ("can't sleep", "lower my cholesterol naturally") but
+// narrow enough to avoid pulling in unrelated topics.
+// ═══════════════════════════════════════════════════════════════════
+
+const WELLNESS_GOAL_LIST = [
+  "sleep",
+  "stress",
+  "weight",
+  "cholesterol",
+  "sexual_health",
+  "energy",
+  "focus",
+  "immunity",
+  "cardiovascular",
+  "joint",
+  "hormonal",
+];
+
+const WELLNESS_GOAL_PATTERNS = {
+  sleep:
+    /\b(sleep(?:less|y|ing)?|insomnia|fall\s+asleep|stay\s+asleep|cant\s+sleep|can't\s+sleep|trouble\s+sleeping|night\s+wake(?:ning|s|up)?|wind\s+down|knock\s+me\s+out|melatonin|rem|deep\s+sleep)\b/,
+  stress:
+    /\b(stress(?:ed|ful)?|anxiety|anxious|calm(?:ing)?|relax(?:ation|ing)?|nervous|tense|tension|on\s+edge|overwhelm(?:ed|ing)?|cortisol|adaptogen|chill\s+out|frazzled)\b/,
+  weight:
+    /\b(weight\s+loss|lose\s+weight|losing\s+weight|fat\s+loss|burn\s+fat|appetite|appetite\s+suppress|metabolism|metabolic|slim(?:ming)?|leaner|reduce\s+belly|trim\s+down|fat\s+burner)\b/,
+  cholesterol:
+    /\b(cholesterol|ldl|hdl|triglyceride|lipid\s+panel|lipid\s+profile|red\s+yeast|statin\s+alternative|plaque|lower\s+my\s+cholesterol|cholesterol\s+naturally)\b/,
+  sexual_health:
+    /\b(libido|sex\s+drive|sexual\s+(?:performance|function|health)|erection|erectile|ed\b|impotence|stamina(?:\s+in\s+bed)?|fertility|sperm\s+(?:count|quality)|testosterone|low\s+t\b|virility|aphrodisiac|perform(?:\s+better)?\s+(?:sexually|in\s+bed)|bedroom|premature)\b/,
+  energy:
+    /\b(energy(?:\s+levels?)?|fatigue|tired(?:ness)?|exhausted|exhaustion|stamina|endurance|low\s+energy|drained|wake\s+up\s+tired|afternoon\s+slump|burnout)\b/,
+  focus:
+    /\b(focus|concentration|memory|cognition|cognitive|brain\s+fog|brainfog|mental\s+clarity|attention|sharpness|sharp|nootropic|productivity\s+supplement|adhd\s+(?:focus|support))\b/,
+  immunity:
+    /\b(immune(?:\s+system)?|immunity|cold(?:s)?\b|flu\b|getting\s+sick|prevent\s+(?:colds|sickness|illness)|virus|antibody|fight\s+off|stay\s+healthy)\b/,
+  cardiovascular:
+    /\b(blood\s+pressure|hypertension|heart\s+health|cardiovascular|circulation|blood\s+flow|arterial|endothelial|cardiac\s+support|vascular)\b/,
+  joint:
+    /\b(joint(?:\s+pain|s|\s+health)?|arthritis|osteoarthritis|inflammation|inflammatory|cartilage|knee\s+pain|hip\s+pain|stiff\s+joints|achy\s+joints)\b/,
+  hormonal:
+    /\b(hormonal?|hormone\s+balance|menopause|perimenopause|pms|menstrual|cycle\s+(?:regul|support)|estrogen|progesterone|hot\s+flashes|night\s+sweats)\b/,
+};
+
+/**
+ * Detect wellness-goal intent in a user message.
+ * Returns an array of category IDs from WELLNESS_GOAL_LIST. Empty
+ * array means no wellness intent detected.
+ *
+ * Order of categories in the returned array follows WELLNESS_GOAL_LIST
+ * (declared above) so downstream consumers can rely on stable order.
+ */
+function detectWellnessGoal(text) {
+  if (!text || typeof text !== "string") return [];
+  const t = normalizeText(text);
+  const hits = [];
+  for (const goal of WELLNESS_GOAL_LIST) {
+    if (WELLNESS_GOAL_PATTERNS[goal].test(t)) {
+      hits.push(goal);
+    }
+  }
+  return hits;
+}
+
 module.exports = {
   isEmergency,
   isGreeting,
@@ -440,4 +514,7 @@ module.exports = {
   isCreatorQuestion,
   isPetQuestion,
   isBusinessInquiry,
+  detectWellnessGoal,
+  WELLNESS_GOAL_LIST,
+  WELLNESS_GOAL_PATTERNS,
 };

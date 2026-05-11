@@ -9,6 +9,7 @@
  */
 
 const { getKBEntriesForEntities } = require("../config/knowledgeBase");
+const { getCandidatesForGoals } = require("./wellnessGoalMap");
 
 /**
  * Build a KB context string for LLM injection.
@@ -152,15 +153,58 @@ function findCrossInteractions(entries, allNames) {
 
 /**
  * Build the full LLM messages array with KB context injected.
- * @param {string} systemPrompt - base system prompt
- * @param {object[]} safeHistory - sanitized conversation history
- * @param {string} userMessage - current user message
- * @param {object} entities - from extractEntities()
- * @param {number} complexity - query complexity score (1-5)
- * @returns {{ messages: object[], kbHits: number }}
+ *
+ * @param {string}   systemPrompt - base system prompt
+ * @param {object[]} safeHistory  - sanitized conversation history
+ * @param {string}   userMessage  - current user message
+ * @param {object}   entities     - from extractEntities()
+ * @param {number|object} opts    - either a numeric complexity (1-5)
+ *   for back-compat with existing callers, OR an options object:
+ *   { complexity?: number, wellnessGoals?: string[] }
+ *
+ * When `wellnessGoals` is provided AND the entity-based KB lookup
+ * returns zero entries, the function falls back to the goal→candidates
+ * map and injects the top-ranked KB entries for those candidates.
+ * This is what gives goal-only queries ("what can I take to sleep
+ * better") their grounding instead of leaving the LLM to wing it.
+ *
+ * @returns {{ messages: object[], kbHits: number, source?: string }}
  */
-function buildAugmentedMessages(systemPrompt, safeHistory, userMessage, entities, complexity = 2) {
-  const { context, hits } = buildKBContext(entities, complexity);
+function buildAugmentedMessages(systemPrompt, safeHistory, userMessage, entities, opts) {
+  // Back-compat: opts can be a numeric complexity for legacy callers.
+  const optsObj =
+    typeof opts === "number" || opts == null
+      ? { complexity: typeof opts === "number" ? opts : 2 }
+      : opts;
+  const complexity = typeof optsObj.complexity === "number" ? optsObj.complexity : 2;
+  const wellnessGoals = Array.isArray(optsObj.wellnessGoals) ? optsObj.wellnessGoals : [];
+
+  // Primary KB lookup driven by extracted entities.
+  let { context, hits } = buildKBContext(entities, complexity);
+  let source = hits > 0 ? "entities" : null;
+
+  // Fallback: goal-only queries (no specific supplement named).
+  // Synthesize a candidate-entities object and look up the goal's
+  // top-ranked supplements in the KB.
+  if (hits === 0 && wellnessGoals.length > 0) {
+    const candidates = getCandidatesForGoals(wellnessGoals);
+    if (candidates.length > 0) {
+      const synthEntities = {
+        meds: [],
+        supplements: candidates,
+        populations: entities && entities.populations ? entities.populations : [],
+      };
+      const goalCtx = buildKBContext(synthEntities, complexity);
+      if (goalCtx.hits > 0) {
+        // Prepend a hint so the LLM knows these were goal-derived
+        // candidates rather than items the user explicitly named.
+        const header = `WELLNESS GOAL CANDIDATES (user asked about: ${wellnessGoals.join(", ")}). Use this evidence base to discuss options, do not assume the user is already taking any of these. Always advise consulting a healthcare provider, especially if they take prescription medications.\n\n`;
+        context = header + goalCtx.context;
+        hits = goalCtx.hits;
+        source = "wellness-goals";
+      }
+    }
+  }
 
   const messages = [
     { role: "system", content: systemPrompt },
@@ -177,7 +221,7 @@ function buildAugmentedMessages(systemPrompt, safeHistory, userMessage, entities
   // Add user message
   messages.push({ role: "user", content: userMessage.trim() });
 
-  return { messages, kbHits: hits };
+  return { messages, kbHits: hits, source };
 }
 
 module.exports = { buildKBContext, buildAugmentedMessages, findCrossInteractions };

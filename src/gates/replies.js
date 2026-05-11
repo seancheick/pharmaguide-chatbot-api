@@ -756,7 +756,34 @@ function ginkgoBleedingReply() {
   ].join("\n");
 }
 
+// ── Vasodilator + PDE5/nitrate contraindication ────────────────────
+// Highest-stakes interaction in the wellness-question battery. PDE5
+// inhibitors + nitrates + L-arginine/L-citrulline all share the same
+// vasodilation pathway — combining them risks severe hypotension and
+// syncope. The reply gives the absolute "do not combine" message,
+// names a provider/pharmacist as the right resource, and surfaces the
+// 911 / Poison Control numbers for symptomatic users.
+
+function nitrateVasodilatorReply() {
+  return [
+    "**🔴 This combination can cause severe low blood pressure.**",
+    "",
+    "**L-arginine and L-citrulline both increase nitric oxide**, the same vasodilation pathway used by:",
+    "• **PDE5 inhibitors** — sildenafil (Viagra), tadalafil (Cialis), vardenafil (Levitra), avanafil (Stendra)",
+    "• **Nitrates** — nitroglycerin, isosorbide mononitrate, isosorbide dinitrate",
+    "",
+    "Stacking these can cause fainting, severe drops in blood pressure, and is **contraindicated** without close clinician supervision.",
+    "",
+    "**What to do:**",
+    "• Do not combine these on your own. Talk to your prescriber or pharmacist FIRST — they can verify whether your specific dose and timing is safe.",
+    "• If you have already taken the combination and feel dizzy, lightheaded, faint, or notice chest pain, **call 911 or Poison Control (1-800-222-1222) immediately**.",
+    "",
+    "Want to tell me which medication you're on so I can be more specific about what's safer?",
+  ].join("\n");
+}
+
 const ROUTE_REPLY_MAP = {
+  "system:nitrate-vasodilator": function() { return nitrateVasodilatorReply(); },
   "system:ssri-discontinuation": function(convoContext) { return ssriDiscontinuationReply(); },
   "system:serotonin-urgent": function() { return serotonergicUrgentReply(); },
   "system:serotonin-risk": function(convoContext) { return serotonergicWarningReply(convoContext); },
@@ -839,5 +866,6 @@ module.exports = {
   statinMyopathyReply,
   benzoAlcoholReply,
   ginkgoBleedingReply,
+  nitrateVasodilatorReply,
   ROUTE_REPLY_MAP,
 };

@@ -7,9 +7,18 @@ const ENTITY_PATTERNS = {
   benzodiazepines: /\b(alprazolam|xanax|clonazepam|klonopin|lorazepam|ativan|diazepam|valium|temazepam|restoril|oxazepam|chlordiazepoxide|librium|midazolam)\b/g,
   betaBlockers: /\b(metoprolol|atenolol|propranolol|carvedilol|bisoprolol|nadolol|nebivolol|sotalol|labetalol|lopressor|tenormin|inderal|coreg)\b/g,
   minerals: /\b(magnesium|iron|zinc|calcium|vitamin\s*d|vitamin\s*c|vitamin\s*a|vitamin\s*e|vitamin\s*k|b12|b6|folate|folic\s*acid|biotin|iodine|potassium|selenium|copper|chromium|manganese)\b/g,
-  supplements: /\b(ashwagandha|rhodiola|l.?theanine|gaba|valerian|melatonin|5[\s-]?htp|st\.?\s*john|ginseng|maca|turmeric|curcumin|fish oil|omega|creatine|nac|coq10|glutathione|echinacea|kava|berberine|inositol|phenylpiracetam|alpha.?gpc|ginkgo|garlic|quercetin|resveratrol|elderberry|saw palmetto|milk thistle|d.?mannose|probiotics?|collagen|cbd|glucosamine|chondroitin|boric acid|cranberry|l.?carnitine|l.?arginine|fenugreek|tribulus|tongkat ali|dim|vitex|black cohosh|evening primrose|myo.?inositol|stinging nettle|nettle leaf|bromelain|butterbur|spirulina|bee pollen|local honey|lion.?s?\s*mane|apple cider vinegar|acv|electrolytes?|whey protein|protein powder|activated charcoal)\b/g,
+  // Bare-token forms like "arginine" or "citrulline" must match too,
+  // not only the "l-arginine" / "l-citrulline" prefixed forms — the
+  // `(?:l.?)?` is optional so both spellings hit. Same for citrulline.
+  supplements: /\b(ashwagandha|rhodiola|l.?theanine|gaba|valerian|melatonin|glycine|5[\s-]?htp|st\.?\s*john|ginseng|maca|turmeric|curcumin|fish oil|omega|creatine|nac|coq10|glutathione|echinacea|kava|berberine|inositol|phenylpiracetam|alpha.?gpc|ginkgo|garlic|quercetin|resveratrol|elderberry|saw palmetto|milk thistle|d.?mannose|probiotics?|collagen|cbd|glucosamine|chondroitin|boric acid|cranberry|l.?carnitine|(?:l.?)?arginine|(?:l.?)?citrulline|citrulline malate|fenugreek|tribulus|tongkat ali|dim|vitex|black cohosh|evening primrose|myo.?inositol|stinging nettle|nettle leaf|bromelain|butterbur|spirulina|bee pollen|local honey|lion.?s?\s*mane|apple cider vinegar|acv|electrolytes?|whey protein|protein powder|activated charcoal|psyllium|psyllium husk|metamucil|glucomannan|konjac|red yeast rice|red rice yeast|ryr|monacolin|plant sterols?|phytosterols?|beta.?sitosterol|b.?complex|b.?vitamins)\b/g,
   antihistamines: /\b(cetirizine|zyrtec|loratadine|claritin|fexofenadine|allegra|diphenhydramine|benadryl|levocetirizine|xyzal|hydroxyzine|desloratadine|clarinex|chlorpheniramine|antihistamine)\b/g,
   medications: /\b(warfarin|coumadin|eliquis|apixaban|xarelto|rivaroxaban|pradaxa|dabigatran|lisinopril|enalapril|ramipril|quinapril|benazepril|metformin|levothyroxine|synthroid|armour thyroid|atorvastatin|lipitor|simvastatin|zocor|rosuvastatin|crestor|pravastatin|lovastatin|metoprolol|propranolol|gabapentin|neurontin|pregabalin|lyrica|losartan|valsartan|irbesartan|olmesartan|amlodipine|omeprazole|prilosec|pantoprazole|protonix|esomeprazole|nexium|lansoprazole|prevacid|famotidine|pepcid|prednisone|prednisolone|aspirin|clopidogrel|plavix|spironolactone|isotretinoin|accutane|ibuprofen|advil|motrin|naproxen|aleve|diclofenac|celecoxib|celebrex|meloxicam|acetaminophen|tylenol|indomethacin|ketorolac|hydrochlorothiazide|hctz|furosemide|lasix|chlorthalidone|tramadol|cyclobenzaprine|amiodarone|digoxin|diltiazem|verapamil|birth control|oral contraceptive|finasteride|propecia|proscar|tamsulosin|flomax|doxycycline|amoxicillin|azithromycin|ciprofloxacin|fluconazole|metronidazole)\b/g,
+  // PDE5 inhibitors — vasodilators used for ED. Combining with
+  // L-arginine/L-citrulline or any nitrate can cause severe hypotension.
+  pde5Inhibitors: /\b(sildenafil|viagra|tadalafil|cialis|vardenafil|levitra|staxyn|avanafil|stendra|revatio|adcirca)\b/g,
+  // Nitrates — vasodilators for angina / heart failure. Same severe
+  // hypotension risk when combined with PDE5 inhibitors or arginine.
+  nitrates: /\b(nitroglycerin|nitro|nitrostat|nitromist|nitrolingual|nitroquick|nitrodur|nitro.?dur|nitrobid|isosorbide|isosorbide\s+mononitrate|isosorbide\s+dinitrate|imdur|isordil|ismo|monoket|dilatrate)\b/g,
 };
 
 function extractKnownItems(text) {
@@ -28,12 +37,18 @@ function extractEntities(text, convoContext) {
   const ctx = convoContext || t;
   const detection = require("../gates/detection");
 
-  // Meds: antidepressants + stimulantMeds + benzodiazepines + betaBlockers + antihistamines + medications patterns
+  // Meds: antidepressants + stimulantMeds + benzodiazepines + betaBlockers + antihistamines + medications + PDE5/nitrates
   const meds = new Set();
-  for (const key of ["antidepressants", "stimulantMeds", "benzodiazepines", "betaBlockers", "antihistamines", "medications"]) {
+  const pde5Hits = new Set();
+  const nitrateHits = new Set();
+  for (const key of ["antidepressants", "stimulantMeds", "benzodiazepines", "betaBlockers", "antihistamines", "medications", "pde5Inhibitors", "nitrates"]) {
     const p = new RegExp(ENTITY_PATTERNS[key].source, "g");
     let m;
-    while ((m = p.exec(ctx)) !== null) meds.add(m[0]);
+    while ((m = p.exec(ctx)) !== null) {
+      meds.add(m[0]);
+      if (key === "pde5Inhibitors") pde5Hits.add(m[0]);
+      if (key === "nitrates") nitrateHits.add(m[0]);
+    }
   }
 
   // Supplements: minerals + supplements patterns
@@ -68,6 +83,12 @@ function extractEntities(text, convoContext) {
   const unknowns = [];
   if (detection.needsMedicationClarifier(text)) unknowns.push("unidentified_item");
 
+  // Drug-class tags so downstream router can fan out without
+  // re-running the regex set.
+  const drug_classes = [];
+  if (pde5Hits.size > 0) drug_classes.push("pde5_inhibitor");
+  if (nitrateHits.size > 0) drug_classes.push("nitrate");
+
   return {
     meds: [...meds],
     supplements: [...supplements],
@@ -75,6 +96,7 @@ function extractEntities(text, convoContext) {
     symptoms,
     intents,
     unknowns,
+    drug_classes,
   };
 }
 

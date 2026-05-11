@@ -7,6 +7,8 @@
  */
 
 const { runAllChecks, hashGoldenTraces } = require("../src/infra/releaseGuard");
+const { spawnSync } = require("node:child_process");
+const path = require("node:path");
 
 // Parse optional --date flag
 let asOfDate = new Date().toISOString();
@@ -40,6 +42,43 @@ console.log(`  Result: ${passed}/${total} passed, ${failed} failed`);
 if (failed > 0) {
   console.log("\n  ⚠  Release blocked — fix issues above before deploying.");
   process.exit(1);
-} else {
-  console.log("\n  Release checks passed.");
 }
+
+// ── Unit-test suite ─────────────────────────────────────────────
+// Release guard runs golden-trace + metadata checks above. Now run
+// the deterministic unit-test suite for routing, KB injection,
+// validator, and the wellness-query battery. Any test failure
+// blocks release.
+//
+// llm-behavior.test.js is INTENTIONALLY excluded — it makes live
+// LLM calls and is non-deterministic at this layer (rate limits,
+// model variance). It can be run separately via
+//   node --test test/llm-behavior.test.js
+// against a freshly-keyed provider as an integration check.
+console.log("");
+console.log("  Running deterministic unit-test suite...");
+console.log("");
+const testRoot = path.join(__dirname, "..", "test");
+const fs = require("node:fs");
+const SKIP_TESTS = new Set([
+  // Live LLM integration — depends on rate-limit budget + valid key.
+  // Run it manually with `node --test test/llm-behavior.test.js`
+  // before promoting big LLM-behavioral changes.
+  "llm-behavior.test.js",
+]);
+const testFiles = fs
+  .readdirSync(testRoot)
+  .filter((f) => f.endsWith(".test.js") && !SKIP_TESTS.has(f))
+  .map((f) => path.join(testRoot, f));
+
+const testRun = spawnSync(
+  process.execPath,
+  ["--test", ...testFiles],
+  { stdio: "inherit" }
+);
+if (testRun.status !== 0) {
+  console.log("\n  ⚠  Release blocked — unit-test suite failed.");
+  process.exit(1);
+}
+
+console.log("\n  Release checks passed.");

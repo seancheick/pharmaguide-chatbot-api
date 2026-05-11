@@ -1510,6 +1510,183 @@ const KNOWLEDGE_BASE = {
     common_goals: ["focus", "memory", "cognitive function", "nootropic", "athletic power output"],
     reference_ids: [],
   },
+
+  // ─────────────────────────────────────────────────────────────────
+  // Wellness-goal coverage additions
+  // Filling gaps for sleep (glycine), cholesterol (psyllium, red yeast
+  // rice, plant sterols), weight (glucomannan), sexual/cardiovascular
+  // (l-arginine, l-citrulline), and energy (b-complex). Each follows
+  // the schema above. Interactions emphasize the highest-stakes
+  // combos (e.g., red yeast rice ≈ statin, l-arginine + nitrates =
+  // contraindicated). Cohorts of overlap with prescribed drugs are
+  // surfaced explicitly so the LLM grounds in evidence.
+  // ─────────────────────────────────────────────────────────────────
+
+  glycine: {
+    canonical: "glycine",
+    aliases: ["glycine powder", "amino acid glycine"],
+    category: "supplement",
+    adult_dose_range: { min: 1000, max: 3000, unit: "mg before bed" },
+    upper_limit: { value: null, unit: "no established UL", source: "Evidence from sleep trials" },
+    timing: { best_time: "30-60 min before bed", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient supplementation data. Discuss with provider." },
+      renal: { safe: true, notes: "Endogenous amino acid; no known concerns at typical doses." },
+      elderly: { safe: true, notes: "Often well tolerated for sleep onset." },
+    },
+    interactions: [
+      { with: "clozapine", severity: "moderate", mechanism: "May reduce clozapine effectiveness in some studies.", timing_fix: null },
+    ],
+    common_goals: ["sleep onset", "sleep quality", "core body temperature regulation"],
+    reference_ids: [],
+  },
+
+  psyllium: {
+    canonical: "psyllium",
+    aliases: ["psyllium husk", "metamucil", "isabgol", "plantago ovata"],
+    category: "supplement",
+    adult_dose_range: { min: 5, max: 15, unit: "g/day soluble fiber" },
+    upper_limit: { value: null, unit: "no established UL", source: "Tolerability-limited (bloat/gas)" },
+    timing: { best_time: "with meals, plenty of water", with_food: true, separate_from: ["medications (2h)"] },
+    populations: {
+      pregnancy: { safe: true, notes: "Generally regarded as safe; bulk-forming, not absorbed systemically." },
+      renal: { safe: true, notes: "Monitor fluid balance; psyllium needs adequate water." },
+      elderly: { safe: true, notes: "Take with full glass of water to avoid esophageal obstruction." },
+    },
+    interactions: [
+      { with: "oral medications (all)", severity: "moderate", mechanism: "Soluble fiber can reduce absorption. Separate dosing by 2 hours.", timing_fix: "2-hour separation from any oral medication" },
+      { with: "warfarin", severity: "moderate", mechanism: "May reduce warfarin absorption. Maintain consistent fiber intake.", timing_fix: "2-hour separation" },
+      { with: "levothyroxine", severity: "moderate", mechanism: "Reduced thyroid hormone absorption.", timing_fix: "4-hour separation" },
+    ],
+    common_goals: ["cholesterol (LDL reduction)", "weight (satiety)", "constipation", "blood sugar control", "soluble fiber"],
+    reference_ids: [],
+  },
+
+  "red yeast rice": {
+    canonical: "red yeast rice",
+    aliases: ["ryr", "monascus purpureus", "monacolin k", "red rice yeast"],
+    category: "supplement",
+    adult_dose_range: { min: 1200, max: 2400, unit: "mg/day (standardized to monacolin K)" },
+    upper_limit: { value: null, unit: "monacolin K content varies wildly between brands", source: "FDA flagged inconsistent labeling" },
+    timing: { best_time: "evening (cholesterol biosynthesis peaks at night)", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Avoid. Statin-like compound (monacolin K = lovastatin). Teratogenic risk." },
+      renal: { safe: true, notes: "Monitor as you would for a statin." },
+      elderly: { safe: true, notes: "Same myopathy/liver-enzyme considerations as statins." },
+    },
+    interactions: [
+      { with: "statins (atorvastatin, simvastatin, rosuvastatin, etc.)", severity: "high", mechanism: "Monacolin K is chemically identical to lovastatin. NEVER combine — additive myopathy + rhabdomyolysis risk.", timing_fix: null },
+      { with: "fibrates (gemfibrozil, fenofibrate)", severity: "high", mechanism: "Additive myopathy risk.", timing_fix: null },
+      { with: "grapefruit juice", severity: "moderate", mechanism: "CYP3A4 inhibition raises monacolin K levels.", timing_fix: null },
+      { with: "CoQ10", severity: "beneficial", mechanism: "Like statins, RYR may deplete CoQ10. Supplementation often recommended.", timing_fix: null },
+    ],
+    common_goals: ["cholesterol (LDL reduction)", "statin alternative (NOT a replacement without clinician)"],
+    reference_ids: [],
+  },
+
+  "l-arginine": {
+    canonical: "l-arginine",
+    aliases: ["arginine", "l arginine"],
+    category: "supplement",
+    adult_dose_range: { min: 2000, max: 6000, unit: "mg/day" },
+    upper_limit: { value: null, unit: "GI tolerance often limiting > 9 g", source: "Tolerability-limited" },
+    timing: { best_time: "split doses, often pre-exercise", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Limited safety data at supplement doses. Discuss with provider." },
+      renal: { safe: false, notes: "Caution in renal impairment — nitrogen handling." },
+      elderly: { safe: true, notes: "Watch BP if on antihypertensives." },
+    },
+    interactions: [
+      { with: "sildenafil (Viagra), tadalafil (Cialis), vardenafil, avanafil", severity: "high", mechanism: "Additive vasodilation. Risk of severe hypotension and syncope. CONTRAINDICATED without clinician supervision.", timing_fix: null },
+      { with: "nitrates (nitroglycerin, isosorbide)", severity: "high", mechanism: "Additive vasodilation. Risk of severe hypotension. CONTRAINDICATED.", timing_fix: null },
+      { with: "antihypertensives (ACE-i, ARBs, beta blockers, diuretics)", severity: "moderate", mechanism: "Additive BP lowering. Monitor and report dizziness.", timing_fix: null },
+      { with: "anticoagulants (warfarin, eliquis)", severity: "moderate", mechanism: "Possible additive antiplatelet activity at high doses.", timing_fix: null },
+    ],
+    common_goals: ["sexual health (ED support)", "circulation", "exercise performance", "nitric oxide / blood flow"],
+    reference_ids: [],
+  },
+
+  "l-citrulline": {
+    canonical: "l-citrulline",
+    aliases: ["citrulline", "citrulline malate", "l citrulline"],
+    category: "supplement",
+    adult_dose_range: { min: 3000, max: 8000, unit: "mg/day (often 6-8 g pre-exercise)" },
+    upper_limit: { value: null, unit: "GI tolerance often limiting > 10 g", source: "Tolerability-limited" },
+    timing: { best_time: "30-60 min pre-exercise or split daily", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient supplementation data. Discuss with provider." },
+      renal: { safe: false, notes: "Caution in renal impairment." },
+      elderly: { safe: true, notes: "Watch BP if on antihypertensives." },
+    },
+    interactions: [
+      { with: "sildenafil (Viagra), tadalafil (Cialis), vardenafil, avanafil", severity: "high", mechanism: "Citrulline converts to arginine then to nitric oxide. Additive vasodilation with PDE5 inhibitors. Risk of severe hypotension. CONTRAINDICATED without clinician.", timing_fix: null },
+      { with: "nitrates (nitroglycerin, isosorbide)", severity: "high", mechanism: "Additive vasodilation. Risk of severe hypotension. CONTRAINDICATED.", timing_fix: null },
+      { with: "antihypertensives (ACE-i, ARBs, beta blockers)", severity: "moderate", mechanism: "Additive BP lowering. Monitor.", timing_fix: null },
+    ],
+    common_goals: ["sexual health (ED support)", "exercise performance", "blood flow / nitric oxide"],
+    reference_ids: [],
+  },
+
+  glucomannan: {
+    canonical: "glucomannan",
+    aliases: ["konjac fiber", "konjac root", "amorphophallus konjac"],
+    category: "supplement",
+    adult_dose_range: { min: 1000, max: 3000, unit: "mg before meals" },
+    upper_limit: { value: null, unit: "no established UL; GI / esophageal obstruction risk if not enough water", source: "Tolerability-limited" },
+    timing: { best_time: "15-30 min before meals with FULL glass of water", with_food: false, separate_from: ["oral medications (1-2h)"] },
+    populations: {
+      pregnancy: { safe: true, notes: "Bulk-forming fiber; generally safe but use minimum effective dose." },
+      renal: { safe: true, notes: "Maintain adequate fluid intake." },
+      elderly: { safe: true, notes: "ESOPHAGEAL OBSTRUCTION RISK if not taken with enough water — especially in dysphagia." },
+    },
+    interactions: [
+      { with: "oral medications (all)", severity: "moderate", mechanism: "Reduced absorption. Separate by 1-2 hours.", timing_fix: "1-2 hour separation" },
+      { with: "diabetes medications (metformin, sulfonylureas, insulin)", severity: "moderate", mechanism: "Additive blood-sugar lowering. Monitor.", timing_fix: null },
+    ],
+    common_goals: ["weight loss (satiety)", "cholesterol (LDL reduction)", "blood sugar control"],
+    reference_ids: [],
+  },
+
+  "plant sterols": {
+    canonical: "plant sterols",
+    aliases: ["phytosterols", "beta-sitosterol", "plant stanols", "phytostanols"],
+    category: "supplement",
+    adult_dose_range: { min: 1500, max: 3000, unit: "mg/day with meals" },
+    upper_limit: { value: null, unit: "diminishing returns > 3 g/day", source: "EFSA / FDA guidance" },
+    timing: { best_time: "with main meals (split AM/PM)", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "Naturally occurring in food. Supplemental doses generally acceptable; discuss with provider." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Established LDL-lowering effect." },
+    },
+    interactions: [
+      { with: "ezetimibe", severity: "moderate", mechanism: "Both inhibit cholesterol absorption; ezetimibe may reduce sterol effect.", timing_fix: null },
+      { with: "fat-soluble vitamins (A, D, E, K, beta-carotene)", severity: "low", mechanism: "Modestly reduced absorption with chronic high-dose phytosterols.", timing_fix: null },
+    ],
+    common_goals: ["cholesterol (LDL reduction)", "cardiovascular support"],
+    reference_ids: [],
+  },
+
+  "b-complex": {
+    canonical: "b-complex",
+    aliases: ["b complex", "vitamin b complex", "b-vitamins", "b vitamins"],
+    category: "supplement",
+    adult_dose_range: { min: 1, max: 1, unit: "1 dose/day of a standard B-complex" },
+    upper_limit: { value: null, unit: "individual B-vitamin ULs apply (B6 is the limiting factor at ~100 mg/day)", source: "NIH ODS" },
+    timing: { best_time: "morning with food (B12 can be energizing)", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "Most B-complex doses are safe; prenatals provide adequate amounts." },
+      renal: { safe: true, notes: "Water-soluble; excess is excreted." },
+      elderly: { safe: true, notes: "B12 absorption declines with age; supplementation often advised especially on metformin or PPIs." },
+    },
+    interactions: [
+      { with: "levodopa", severity: "moderate", mechanism: "B6 (pyridoxine) at high dose can reduce levodopa effectiveness if carbidopa not co-administered.", timing_fix: null },
+      { with: "metformin", severity: "beneficial", mechanism: "Metformin depletes B12; supplementation often advised.", timing_fix: null },
+      { with: "PPIs / acid blockers", severity: "beneficial", mechanism: "Chronic acid suppression reduces B12 absorption.", timing_fix: null },
+    ],
+    common_goals: ["energy", "fatigue support", "homocysteine support", "metabolism cofactors"],
+    reference_ids: [],
+  },
 };
 
 // ── Lookup functions ──
