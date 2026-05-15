@@ -1687,6 +1687,147 @@ const KNOWLEDGE_BASE = {
     common_goals: ["energy", "fatigue support", "homocysteine support", "metabolism cofactors"],
     reference_ids: [],
   },
+
+  // ── GLP-1 Medications (Ozempic, Mounjaro, etc.) ──
+
+  semaglutide: {
+    canonical: "semaglutide",
+    aliases: ["ozempic", "wegovy", "rybelsus"],
+    category: "medication",
+    adult_dose_range: { min: 0.25, max: 2.4, unit: "mg/week (injection) or 3-14 mg/day (oral)" },
+    timing: { best_time: "same day each week (injection); 30 min before first food (oral)", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Contraindicated. Stop 2 months before planned conception. Animal studies show fetal harm." },
+      renal: { safe: true, notes: "No dose adjustment needed. Monitor hydration — GI side effects can cause dehydration." },
+      elderly: { safe: true, notes: "Safe. Start low, titrate slowly. Monitor for dehydration and muscle loss." },
+    },
+    interactions: [
+      { with: "insulin/sulfonylureas", severity: "high", mechanism: "Additive hypoglycemia risk. Insulin dose often needs reduction when starting GLP-1.", timing_fix: null },
+      { with: "oral medications (all)", severity: "moderate", mechanism: "GLP-1s slow gastric emptying — oral meds may be absorbed differently. Levothyroxine, birth control, and other timing-sensitive meds should be monitored.", timing_fix: "Take critical oral meds 1h before or 2h after eating" },
+      { with: "supplements with GI side effects", severity: "moderate", mechanism: "Iron, magnesium oxide, and other GI-irritating supplements may worsen nausea. Use gentler forms (bisglycinate, citrate).", timing_fix: null },
+    ],
+    common_goals: ["weight loss", "diabetes management", "appetite control", "metabolic health"],
+    reference_ids: [],
+  },
+
+  tirzepatide: {
+    canonical: "tirzepatide",
+    aliases: ["mounjaro", "zepbound"],
+    category: "medication",
+    adult_dose_range: { min: 2.5, max: 15, unit: "mg/week (injection)" },
+    timing: { best_time: "same day each week", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Contraindicated. Stop 2 months before planned conception." },
+      renal: { safe: true, notes: "No dose adjustment. Monitor hydration." },
+      elderly: { safe: true, notes: "Safe. Same GI precautions as semaglutide." },
+    },
+    interactions: [
+      { with: "insulin/sulfonylureas", severity: "high", mechanism: "Additive hypoglycemia risk. Insulin dose reduction typically needed.", timing_fix: null },
+      { with: "oral medications", severity: "moderate", mechanism: "Dual GIP/GLP-1 agonist slows gastric emptying more than GLP-1 alone. Monitor absorption of oral meds.", timing_fix: null },
+    ],
+    common_goals: ["weight loss", "diabetes management", "appetite control"],
+    reference_ids: [],
+  },
+
+  // ── Trending Supplements (2025-2026) ──
+
+  shilajit: {
+    canonical: "shilajit",
+    aliases: ["shilajit resin", "mumijo", "mineral pitch"],
+    category: "supplement",
+    adult_dose_range: { min: 250, max: 500, unit: "mg/day (purified resin or extract)" },
+    timing: { best_time: "morning with food", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient safety data. Contains heavy metals if unpurified. Avoid." },
+      renal: { safe: true, notes: "Limited data in CKD. Contains minerals — use caution." },
+      elderly: { safe: true, notes: "Traditional use for energy and cognitive support. Use purified forms only." },
+    },
+    interactions: [
+      { with: "blood pressure medications", severity: "moderate", mechanism: "May lower blood pressure. Monitor for additive hypotension.", timing_fix: null },
+      { with: "diabetes medications", severity: "moderate", mechanism: "May lower blood sugar. Monitor glucose.", timing_fix: null },
+      { with: "iron supplements", severity: "moderate", mechanism: "Shilajit contains fulvic acid which enhances iron absorption. May increase iron levels.", timing_fix: null },
+    ],
+    common_goals: ["energy", "testosterone", "anti-aging", "cognitive function", "stamina"],
+    reference_ids: [],
+  },
+
+  "sea moss": {
+    canonical: "sea moss",
+    aliases: ["irish moss", "sea moss gel", "chondrus crispus"],
+    category: "supplement",
+    adult_dose_range: { min: 1, max: 2, unit: "tablespoons gel/day (or 500-1000 mg capsule)" },
+    timing: { best_time: "any time", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "High and variable iodine content. Excess iodine is dangerous in pregnancy. Avoid." },
+      renal: { safe: true, notes: "Contains potassium. Caution if on potassium restrictions." },
+      elderly: { safe: true, notes: "Iodine content varies wildly by product. Monitor thyroid function." },
+    },
+    interactions: [
+      { with: "thyroid medications", severity: "high", mechanism: "Contains high/variable iodine. Can destabilize thyroid levels in Hashimoto's or Graves'. Can interfere with levothyroxine dosing.", timing_fix: null },
+      { with: "blood thinners", severity: "moderate", mechanism: "Contains vitamin K and may have anticoagulant properties. Monitor INR.", timing_fix: null },
+      { with: "potassium-sparing diuretics / ACE inhibitors", severity: "moderate", mechanism: "Sea moss contains potassium. Risk of hyperkalemia.", timing_fix: null },
+    ],
+    common_goals: ["thyroid support", "immune", "skin", "gut health", "mineral supplementation"],
+    reference_ids: [],
+  },
+
+  "tart cherry": {
+    canonical: "tart cherry",
+    aliases: ["tart cherry juice", "tart cherry extract", "montmorency cherry"],
+    category: "supplement",
+    adult_dose_range: { min: 480, max: 960, unit: "mg extract/day (or 8-16 oz juice)" },
+    timing: { best_time: "evening (for sleep) or post-workout (for recovery)", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "Tart cherry juice in food amounts is safe. Supplement doses: limited data." },
+      renal: { safe: true, notes: "Contains potassium and oxalates. Moderate intake if kidney stone history." },
+      elderly: { safe: true, notes: "Good for sleep and joint inflammation. Well tolerated." },
+    },
+    interactions: [
+      { with: "blood thinners", severity: "moderate", mechanism: "Contains salicylates (aspirin-like compounds). May have mild antiplatelet effect.", timing_fix: null },
+    ],
+    common_goals: ["sleep", "muscle recovery", "inflammation", "gout", "joint pain", "antioxidant"],
+    reference_ids: [],
+  },
+
+  apigenin: {
+    canonical: "apigenin",
+    aliases: ["apigenin supplement"],
+    category: "supplement",
+    adult_dose_range: { min: 50, max: 50, unit: "mg before bed (standard sleep dose)" },
+    timing: { best_time: "30-60 min before bed", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient data. May have estrogenic effects. Avoid." },
+      renal: { safe: true, notes: "No significant renal concerns at standard doses." },
+      elderly: { safe: true, notes: "Generally well tolerated for sleep." },
+    },
+    interactions: [
+      { with: "sedatives/benzodiazepines", severity: "moderate", mechanism: "Apigenin binds GABA-A receptors (same as benzos). Additive sedation possible.", timing_fix: null },
+      { with: "blood thinners", severity: "moderate", mechanism: "May inhibit platelet aggregation. Monitor if on anticoagulants.", timing_fix: null },
+      { with: "CYP-metabolized drugs", severity: "moderate", mechanism: "Apigenin inhibits CYP1A2 and CYP2C9. May raise levels of caffeine, warfarin, some SSRIs.", timing_fix: null },
+    ],
+    common_goals: ["sleep", "anxiety", "calm", "anti-inflammatory"],
+    reference_ids: [],
+  },
+
+  tongkat: {
+    canonical: "tongkat",
+    aliases: ["tongkat ali", "eurycoma longifolia", "longjack", "malaysian ginseng"],
+    category: "supplement",
+    adult_dose_range: { min: 200, max: 400, unit: "mg standardized extract/day" },
+    timing: { best_time: "morning", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Hormonal effects. Avoid in pregnancy and breastfeeding." },
+      renal: { safe: true, notes: "No significant renal concerns at standard doses." },
+      elderly: { safe: true, notes: "May support testosterone and energy. Well tolerated." },
+    },
+    interactions: [
+      { with: "blood pressure medications", severity: "moderate", mechanism: "May lower blood pressure. Monitor for additive hypotension.", timing_fix: null },
+      { with: "diabetes medications", severity: "moderate", mechanism: "May lower blood sugar. Monitor glucose.", timing_fix: null },
+      { with: "hormone-sensitive conditions", severity: "moderate", mechanism: "May increase testosterone. Discuss with provider if prostate cancer or hormone-sensitive condition.", timing_fix: null },
+    ],
+    common_goals: ["testosterone", "libido", "energy", "muscle", "male fertility", "stress"],
+    reference_ids: [],
+  },
 };
 
 // ── Lookup functions ──

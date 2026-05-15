@@ -123,9 +123,27 @@ const SYNONYM_MAP = [
   [/\blion.?s?\s*mane(\s+(mushroom|extract|supplement))?\b/g, "lions mane"],
   [/\bhericium\s*erinaceus\b/g, "lions mane"],
   [/\bapple\s*cider\s*vinegar\b/g, "apple cider vinegar"],
-  [/\bacv\s*(supplement|gummies?|pills?|capsules?)?\b/g, "apple cider vinegar"],
-  [/\bsleep\s*(aid|supplement|support)\b/g, "sleep supplement"],
-  [/\bnootropic\s*(supplement|stack)?\b/g, "nootropic supplement"],
+  [/\bacv(\s+(supplement|gummies?|pills?|capsules?))?\b/g, "apple cider vinegar"],
+  [/\bsleep\s+(aid|supplement|support)\b/g, "sleep supplement"],
+  [/\bnootropic(\s+(supplement|stack))?\b/g, "nootropic supplement"],
+
+  // ── GLP-1 / Weight loss drugs ──
+  [/\bozempic\b/g, "semaglutide"],
+  [/\bwegovy\b/g, "semaglutide"],
+  [/\brybelsus\b/g, "semaglutide"],
+  [/\bmounjaro\b/g, "tirzepatide"],
+  [/\bzepbound\b/g, "tirzepatide"],
+  [/\bsaxenda\b/g, "liraglutide"],
+  [/\bvictoza\b/g, "liraglutide"],
+  [/\bglp[\s-]?1(\s+(med(s|ication)?|drug|injection|shot|agonist))?\b/g, "glp-1 agonist"],
+
+  // ── Trending supplements ──
+  [/\bsea\s*moss(\s+(gel|capsules?|supplement))?\b/g, "sea moss"],
+  [/\birish\s*moss\b/g, "sea moss"],
+  [/\bshilajit(\s+(resin|supplement|capsules?))?\b/g, "shilajit"],
+  [/\bmumijo\b/g, "shilajit"],
+  [/\btart\s*cherry(\s+(juice|extract|supplement))?\b/g, "tart cherry"],
+  [/\bapigenin(\s+supplement)?\b/g, "apigenin"],
 
   // ── Alcohol normalization ──
   [/\btequila\b/g, "alcohol"],

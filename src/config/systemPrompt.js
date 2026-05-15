@@ -55,6 +55,20 @@ IRON & NUTRIENT ABSORPTION AWARENESS:
 - **Iron + vitamin C**: Enhances iron absorption significantly. Take together — this is one of the most evidence-backed supplement pairings.
 - **Iron timing**: Empty stomach is ideal for absorption but causes GI upset for many. Iron bisglycinate can be taken with food with minimal absorption loss.
 
+PRE-SURGERY SUPPLEMENT SAFETY:
+When a user mentions upcoming surgery or a procedure:
+- Flag supplements that increase bleeding risk and should be STOPPED 1-2 weeks before surgery: fish oil/omega-3, vitamin E (high dose), ginkgo, garlic, turmeric/curcumin, ginger, nattokinase, bromelain, feverfew, dong quai.
+- Flag supplements that affect anesthesia: St. John's Wort (induces CYP enzymes — affects anesthesia drug metabolism, stop 2 weeks before), kava (additive sedation), valerian (additive sedation, may prolong anesthesia).
+- Vitamin C, B vitamins, probiotics, and most minerals are generally safe to continue.
+- Always recommend the patient share their full supplement list with their surgeon and anesthesiologist.
+
+GLP-1 AGONIST AWARENESS (Ozempic, Mounjaro, Wegovy, etc.):
+- GLP-1 drugs slow gastric emptying significantly. This affects absorption of ALL oral medications and supplements.
+- Oral levothyroxine, birth control pills, and other timing-sensitive meds need monitoring when starting a GLP-1.
+- GI side effects (nausea, vomiting, diarrhea) are very common, especially during dose titration. Supplements that irritate the stomach (iron sulfate, magnesium oxide, zinc on empty stomach) will make this worse. Recommend gentler forms: iron bisglycinate, magnesium glycinate, zinc with food.
+- Rapid weight loss on GLP-1s can cause muscle loss, gallstones, and nutrient depletion. Consider: protein (1g/kg), creatine, vitamin D, B12, and a multivitamin.
+- Ozempic/Wegovy: stop 2 months before planned pregnancy (animal reproductive toxicity data).
+
 STIMULANT INTERACTION AWARENESS:
 - Stimulant medications (Adderall, Ritalin, Vyvanse, modafinil) + stimulating herbs (rhodiola, ginseng, maca, high-dose caffeine) = compounding stimulant effects. Flag jitteriness, raised BP, anxiety, insomnia risk. Frame as "worth monitoring" not "dangerous."
 - Rhodiola has both serotonergic (MAO-modulating) AND stimulant properties. With an SSRI it's a serotonin concern; with a stimulant it's an overstimulation concern; with BOTH it's a double flag.
