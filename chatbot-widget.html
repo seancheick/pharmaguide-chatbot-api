@@ -819,6 +819,7 @@
     let isOpen = false;
     let isLoading = false;
     let conversationHistory = [];
+    let conversationState = null; // Persisted patient context from API
     
     // ═══════════════════════════════════════════════════════════════
     // DOM ELEMENTS
@@ -945,31 +946,43 @@
         toggleBtn.setAttribute('aria-expanded', 'false');
     }
     
-    function addMessage(content, isUser = false) {
+    function addMessage(content, isUser = false, metadata = null) {
         // Remove welcome message if present
         const welcome = messagesContainer.querySelector('.pgchat-welcome');
         if (welcome) {
             welcome.remove();
         }
-        
+
         const messageDiv = document.createElement('div');
         messageDiv.className = `pgchat-message pgchat-message--${isUser ? 'user' : 'bot'}`;
-        
-        const avatar = isUser ? 
+
+        const avatar = isUser ?
             `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>` :
             `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>`;
-        
+
         // Format content (basic markdown-like formatting)
         const formattedContent = formatMessage(content);
-        
+
+        // Confidence badge for bot messages
+        let confidenceBadge = '';
+        if (!isUser && metadata && metadata.confidence) {
+            const badgeColors = {
+                high: { bg: '#dcfce7', color: '#166534', label: 'Clinical guidelines' },
+                moderate: { bg: '#fef9c3', color: '#854d0e', label: 'Available evidence' },
+                low: { bg: '#fee2e2', color: '#991b1b', label: 'Verify with pharmacist' },
+            };
+            const badge = badgeColors[metadata.confidence] || badgeColors.moderate;
+            confidenceBadge = `<div style="margin-top:8px;display:inline-block;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:500;background:${badge.bg};color:${badge.color};">${badge.label}</div>`;
+        }
+
         messageDiv.innerHTML = `
             <div class="pgchat-message-avatar">${avatar}</div>
-            <div class="pgchat-message-content">${formattedContent}</div>
+            <div class="pgchat-message-content">${formattedContent}${confidenceBadge}</div>
         `;
-        
+
         messagesContainer.appendChild(messageDiv);
         scrollToBottom();
-        
+
         return messageDiv;
     }
     
@@ -979,26 +992,39 @@
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
-        
+
+        // Markdown links [text](url) → clickable <a> tag
+        formatted = formatted.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+            '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:var(--pgchat-teal-600);text-decoration:underline;">$1</a>');
+
+        // Plain URLs (not already in an <a> tag)
+        formatted = formatted.replace(/(?<!href="|">)(https?:\/\/[^\s<]+)/g,
+            '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--pgchat-teal-600);text-decoration:underline;">$1</a>');
+
         // Bold text
         formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        
+
+        // Interaction severity flags (colored)
+        formatted = formatted.replace(/🟢\s*Minor/g, '<span style="color:#16a34a;font-weight:600;">🟢 Minor</span>');
+        formatted = formatted.replace(/🟡\s*Moderate/g, '<span style="color:#ca8a04;font-weight:600;">🟡 Moderate</span>');
+        formatted = formatted.replace(/🔴\s*Major/g, '<span style="color:#dc2626;font-weight:600;">🔴 Major</span>');
+
         // Bullet points
         formatted = formatted.replace(/^[•\-]\s(.+)$/gm, '<li>$1</li>');
         formatted = formatted.replace(/(<li>.*<\/li>)+/gs, '<ul>$&</ul>');
-        
+
         // Numbered lists
         formatted = formatted.replace(/^\d+\.\s(.+)$/gm, '<li>$1</li>');
-        
+
         // Line breaks to paragraphs
         const paragraphs = formatted.split(/\n\n+/);
         if (paragraphs.length > 1) {
             formatted = paragraphs.map(p => p.trim() ? `<p>${p}</p>` : '').join('');
         }
-        
+
         // Single line breaks
         formatted = formatted.replace(/\n/g, '<br>');
-        
+
         return formatted;
     }
     
@@ -1081,7 +1107,8 @@
                 },
                 body: JSON.stringify({
                     message: userMessage,
-                    history: conversationHistory.slice(-6) // Last 3 exchanges
+                    history: conversationHistory.slice(-6), // Last 3 exchanges
+                    _state: conversationState // Persist patient context across turns
                 })
             });
             
@@ -1099,10 +1126,13 @@
             }
             
             const data = await response.json();
-            
-            // Add bot response
-            addMessage(data.reply, false);
-            
+
+            // Persist conversation state (populations, conditions) for multi-turn safety
+            if (data._state) conversationState = data._state;
+
+            // Add bot response with confidence badge
+            addMessage(data.reply, false, { confidence: data.confidence });
+
             // Add to history
             conversationHistory.push({ role: 'assistant', content: data.reply });
             
