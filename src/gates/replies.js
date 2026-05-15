@@ -583,6 +583,24 @@ function flirtyFinalReply() {
   ].join("\n");
 }
 
+function whatIsReply() {
+  return [
+    "PharmaGuide AI is your personal supplement and medication safety assistant — think of it like having a pharmacist friend in your pocket.",
+    "",
+    "Here's what I can do:",
+    "• Interaction checks — flag risky combos between supplements, meds, and substances",
+    "• Timing guidance — when to take what, spacing minerals, food requirements",
+    "• Safety alerts — pregnancy, kidney, liver, and elderly-specific warnings",
+    "• Dose awareness — flag doses that exceed safe upper limits",
+    "• Condition-specific guidance — allergies, UTIs, hormonal health, gut health, and more",
+    "• Confidence scoring — every answer tells you how well-grounded it is in clinical evidence",
+    "",
+    "I use 90+ verified knowledge base entries, 35+ safety gates for high-risk interactions, and AI models trained on medical literature.",
+    "",
+    "Try me — tell me what supplements or medications you're taking and I'll run a safety check.",
+  ].join("\n");
+}
+
 function creatorReply() {
   return [
     "Great question — thanks for your curiosity!",
@@ -815,6 +833,7 @@ const ROUTE_REPLY_MAP = {
   "system:flirty": function() { return flirtyDeflectReply(); },
   "system:flirty-repeat": function() { return flirtyRepeatReply(); },
   "system:flirty-final": function() { return flirtyFinalReply(); },
+  "system:what-is": function() { return whatIsReply(); },
   "system:creator": function() { return creatorReply(); },
   "system:pet-question": function() { return petQuestionReply(); },
   "system:business-inquiry": function(convoContext, message) { return businessInquiryReply(message); },
@@ -855,6 +874,7 @@ module.exports = {
   flirtyDeflectReply,
   flirtyRepeatReply,
   flirtyFinalReply,
+  whatIsReply,
   creatorReply,
   petQuestionReply,
   businessInquiryReply,

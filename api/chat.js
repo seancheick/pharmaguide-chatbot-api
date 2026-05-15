@@ -16,12 +16,12 @@ const { extractEntities, extractKnownItems } = require("../src/core/entities");
 const { scoreRisks } = require("../src/core/riskScore");
 const { routeByRisk } = require("../src/core/router");
 const detection = require("../src/gates/detection");
-const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, flirtyRepeatReply, flirtyFinalReply, creatorReply, petQuestionReply, businessInquiryReply, medicalConditionRedirectReply } = require("../src/gates/replies");
+const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, flirtyRepeatReply, flirtyFinalReply, whatIsReply, creatorReply, petQuestionReply, businessInquiryReply, medicalConditionRedirectReply } = require("../src/gates/replies");
 const { getFormRecommendation } = require("../src/core/formAdvisor");
 const { tryDSLGate, isDSLRoute } = require("../src/gates/gateEngine");
 const { checkRateLimit } = require("../src/infra/rateLimit");
 const { logGate } = require("../src/infra/logger");
-const { mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion, addDoseWarnings } = require("../src/postprocess");
+const { mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion, addDoseWarnings, stripMarkdownLinks } = require("../src/postprocess");
 const { validateResponse, SAFE_FALLBACK_REPLY } = require("../src/postprocess/safetyValidator");
 const { classifyEntities } = require("../src/core/entityClassifier");
 const { correctMisspellings, resolveBrandName, detectUnknownDosedItems } = require("../src/core/unknownResolver");
@@ -107,6 +107,10 @@ module.exports = async function handler(req, res) {
       }
       logGate("system:flirty", message.length, hasConversation);
       return res.status(200).json({ reply: flirtyDeflectReply(), model: "system:flirty" });
+    }
+    if (detection.isWhatIsQuestion(message)) {
+      logGate("system:what-is", message.length, hasConversation);
+      return res.status(200).json({ reply: whatIsReply(), model: "system:what-is" });
     }
     if (detection.isCreatorQuestion(message)) {
       logGate("system:creator", message.length, hasConversation);
@@ -330,6 +334,9 @@ module.exports = async function handler(req, res) {
       .replace(/\n*\*?Note: this is not medical advice[^\n]*/gi, "")
       .replace(/\n*\*?Consult (?:your |a )?(?:doctor|physician|healthcare provider|clinician|pharmacist)[^\n]*before[^\n]*/gi, "")
       .trim();
+
+    // Strip Markdown link syntax (frontend doesn't render Markdown)
+    reply = stripMarkdownLinks(reply);
 
     // Mineral spacing
     if (detection.mentionsMineralSpacingTrigger(message)) {

@@ -54,6 +54,12 @@ function isCreatorQuestion(text) {
   return /\b(who (made|built|created|invented|designed|developed) you|who are you(r)? (creator|maker|developer|inventor)|who.?s behind you|who is your (creator|maker|developer)|who owns you|who runs you)\b/.test(t);
 }
 
+function isWhatIsQuestion(text) {
+  const t = normalizeText(text);
+  if (t.length > 120) return false;
+  return /\b(what is pharmaguide|what.?s pharmaguide|what does pharmaguide do|what do you do|what can you (do|help|tell)|what are you|tell me about (yourself|pharmaguide|this (app|tool|bot|chat))|how does (this|pharmaguide) work|what.?s this (app|tool|bot|chatbot)|explain (yourself|pharmaguide|what you do))\b/.test(t);
+}
+
 function isPetQuestion(text) {
   const t = normalizeText(text);
   if (t.length > 200) return false;
@@ -512,6 +518,7 @@ module.exports = {
   detectsGinkgoBleeding,
   isFlirty,
   isCreatorQuestion,
+  isWhatIsQuestion,
   isPetQuestion,
   isBusinessInquiry,
   detectWellnessGoal,

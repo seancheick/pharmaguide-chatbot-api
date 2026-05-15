@@ -62,4 +62,15 @@ function addDoseWarnings(reply, doses) {
   return reply + warningBlock;
 }
 
-module.exports = { mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion, escapeRegex, addDoseWarnings };
+/**
+ * Strip Markdown link syntax from LLM responses.
+ * Converts [text](url) → text (keeps the display text, drops the URL).
+ * Also strips raw URLs that aren't emergency hotlines or pharmaguide.io.
+ * This prevents ugly raw Markdown in frontends that don't render it.
+ */
+function stripMarkdownLinks(reply) {
+  // [display text](url) → display text
+  return reply.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+}
+
+module.exports = { mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion, escapeRegex, addDoseWarnings, stripMarkdownLinks };
