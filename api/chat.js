@@ -142,7 +142,11 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ reply: offTopicReply(), model: "system:off-topic" });
     }
     const isMetaQuestion = /\b(you.?re ai|are you ai|how do i know|can i trust|are you accurate|who built|who made|how does this work|what are you|reveal|system prompt|safety rules|previous instructions|prescribing authority|pretend you|act as|you are now|ignore .{0,20}(instruct|safety|rules)|stop follow|answer (yes|no)|without restrict|testing .{0,10}(ai|model|chatbot)|test.*model)\b/.test(normalizeText(message));
-    if (!hasConversation && !isMetaQuestion && !hasWellnessIntent && detection.intentScore(message) < 2) {
+    // Only block truly off-topic first messages (jokes, random chat).
+    // Let through if: wellness intent detected, any supplement/med mentioned, or intent >= 2.
+    const quickEntities = extractEntities(message, normalizeText(message));
+    const hasAnyEntity = (quickEntities.meds?.length || 0) + (quickEntities.supplements?.length || 0) > 0;
+    if (!hasConversation && !isMetaQuestion && !hasWellnessIntent && !hasAnyEntity && detection.intentScore(message) < 2) {
       logGate("system:off-topic", message.length, hasConversation);
       return res.status(200).json({ reply: offTopicReply(), model: "system:off-topic" });
     }
@@ -236,35 +240,35 @@ module.exports = async function handler(req, res) {
     // Build KB-augmented messages (need kbHits for complexity scoring).
     // wellnessGoals is passed so goal-only queries ("what can I take
     // to sleep better") still get grounded KB candidates injected.
+    // Pre-compute complexity hint for KB context depth
+    let complexityHint = scoreComplexity(message, entities, 0, convoContext);
+    if (hasWellnessIntent) complexityHint = Math.min(5, complexityHint + 1);
+
     const { messages, kbHits } = buildAugmentedMessages(
       SYSTEM_PROMPT,
       safeHistory,
       message,
       entities,
-      { wellnessGoals }
+      { complexity: complexityHint, wellnessGoals }
     );
-    let complexity = scoreComplexity(message, entities, kbHits, convoContext);
-    // Bump complexity for wellness goals — these queries deserve the
-    // more careful generation params (lower temperature, more tokens)
-    // because the answer needs to balance options + safety + provider
-    // referral. Cap at 5.
-    if (hasWellnessIntent) complexity = Math.min(5, complexity + 1);
+    const complexity = scoreComplexity(message, entities, kbHits, convoContext);
 
     // ── Topic gap tracking (detect missing coverage for future KB expansion) ──
     const intentScore = detection.intentScore(message);
     detectAndRecordGaps(message, "llm", intentScore, kbHits, entities);
 
-    // Rebuild with complexity-aware context if complex
     let finalMessages = messages;
-    if (complexity >= 3) {
-      const rebuilt = buildAugmentedMessages(
-        SYSTEM_PROMPT,
-        safeHistory,
-        message,
-        entities,
-        { complexity, wellnessGoals }
-      );
-      finalMessages = rebuilt.messages;
+
+    // Inject conversation state so LLM knows persistent patient facts
+    if (conversationState.populations.length > 0 || conversationState.conditions.length > 0) {
+      const stateParts = [];
+      if (conversationState.populations.length > 0) {
+        stateParts.push("Patient context: " + conversationState.populations.join(", "));
+      }
+      if (conversationState.conditions.length > 0) {
+        stateParts.push("Known conditions: " + conversationState.conditions.join(", "));
+      }
+      finalMessages.splice(1, 0, { role: "system", content: "PATIENT PROFILE (from conversation history): " + stateParts.join(". ") + ". Factor this into your response." });
     }
 
     // Inject temporal context if any meds/supps have temporal data

@@ -61,12 +61,14 @@ function isCacheable(message, entities, hasConversation, validationResult, route
   // No validator violations
   if (validationResult && !validationResult.safe) return false;
 
-  // No risk scores >= 2 or domains flagged
-  if (scores && scores.risk_flags) {
-    for (const flag of scores.risk_flags) {
-      if (flag.level >= 2) return false;
+  // No elevated risk scores (any dimension >= 2 means safety-sensitive)
+  if (scores) {
+    const riskKeys = ["serotonin_risk", "bleeding_risk", "stimulant_risk", "hepatotoxic_risk",
+      "absorption_risk", "pregnancy_teratogen_risk", "renal_clearance_risk",
+      "cns_depression_risk", "myopathy_risk"];
+    for (const key of riskKeys) {
+      if ((scores[key] || 0) >= 1) return false;
     }
-    if (scores.risk_flags.some(f => f.domain)) return false;
   }
 
   // No 3+ entities (personalization proxy)
