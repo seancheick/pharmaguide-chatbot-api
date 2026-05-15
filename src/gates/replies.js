@@ -597,6 +597,8 @@ function whatIsReply() {
     "",
     "I use 90+ verified knowledge base entries, 35+ safety gates for high-risk interactions, and AI models trained on medical literature.",
     "",
+    "Full breakdown: https://pharmaguide.io/features",
+    "",
     "Try me — tell me what supplements or medications you're taking and I'll run a safety check.",
   ].join("\n");
 }
