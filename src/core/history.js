@@ -35,12 +35,15 @@ function getConversationContext(message, safeHistory) {
  * @returns {{ populations: string[], known_meds: string[], known_supps: string[], conditions: string[] }}
  */
 function extractConversationState(currentMessage, safeHistory, previousState = null) {
-  // Start with previous state if provided
+  // Validate and sanitize client-provided state (could be garbage or malicious)
+  const safeArr = (val) => (Array.isArray(val) ? val.filter(v => typeof v === "string") : []);
+  const prev = previousState && typeof previousState === "object" ? previousState : {};
+
   const state = {
-    populations: new Set(previousState?.populations || []),
-    known_meds: new Set(previousState?.known_meds || []),
-    known_supps: new Set(previousState?.known_supps || []),
-    conditions: new Set(previousState?.conditions || []),
+    populations: new Set(safeArr(prev.populations)),
+    known_meds: new Set(safeArr(prev.known_meds)),
+    known_supps: new Set(safeArr(prev.known_supps)),
+    conditions: new Set(safeArr(prev.conditions)),
   };
 
   // Scan all user messages (including current) for persistent facts
@@ -99,11 +102,15 @@ function extractConversationState(currentMessage, safeHistory, previousState = n
 function mergeStateIntoEntities(entities, conversationState) {
   if (!conversationState) return entities;
 
-  // Merge populations (deduplicate)
+  // Merge populations (deduplicate) — return a NEW object, never mutate the original
   const mergedPops = new Set([...(entities.populations || []), ...(conversationState.populations || [])]);
 
   return {
-    ...entities,
+    meds: [...(entities.meds || [])],
+    supplements: [...(entities.supplements || [])],
+    symptoms: [...(entities.symptoms || [])],
+    intents: [...(entities.intents || [])],
+    unknowns: [...(entities.unknowns || [])],
     populations: [...mergedPops],
     _persisted_conditions: conversationState.conditions || [],
   };

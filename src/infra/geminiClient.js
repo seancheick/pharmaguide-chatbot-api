@@ -86,15 +86,16 @@ async function chatCompletion(messages, options = {}) {
     },
   });
 
-  const abortController = new AbortController();
-  const timer = setTimeout(() => abortController.abort(), timeout);
+  // Use Promise.race for reliable timeout — Gemini SDK may not honor AbortController signal
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error("GEMINI_TIMEOUT")), timeout);
+  });
 
   try {
-    const result = await modelWithConfig.generateContent(
-      { contents },
-      { signal: abortController.signal },
-    );
-    clearTimeout(timer);
+    const result = await Promise.race([
+      modelWithConfig.generateContent({ contents }),
+      timeoutPromise,
+    ]);
 
     const response = result.response;
     const text = response.text();
@@ -109,10 +110,7 @@ async function chatCompletion(messages, options = {}) {
       },
     };
   } catch (err) {
-    clearTimeout(timer);
-    if (err.name === "AbortError" || abortController.signal.aborted) {
-      throw new Error("GEMINI_TIMEOUT");
-    }
+    if (err.message === "GEMINI_TIMEOUT") throw err;
     throw err;
   }
 }

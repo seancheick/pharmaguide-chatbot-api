@@ -69,8 +69,14 @@ function addDoseWarnings(reply, doses) {
  * This prevents ugly raw Markdown in frontends that don't render it.
  */
 function stripMarkdownLinks(reply) {
-  // [display text](url) → display text
-  return reply.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+  const ALLOWED_DOMAINS = ["pharmaguide.io"];
+  return reply.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+    // Keep allowed links as plain text with URL visible
+    const isAllowed = ALLOWED_DOMAINS.some(d => url.toLowerCase().includes(d));
+    if (isAllowed) return `${text} (${url})`;
+    // Strip non-allowed URLs entirely — just keep the display text
+    return text;
+  });
 }
 
 module.exports = { mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion, escapeRegex, addDoseWarnings, stripMarkdownLinks };
