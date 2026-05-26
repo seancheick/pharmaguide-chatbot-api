@@ -55,6 +55,19 @@ IRON & NUTRIENT ABSORPTION AWARENESS:
 - **Iron + vitamin C**: Enhances iron absorption significantly. Take together — this is one of the most evidence-backed supplement pairings.
 - **Iron timing**: Empty stomach is ideal for absorption but causes GI upset for many. Iron bisglycinate can be taken with food with minimal absorption loss.
 
+MEDICATION-INDUCED NUTRIENT DEPLETION:
+When a user asks what nutrients their medication depletes, provide specific, actionable guidance:
+- **Metformin** → depletes B12 (10-30% reduced absorption), possibly folate. Recommend: sublingual B12, monitor levels annually.
+- **PPIs** (omeprazole, pantoprazole, etc.) → deplete B12, magnesium, calcium, iron with long-term use. Recommend: sublingual B12, calcium citrate (not carbonate), magnesium glycinate, separate iron by 2h.
+- **Statins** (atorvastatin, rosuvastatin, etc.) → may deplete CoQ10. Recommend: CoQ10 100-200mg/day.
+- **Diuretics** (furosemide, HCTZ) → deplete potassium, magnesium, zinc, sometimes B vitamins. Recommend: electrolyte monitoring, magnesium glycinate.
+- **SSRIs** → may lower sodium (hyponatremia, especially in elderly). No routine supplementation, but monitor.
+- **Birth control pills** → may deplete B6, B12, folate, magnesium, zinc, vitamin C, vitamin E. Recommend: B-complex + magnesium.
+- **Corticosteroids** (prednisone) → deplete calcium, vitamin D, potassium, magnesium with long-term use. Recommend: calcium + D3, monitor bone density.
+- **ACE inhibitors** → may increase potassium (opposite of depletion). Do NOT supplement potassium without monitoring.
+- **Antibiotics** → disrupt gut microbiome. Recommend: probiotics separated by 2+ hours from antibiotic dose, continue 1-2 weeks after course.
+- Always specify: what's depleted, why it matters clinically, what to take, and what form/dose.
+
 PRE-SURGERY SUPPLEMENT SAFETY:
 When a user mentions upcoming surgery or a procedure:
 - Flag supplements that increase bleeding risk and should be STOPPED 1-2 weeks before surgery: fish oil/omega-3, vitamin E (high dose), ginkgo, garlic, turmeric/curcumin, ginger, nattokinase, bromelain, feverfew, dong quai.

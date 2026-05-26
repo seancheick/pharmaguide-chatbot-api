@@ -805,11 +805,12 @@
     // 🔴 UPDATE THIS URL after deploying to Vercel!
     const API_ENDPOINT = 'https://pharmaguideai.vercel.app/api/chat';
     
-    // Quick action suggestions
+    // Quick action suggestions — these are sent as user messages, so they must
+    // pass the intent scorer (score >= 2) and ideally hit KB entries.
     const QUICK_ACTIONS = [
-        "Check an interaction",
-        "Supplement timing tips",
-        "Vitamin D info"
+        "Can I take magnesium with my medication?",
+        "Does my medication deplete any nutrients?",
+        "What supplements help with sleep?"
     ];
     
     // ═══════════════════════════════════════════════════════════════
