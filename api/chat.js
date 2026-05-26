@@ -16,7 +16,7 @@ const { extractEntities, extractKnownItems } = require("../src/core/entities");
 const { scoreRisks } = require("../src/core/riskScore");
 const { routeByRisk } = require("../src/core/router");
 const detection = require("../src/gates/detection");
-const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, flirtyRepeatReply, flirtyFinalReply, whatIsReply, creatorReply, petQuestionReply, businessInquiryReply, medicalConditionRedirectReply } = require("../src/gates/replies");
+const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, flirtyRepeatReply, flirtyFinalReply, whatIsReply, privacyReply, creatorReply, petQuestionReply, businessInquiryReply, medicalConditionRedirectReply } = require("../src/gates/replies");
 const { getFormRecommendation } = require("../src/core/formAdvisor");
 const { tryDSLGate, isDSLRoute } = require("../src/gates/gateEngine");
 const { checkRateLimit } = require("../src/infra/rateLimit");
@@ -111,6 +111,10 @@ module.exports = async function handler(req, res) {
     if (detection.isWhatIsQuestion(message)) {
       logGate("system:what-is", message.length, hasConversation);
       return res.status(200).json({ reply: whatIsReply(), model: "system:what-is" });
+    }
+    if (detection.isPrivacyQuestion(message)) {
+      logGate("system:privacy", message.length, hasConversation);
+      return res.status(200).json({ reply: privacyReply(), model: "system:privacy" });
     }
     if (detection.isCreatorQuestion(message)) {
       logGate("system:creator", message.length, hasConversation);

@@ -603,6 +603,22 @@ function whatIsReply() {
   ].join("\n");
 }
 
+function privacyReply() {
+  return [
+    "Your privacy is taken seriously. Here's exactly how PharmaGuide handles your data:",
+    "",
+    "• Your messages are NOT stored — conversations reset when you close the chat. There is no account, no login, no profile.",
+    "• No personal health information (PHI) is ever saved to a database. Analytics only track anonymous usage patterns (which topics are popular, which features are used) — never your actual messages or health details.",
+    "• IP addresses are hashed (one-way, non-reversible) for rate limiting only — your real IP is never stored.",
+    "• PharmaGuide does not sell, share, or monetize user data in any way.",
+    "• AI responses are generated in real-time and discarded after delivery — there is no conversation history on our end.",
+    "",
+    "In short: we don't know who you are, we don't store what you ask, and we have no way to link your questions back to you.",
+    "",
+    "What can I help you check today?",
+  ].join("\n");
+}
+
 function creatorReply() {
   return [
     "Great question — thanks for your curiosity!",
@@ -836,6 +852,7 @@ const ROUTE_REPLY_MAP = {
   "system:flirty-repeat": function() { return flirtyRepeatReply(); },
   "system:flirty-final": function() { return flirtyFinalReply(); },
   "system:what-is": function() { return whatIsReply(); },
+  "system:privacy": function() { return privacyReply(); },
   "system:creator": function() { return creatorReply(); },
   "system:pet-question": function() { return petQuestionReply(); },
   "system:business-inquiry": function(convoContext, message) { return businessInquiryReply(message); },
@@ -877,6 +894,7 @@ module.exports = {
   flirtyRepeatReply,
   flirtyFinalReply,
   whatIsReply,
+  privacyReply,
   creatorReply,
   petQuestionReply,
   businessInquiryReply,

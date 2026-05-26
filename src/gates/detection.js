@@ -60,6 +60,12 @@ function isWhatIsQuestion(text) {
   return /\b(what is pharmaguide|what.?s pharmaguide|what does pharmaguide do|what do you do|what can you (do|help|tell)|what are you|tell me about (yourself|pharmaguide|this (app|tool|bot|chat))|how does (this|pharmaguide) work|what.?s this (app|tool|bot|chatbot)|explain (yourself|pharmaguide|what you do))\b/.test(t);
 }
 
+function isPrivacyQuestion(text) {
+  const t = normalizeText(text);
+  if (t.length > 150) return false;
+  return /\b(is my (data|health data|info|information) (safe|private|secure|stored|saved|collected)|do you (store|save|collect|keep|track|record|share|sell) (my|any|user) (data|info|information|messages?|conversations?|health|history)|privacy|data (privacy|protection|security|collection)|are (my|our) conversations? (private|secure|saved|stored|recorded)|hipaa|gdpr|what (data|info) do you (collect|store|keep|save)|who (can|has) access (to )?(my|the) (data|info|conversation))\b/.test(t);
+}
+
 function isPetQuestion(text) {
   const t = normalizeText(text);
   if (t.length > 200) return false;
@@ -519,6 +525,7 @@ module.exports = {
   isFlirty,
   isCreatorQuestion,
   isWhatIsQuestion,
+  isPrivacyQuestion,
   isPetQuestion,
   isBusinessInquiry,
   detectWellnessGoal,
