@@ -145,6 +145,16 @@ const SYNONYM_MAP = [
   [/\btart\s*cherry(\s+(juice|extract|supplement))?\b/g, "tart cherry"],
   [/\bapigenin(\s+supplement)?\b/g, "apigenin"],
 
+  // ── Quercetin misspellings ──
+  [/\bquertincin\b/g, "quercetin"],
+  [/\bquercitin\b/g, "quercetin"],
+  [/\bquercentin\b/g, "quercetin"],
+  [/\bquarcetin\b/g, "quercetin"],
+
+  // ── Peptide / Longevity ──
+  [/\bblueprint\s*(protocol|stack|supplements?)?\b/g, "longevity protocol"],
+  [/\bbryan\s*johnson\s*(stack|protocol|supplements?)?\b/g, "longevity protocol"],
+
   // ── Alcohol normalization ──
   [/\btequila\b/g, "alcohol"],
   [/\brum\b/g, "alcohol"],
