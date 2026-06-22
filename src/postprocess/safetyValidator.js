@@ -68,11 +68,8 @@ function validateResponse(reply, route, entities, state) {
 }
 
 function checkDiagnosingLanguage(lower) {
-  // Detects phrases where the bot appears to diagnose a condition
-  // Excludes: "could be", "may be", "might be", "sounds like it could be"
-  // Targets: "you have [condition]", "this is [condition]", "you are diagnosed with"
   const diagnosingPatterns = [
-    /\byou have\b.{0,30}\b(disease|disorder|syndrome|condition|deficiency|infection|cancer|tumor|diabetes|hypothyroidism|hyperthyroidism)\b/,
+    /\byou have\b.{0,30}\b(disease|disorder|syndrome|condition|infection|cancer|tumor|diabetes|hypothyroidism|hyperthyroidism)\b/,
     /\byou are (suffering from|diagnosed with|experiencing)\b/,
     /\bmy diagnosis is\b/,
     /\bi('m| am) diagnosing you\b/,
