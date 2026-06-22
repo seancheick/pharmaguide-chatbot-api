@@ -16,7 +16,7 @@ const { extractEntities, extractKnownItems } = require("../src/core/entities");
 const { scoreRisks } = require("../src/core/riskScore");
 const { routeByRisk } = require("../src/core/router");
 const detection = require("../src/gates/detection");
-const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, flirtyRepeatReply, flirtyFinalReply, whatIsReply, privacyReply, creatorReply, petQuestionReply, businessInquiryReply, medicalConditionRedirectReply } = require("../src/gates/replies");
+const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, flirtyRepeatReply, flirtyFinalReply, whatIsReply, privacyReply, depletionReply, creatorReply, petQuestionReply, businessInquiryReply, medicalConditionRedirectReply } = require("../src/gates/replies");
 const { getFormRecommendation } = require("../src/core/formAdvisor");
 const { tryDSLGate, isDSLRoute } = require("../src/gates/gateEngine");
 const { checkRateLimit } = require("../src/infra/rateLimit");
@@ -171,6 +171,20 @@ module.exports = async function handler(req, res) {
     const entities = mergeStateIntoEntities(rawEntities, conversationState);
     const doses = extractDoses(message);
     const doseSummary = getDoseSummary(doses);
+    // ── Depletion check (before triage — grounded, structured answers) ──
+    if (detection.isDepletionQuestion(message) && entities.meds.length > 0) {
+      const deplReply = depletionReply(convoContext);
+      if (deplReply) {
+        logGate("system:depletion", message.length, hasConversation);
+        return res.status(200).json({
+          reply: deplReply,
+          model: "system:depletion",
+          confidence: "high",
+          _state: conversationState,
+        });
+      }
+    }
+
     const scores = scoreRisks(entities, normalizeText(message), convoContext);
     const triageRoute = routeByRisk(scores, entities, convoContext, message, hasConversation);
 

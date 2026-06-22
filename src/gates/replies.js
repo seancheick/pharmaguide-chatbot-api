@@ -619,6 +619,102 @@ function privacyReply() {
   ].join("\n");
 }
 
+// ── Nutrient Depletion Map ──
+// Structured data so depletion answers are always grounded and consistent.
+const DEPLETION_MAP = {
+  metformin:         { depletes: ["B12 (10-30% reduced absorption)", "Folate (less common)"], replenish: "Sublingual B12 1000-2500 mcg/day. Monitor levels annually.", severity: "🟡" },
+  omeprazole:        { depletes: ["B12", "Magnesium", "Calcium", "Iron"], replenish: "Sublingual B12, magnesium glycinate, calcium citrate (not carbonate — needs acid), separate iron by 2h.", severity: "🟡" },
+  pantoprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], replenish: "Same as omeprazole — all PPIs deplete the same nutrients.", severity: "🟡" },
+  esomeprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], replenish: "Same as omeprazole — all PPIs deplete the same nutrients.", severity: "🟡" },
+  lansoprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], replenish: "Same as omeprazole — all PPIs deplete the same nutrients.", severity: "🟡" },
+  atorvastatin:      { depletes: ["CoQ10"], replenish: "CoQ10 100-200 mg/day. May help with statin-related muscle aches.", severity: "🟡" },
+  simvastatin:       { depletes: ["CoQ10"], replenish: "CoQ10 100-200 mg/day.", severity: "🟡" },
+  rosuvastatin:      { depletes: ["CoQ10"], replenish: "CoQ10 100-200 mg/day.", severity: "🟡" },
+  pravastatin:       { depletes: ["CoQ10"], replenish: "CoQ10 100-200 mg/day.", severity: "🟡" },
+  lovastatin:        { depletes: ["CoQ10"], replenish: "CoQ10 100-200 mg/day.", severity: "🟡" },
+  furosemide:        { depletes: ["Potassium", "Magnesium", "Calcium", "Zinc", "B1 (Thiamine)"], replenish: "Electrolyte monitoring. Magnesium glycinate 200-400mg. Potassium — only supplement under provider supervision.", severity: "🔴" },
+  hydrochlorothiazide: { depletes: ["Potassium", "Magnesium", "Zinc", "B vitamins"], replenish: "Electrolyte panel. Magnesium glycinate. Zinc 15-30mg. Potassium — monitor, don't self-supplement.", severity: "🟡" },
+  prednisone:        { depletes: ["Calcium", "Vitamin D", "Potassium", "Magnesium", "Vitamin C"], replenish: "Calcium 1000mg + D3 2000-4000 IU for bone protection. Monitor bone density with long-term use.", severity: "🔴" },
+  "birth control":   { depletes: ["B6", "B12", "Folate", "Magnesium", "Zinc", "Vitamin C", "Vitamin E"], replenish: "B-complex + magnesium glycinate 200-400mg. Especially important: folate if you plan to conceive after stopping.", severity: "🟡" },
+  sertraline:        { depletes: ["Sodium (hyponatremia — especially in elderly)"], replenish: "No routine supplementation. Monitor sodium if elderly, on diuretics, or experiencing confusion/weakness.", severity: "🟢" },
+  fluoxetine:        { depletes: ["Sodium (hyponatremia risk)"], replenish: "Same as sertraline. Monitor in elderly.", severity: "🟢" },
+  escitalopram:      { depletes: ["Sodium (hyponatremia risk)"], replenish: "Same as sertraline. Monitor in elderly.", severity: "🟢" },
+  levothyroxine:     { depletes: [], replenish: "Levothyroxine doesn't deplete nutrients, but many nutrients interfere with its ABSORPTION: iron, calcium, magnesium (separate by 4h), coffee (separate by 1h).", severity: "🟢" },
+  amoxicillin:       { depletes: ["Gut microbiome (beneficial bacteria)"], replenish: "Probiotics (S. boulardii, L. rhamnosus) — take 2h apart from antibiotic dose. Continue 1-2 weeks after course.", severity: "🟡" },
+  azithromycin:      { depletes: ["Gut microbiome"], replenish: "Same probiotic guidance as amoxicillin.", severity: "🟡" },
+  doxycycline:       { depletes: ["Gut microbiome", "Calcium/Iron/Zinc (chelation)"], replenish: "Probiotics 2h apart. Separate minerals by 2-3h.", severity: "🟡" },
+  ciprofloxacin:     { depletes: ["Gut microbiome", "Calcium/Magnesium/Iron (chelation)"], replenish: "Probiotics 2h apart. Separate minerals by 2h.", severity: "🟡" },
+  lisinopril:        { depletes: [], replenish: "ACE inhibitors don't deplete — they INCREASE potassium. Do NOT supplement potassium without monitoring.", severity: "🟢" },
+  losartan:          { depletes: [], replenish: "ARBs increase potassium. Same caution as ACE inhibitors.", severity: "🟢" },
+  gabapentin:        { depletes: ["Calcium (long-term, bone density concern)"], replenish: "Calcium 500-600mg + D3 for long-term users. Monitor bone density.", severity: "🟡" },
+  warfarin:          { depletes: [], replenish: "Warfarin doesn't deplete, but vitamin K intake must be CONSISTENT (not avoided). Sudden changes in green vegetables alter INR.", severity: "🟢" },
+};
+
+// Aliases that map to depletion entries
+const DEPLETION_ALIASES = {
+  glucophage: "metformin", prilosec: "omeprazole", protonix: "pantoprazole",
+  nexium: "esomeprazole", prevacid: "lansoprazole", lipitor: "atorvastatin",
+  zocor: "simvastatin", crestor: "rosuvastatin", lasix: "furosemide",
+  hctz: "hydrochlorothiazide", prednisolone: "prednisone",
+  zoloft: "sertraline", prozac: "fluoxetine", lexapro: "escitalopram",
+  synthroid: "levothyroxine", zithromax: "azithromycin", cipro: "ciprofloxacin",
+  prinivil: "lisinopril", zestril: "lisinopril", cozaar: "losartan",
+  neurontin: "gabapentin", coumadin: "warfarin", "oral contraceptive": "birth control",
+};
+
+function depletionReply(convoContext) {
+  const t = (convoContext || "").toLowerCase();
+
+  // Find which medications the user mentioned
+  const allMeds = Object.keys(DEPLETION_MAP);
+  const allAliases = Object.keys(DEPLETION_ALIASES);
+  const found = [];
+
+  for (const med of allMeds) {
+    if (t.includes(med)) found.push(med);
+  }
+  for (const alias of allAliases) {
+    if (t.includes(alias) && !found.includes(DEPLETION_ALIASES[alias])) {
+      found.push(DEPLETION_ALIASES[alias]);
+    }
+  }
+
+  // Also check drug class mentions
+  if (/\b(ppi|proton pump|acid blocker)\b/.test(t) && !found.includes("omeprazole")) found.push("omeprazole");
+  if (/\bstatin\b/.test(t) && !found.includes("atorvastatin")) found.push("atorvastatin");
+  if (/\b(ssri|antidepressant)\b/.test(t) && !found.includes("sertraline")) found.push("sertraline");
+  if (/\bdiuretic\b/.test(t) && !found.includes("furosemide")) found.push("furosemide");
+  if (/\b(antibiotic)\b/.test(t) && !found.includes("amoxicillin")) found.push("amoxicillin");
+  if (/\b(ace inhibitor|acei)\b/.test(t) && !found.includes("lisinopril")) found.push("lisinopril");
+  if (/\b(arb)\b/.test(t) && !found.includes("losartan")) found.push("losartan");
+  if (/\b(steroid|corticosteroid)\b/.test(t) && !found.includes("prednisone")) found.push("prednisone");
+
+  if (found.length === 0) {
+    return null; // No specific med found — let LLM handle
+  }
+
+  const lines = [];
+  lines.push("Here's what your medication(s) may deplete and what to consider:");
+  lines.push("");
+
+  for (const med of found) {
+    const data = DEPLETION_MAP[med];
+    if (!data) continue;
+    const name = med.charAt(0).toUpperCase() + med.slice(1);
+    if (data.depletes.length === 0) {
+      lines.push(`${data.severity} **${name}**: ${data.replenish}`);
+    } else {
+      lines.push(`${data.severity} **${name}** may deplete: ${data.depletes.join(", ")}`);
+      lines.push(`  Replenish: ${data.replenish}`);
+    }
+    lines.push("");
+  }
+
+  lines.push("**What to tell your prescriber:** \"I'd like to check if any of my medications are depleting nutrients I should supplement.\"");
+
+  return lines.join("\n").trim();
+}
+
 function creatorReply() {
   return [
     "Great question — thanks for your curiosity!",
@@ -853,6 +949,7 @@ const ROUTE_REPLY_MAP = {
   "system:flirty-final": function() { return flirtyFinalReply(); },
   "system:what-is": function() { return whatIsReply(); },
   "system:privacy": function() { return privacyReply(); },
+  "system:depletion": function(convoContext) { return depletionReply(convoContext); },
   "system:creator": function() { return creatorReply(); },
   "system:pet-question": function() { return petQuestionReply(); },
   "system:business-inquiry": function(convoContext, message) { return businessInquiryReply(message); },
@@ -895,6 +992,8 @@ module.exports = {
   flirtyFinalReply,
   whatIsReply,
   privacyReply,
+  depletionReply,
+  DEPLETION_MAP,
   creatorReply,
   petQuestionReply,
   businessInquiryReply,

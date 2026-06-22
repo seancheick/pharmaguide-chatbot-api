@@ -68,6 +68,11 @@ function isPrivacyQuestion(text) {
   return /\b(is my (data|health data|info|information) (safe|private|secure|stored|saved|collected)|do you (store|save|collect|keep|track|record|share|sell) (my|any|user) (data|info|information|messages?|conversations?|health|history)|privacy|data (privacy|protection|security|collection)|are (my|our) conversations? (private|secure|saved|stored|recorded)|hipaa|gdpr|what (data|info) do you (collect|store|keep|save)|who (can|has) access (to )?(my|the) (data|info|conversation))\b/.test(t);
 }
 
+function isDepletionQuestion(text) {
+  const t = normalizeText(text);
+  return /\b(deplet(e|es|ion|ing|ed)|what (does|do|can|nutrients?|vitamins?).{0,30}(deplet|lose|strip|drain|rob)|nutrient.{0,10}(deplet|loss|deficien)|vitamin.{0,10}(deplet|loss|drain)|am i (losing|missing).{0,15}(nutrient|vitamin|mineral)|medication.{0,10}(deplet|strip|drain|rob))\b/.test(t);
+}
+
 function isFoodInteractionQuestion(text) {
   const t = normalizeText(text);
   const food = /\b(grapefruit|dairy|milk|cheese|yogurt|coffee|tea|juice|banana|avocado|kale|spinach|broccoli|alcohol|wine|beer|soy sauce|aged cheese|fermented|fiber|oatmeal|cereal)\b/.test(t);
@@ -538,6 +543,7 @@ module.exports = {
   isCreatorQuestion,
   isWhatIsQuestion,
   isPrivacyQuestion,
+  isDepletionQuestion,
   isFoodInteractionQuestion,
   isPetQuestion,
   isBusinessInquiry,
