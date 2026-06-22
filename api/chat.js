@@ -145,7 +145,7 @@ module.exports = async function handler(req, res) {
       logGate("system:off-topic", message.length, hasConversation);
       return res.status(200).json({ reply: offTopicReply(), model: "system:off-topic" });
     }
-    const isMetaQuestion = /\b(you.?re ai|are you ai|how do i know|can i trust|are you accurate|who built|who made|how does this work|what are you|reveal|system prompt|safety rules|previous instructions|prescribing authority|pretend you|act as|you are now|ignore .{0,20}(instruct|safety|rules)|stop follow|answer (yes|no)|without restrict|testing .{0,10}(ai|model|chatbot)|test.*model)\b/.test(normalizeText(message));
+    const isMetaQuestion = /\b(you.?re ai|are you ai|how do i know|can i trust|are you accurate|how accurate|who built|who made|how does this work|what are you|reveal|system prompt|safety rules|previous instructions|prescribing authority|pretend you|act as|you are now|ignore .{0,20}(instruct|safety|rules)|stop follow|answer (yes|no)|without restrict|testing .{0,10}(ai|model|chatbot)|test.*model|better than google|trust (your|this|these) answers?|is ai safe|is this (safe|reliable|trustworthy)|can i actually trust|is this a scam|i don.?t trust|should i trust)\b/.test(normalizeText(message));
     // Only block truly off-topic first messages (jokes, random chat).
     // Let through if: wellness intent detected, any supplement/med mentioned, or intent >= 2.
     const quickEntities = extractEntities(message, normalizeText(message));
