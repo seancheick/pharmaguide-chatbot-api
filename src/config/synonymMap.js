@@ -167,6 +167,10 @@ const SYNONYM_MAP = [
   [/\bpepto\s*(bismol)?\b/g, "bismuth subsalicylate"],
   [/\bambien\b/g, "zolpidem"],
   [/\bsam[\s-]?e\b/g, "sam-e"],
+  [/\bgas[\s-]?x\b/g, "simethicone"],
+  [/\bmylicon\b/g, "simethicone"],
+  [/\bdiflucan\b/g, "fluconazole"],
+  [/\bflagyl\b/g, "metronidazole"],
 
   // ── Alcohol normalization ──
   [/\btequila\b/g, "alcohol"],

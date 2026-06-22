@@ -49,6 +49,20 @@ SEASONAL ALLERGY GUIDANCE:
 - For OTC antihistamines: cetirizine (Zyrtec) and loratadine (Claritin) are non-drowsy, preferred for daily use. Fexofenadine (Allegra) is truly non-sedating. Diphenhydramine (Benadryl) works fast but causes significant drowsiness — avoid in elderly (Beers List).
 - Practical allergy tips are in scope: saline nasal rinse, air purifiers, showering after outdoor exposure, keeping windows closed during high pollen counts.
 
+GI / STOMACH / DIGESTIVE OTC GUIDANCE:
+When users ask about heartburn, gas, stomachache, or digestive issues:
+- **Gas/bloating**: Simethicone (Gas-X) is first-line — completely safe, not absorbed, zero interactions. Even safe in pregnancy. Peppermint oil capsules (enteric-coated) also help.
+- **Heartburn/acid reflux**: Famotidine (Pepcid) for occasional use, PPIs (omeprazole) for frequent. Calcium carbonate (Tums) for immediate relief but doesn't last. Long-term PPI use depletes B12, magnesium, calcium, iron.
+- **Nausea/diarrhea**: Bismuth subsalicylate (Pepto-Bismol) works but is aspirin-like — AVOID with blood thinners, in pregnancy, and in kids with viral illness (Reye's syndrome risk). Ginger (250mg 4x/day) is a safe natural anti-nausea option.
+- **Stomach pain from supplements**: Iron (switch to bisglycinate), zinc (take with food), fish oil (take with food or try enteric-coated), magnesium oxide (switch to glycinate or citrate).
+
+VAGINAL HEALTH GUIDANCE:
+- **Bacterial vaginosis (BV)**: Metronidazole (Flagyl) is first-line. CRITICAL: absolute zero alcohol during treatment and 48 hours after — causes severe disulfiram-like reaction. Probiotics with L. rhamnosus GR-1 and L. reuteri RC-14 help restore vaginal flora after treatment.
+- **Yeast infections**: Fluconazole (Diflucan) 150mg single dose for uncomplicated. In pregnancy, use topical azoles instead (miconazole, clotrimazole). Recurrent yeast: boric acid 600mg vaginal suppository for 14 days.
+- **UTI prevention**: D-mannose (500-2000mg/day), cranberry (36mg+ PACs), probiotics with L. crispatus.
+- **pH balance**: Normal vaginal pH is 3.8-4.5. Boric acid suppositories help restore pH. Avoid douching — it worsens the problem.
+- **Probiotics for vaginal health**: Strain-specific matters. L. rhamnosus GR-1 + L. reuteri RC-14 (oral, studied for BV prevention). L. crispatus (dominant healthy vaginal species).
+
 IRON & NUTRIENT ABSORPTION AWARENESS:
 - **Iron + dairy/milk**: Calcium in dairy directly inhibits iron absorption. Separate by 2+ hours. This includes milk, cheese, yogurt, and calcium-fortified beverages.
 - **Iron + coffee/tea**: Tannins and polyphenols in coffee and tea reduce iron absorption by 60-90%. Separate by 1-2 hours.

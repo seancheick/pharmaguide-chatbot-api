@@ -1877,6 +1877,263 @@ const KNOWLEDGE_BASE = {
     common_goals: ["testosterone support", "bone health", "joint health", "hormone balance", "cognitive function"],
     reference_ids: [],
   },
+
+  biotin: {
+    canonical: "biotin",
+    aliases: ["vitamin b7", "vitamin h"],
+    category: "vitamin",
+    adult_dose_range: { min: 30, max: 5000, unit: "mcg/day (30 mcg RDA; 2500-5000 mcg for hair/nails)" },
+    timing: { best_time: "morning with food", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "RDA 30 mcg. Safe at standard doses. Essential for fetal development." },
+      renal: { safe: true, notes: "Water-soluble. No renal concerns." },
+      elderly: { safe: true, notes: "Safe. May support skin and nail health." },
+    },
+    interactions: [
+      { with: "thyroid lab tests (TSH, T3, T4)", severity: "high", mechanism: "High-dose biotin (>2500 mcg) interferes with thyroid immunoassays — can falsely lower TSH and raise free T4, mimicking hyperthyroidism. STOP biotin 48-72 hours before thyroid blood work.", timing_fix: "Stop 48-72h before thyroid labs" },
+      { with: "troponin/cardiac labs", severity: "high", mechanism: "Biotin interferes with troponin assays. Can mask a heart attack or give false positives. Inform lab of biotin use.", timing_fix: "Stop before cardiac labs; inform lab" },
+    ],
+    common_goals: ["hair growth", "skin health", "nail strength", "hair loss prevention"],
+    reference_ids: [],
+  },
+
+  "vitamin e": {
+    canonical: "vitamin e",
+    aliases: ["d-alpha-tocopherol", "dl-alpha-tocopherol", "mixed tocopherols"],
+    category: "vitamin",
+    forms: {
+      "d-alpha-tocopherol": { absorption: "high", best_for: ["natural form — preferred, better retained in body"] },
+      "dl-alpha-tocopherol": { absorption: "moderate", best_for: ["synthetic form — cheaper but less bioavailable"] },
+    },
+    adult_dose_range: { min: 15, max: 400, unit: "IU/day" },
+    upper_limit: { value: 1000, unit: "IU/day", source: "NIH ODS" },
+    timing: { best_time: "with meals containing fat", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "RDA 15 mg (22 IU). Safe at supplemental doses under 400 IU." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Stay under 400 IU if on blood thinners. High doses (>400 IU) linked to increased mortality in some studies." },
+    },
+    interactions: [
+      { with: "blood thinners (warfarin, aspirin, NSAIDs)", severity: "moderate", mechanism: "Antiplatelet effects at high doses (>400 IU). Additive bleeding risk.", timing_fix: null },
+      { with: "chemotherapy/radiation", severity: "moderate", mechanism: "Antioxidants may theoretically interfere with some chemo agents. Discuss with oncologist.", timing_fix: null },
+    ],
+    common_goals: ["antioxidant", "skin health", "cardiovascular", "anti-aging"],
+    reference_ids: [],
+  },
+
+  "sam-e": {
+    canonical: "sam-e",
+    aliases: ["s-adenosyl methionine", "s-adenosylmethionine", "same"],
+    category: "supplement",
+    adult_dose_range: { min: 400, max: 1600, unit: "mg/day (start 200mg, increase gradually)" },
+    timing: { best_time: "morning on empty stomach", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient safety data. Avoid." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Well tolerated. Used for mood and joint health." },
+    },
+    interactions: [
+      { with: "SSRIs/SNRIs/MAOIs", severity: "high", mechanism: "SAM-e increases serotonin. Serotonin syndrome risk when combined with serotonergic drugs.", timing_fix: null },
+      { with: "bipolar disorder", severity: "high", mechanism: "SAM-e can trigger mania in bipolar disorder. AVOID without psychiatric supervision.", timing_fix: null },
+      { with: "levodopa (Parkinson's)", severity: "moderate", mechanism: "May reduce levodopa effectiveness.", timing_fix: null },
+    ],
+    common_goals: ["mood support", "depression", "liver support", "joint health", "detoxification"],
+    reference_ids: [],
+  },
+
+  "garcinia cambogia": {
+    canonical: "garcinia cambogia",
+    aliases: ["hydroxycitric acid", "hca", "garcinia extract"],
+    category: "supplement",
+    adult_dose_range: { min: 500, max: 1500, unit: "mg HCA/day" },
+    timing: { best_time: "30-60 min before meals", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient safety data. Avoid." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Weak evidence for efficacy. Generally tolerated." },
+    },
+    interactions: [
+      { with: "SSRIs/serotonergic drugs", severity: "moderate", mechanism: "May increase serotonin. Rare serotonin syndrome risk.", timing_fix: null },
+      { with: "diabetes medications", severity: "moderate", mechanism: "May lower blood sugar. Monitor glucose.", timing_fix: null },
+      { with: "statins", severity: "moderate", mechanism: "Both may affect liver function. Rare hepatotoxicity reports with garcinia.", timing_fix: null },
+    ],
+    common_goals: ["weight loss (weak evidence)", "appetite suppression"],
+    reference_ids: [],
+  },
+
+  astaxanthin: {
+    canonical: "astaxanthin",
+    aliases: ["astaxanthin supplement"],
+    category: "supplement",
+    adult_dose_range: { min: 4, max: 12, unit: "mg/day" },
+    timing: { best_time: "with meals containing fat", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient safety data. Avoid supplemental doses." },
+      renal: { safe: true, notes: "No significant renal concerns." },
+      elderly: { safe: true, notes: "Potent carotenoid antioxidant. Well tolerated." },
+    },
+    interactions: [
+      { with: "blood thinners", severity: "moderate", mechanism: "May have mild antiplatelet effects. Monitor for bruising.", timing_fix: null },
+    ],
+    common_goals: ["skin health", "eye health", "antioxidant", "sports recovery", "joint support", "UV protection"],
+    reference_ids: [],
+  },
+
+  reishi: {
+    canonical: "reishi",
+    aliases: ["reishi mushroom", "ganoderma lucidum", "reishi extract", "lingzhi"],
+    category: "supplement",
+    adult_dose_range: { min: 1000, max: 2000, unit: "mg dried mushroom/day (or 400-600mg extract)" },
+    timing: { best_time: "evening with food", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Limited safety data. Avoid." },
+      renal: { safe: true, notes: "No significant renal concerns at standard doses." },
+      elderly: { safe: true, notes: "Immune and relaxation support. Well tolerated." },
+    },
+    interactions: [
+      { with: "blood thinners (warfarin, aspirin)", severity: "moderate", mechanism: "Antiplatelet/anticoagulant effects. Monitor INR.", timing_fix: null },
+      { with: "immunosuppressants", severity: "moderate", mechanism: "Stimulates immune activity. May counteract immunosuppressive drugs.", timing_fix: null },
+    ],
+    common_goals: ["immune support", "stress reduction", "sleep", "relaxation", "adaptogen"],
+    reference_ids: [],
+  },
+
+  chaga: {
+    canonical: "chaga",
+    aliases: ["chaga mushroom", "inonotus obliquus", "chaga extract"],
+    category: "supplement",
+    adult_dose_range: { min: 500, max: 2000, unit: "mg/day (or 250-750mg extract)" },
+    timing: { best_time: "morning with food", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient safety data. Avoid." },
+      renal: { safe: false, notes: "HIGH oxalate content. Avoid with kidney stone history or CKD." },
+      elderly: { safe: true, notes: "Antioxidant-rich. Monitor if on blood thinners." },
+    },
+    interactions: [
+      { with: "blood thinners", severity: "moderate", mechanism: "May have antiplatelet effects. Monitor for bruising.", timing_fix: null },
+      { with: "immunosuppressants", severity: "moderate", mechanism: "May stimulate immune function.", timing_fix: null },
+      { with: "diabetes medications", severity: "moderate", mechanism: "May lower blood sugar. Monitor glucose.", timing_fix: null },
+    ],
+    common_goals: ["antioxidant", "immune support", "anti-inflammatory", "energy"],
+    reference_ids: [],
+  },
+
+  cordyceps: {
+    canonical: "cordyceps",
+    aliases: ["cordyceps mushroom", "cordyceps militaris", "cordyceps sinensis"],
+    category: "supplement",
+    adult_dose_range: { min: 1000, max: 3000, unit: "mg/day (or 400-1000mg extract)" },
+    timing: { best_time: "morning with food", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Limited safety data. Avoid." },
+      renal: { safe: true, notes: "Generally safe. Some data suggests kidney-protective properties." },
+      elderly: { safe: true, notes: "Energy and endurance support. Well tolerated." },
+    },
+    interactions: [
+      { with: "immunosuppressants (cyclosporine, tacrolimus)", severity: "moderate", mechanism: "May enhance immune activity. Discuss with transplant provider.", timing_fix: null },
+      { with: "blood thinners", severity: "moderate", mechanism: "Theoretical antiplatelet activity at high doses.", timing_fix: null },
+    ],
+    common_goals: ["energy", "exercise endurance", "ATP production", "athletic performance", "stamina"],
+    reference_ids: [],
+  },
+
+  simethicone: {
+    canonical: "simethicone",
+    aliases: ["gas-x", "gas x", "mylicon", "anti-gas"],
+    category: "medication",
+    adult_dose_range: { min: 80, max: 125, unit: "mg per dose as needed (max 500mg/day)" },
+    upper_limit: { value: 500, unit: "mg/day", source: "FDA OTC labeling" },
+    timing: { best_time: "after meals or at bedtime", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "Completely safe. Not absorbed systemically — stays in the GI tract." },
+      renal: { safe: true, notes: "Not absorbed. Safe in all conditions." },
+      elderly: { safe: true, notes: "Safe. No interactions." },
+    },
+    interactions: [],
+    common_goals: ["bloating", "gas", "abdominal discomfort", "flatulence"],
+    reference_ids: [],
+  },
+
+  famotidine: {
+    canonical: "famotidine",
+    aliases: ["pepcid", "pepcid ac"],
+    category: "medication",
+    adult_dose_range: { min: 10, max: 20, unit: "mg 1-2x daily (OTC)" },
+    upper_limit: { value: 40, unit: "mg/day", source: "FDA" },
+    timing: { best_time: "15-60 min before meals or at bedtime", with_food: false, separate_from: ["antacids (1h separation)"] },
+    populations: {
+      pregnancy: { safe: true, notes: "Category B. Generally considered safe." },
+      renal: { safe: true, notes: "Dose reduce in severe CKD (eGFR <30)." },
+      elderly: { safe: true, notes: "Preferred H2 blocker. Monitor B12 with long-term use." },
+    },
+    interactions: [
+      { with: "iron supplements", severity: "moderate", mechanism: "Reduced stomach acid impairs iron absorption.", timing_fix: "2h separation from iron" },
+      { with: "B12", severity: "moderate", mechanism: "Long-term H2 blocker use reduces B12 absorption. Consider sublingual form.", timing_fix: null },
+      { with: "calcium carbonate", severity: "moderate", mechanism: "Reduced acid impairs calcium carbonate absorption. Use calcium citrate instead.", timing_fix: null },
+    ],
+    common_goals: ["heartburn", "acid reflux", "GERD", "stomach acid"],
+    reference_ids: [],
+  },
+
+  "bismuth subsalicylate": {
+    canonical: "bismuth subsalicylate",
+    aliases: ["pepto-bismol", "pepto bismol", "bismuth"],
+    category: "medication",
+    adult_dose_range: { min: 262, max: 524, unit: "mg every 30-60 min as needed (max 8 doses/day, max 2 days)" },
+    timing: { best_time: "as needed", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "AVOID. Contains salicylate (aspirin-like). Teratogenic risk, premature ductus closure in 3rd trimester." },
+      renal: { safe: false, notes: "Salicylate accumulates in CKD. Avoid." },
+      elderly: { safe: true, notes: "Safe short-term. Watch for salicylate toxicity with chronic use." },
+    },
+    interactions: [
+      { with: "blood thinners (warfarin, aspirin)", severity: "high", mechanism: "Aspirin-like compound. Additive bleeding risk. Many people don't realize Pepto-Bismol is related to aspirin.", timing_fix: null },
+      { with: "tetracycline antibiotics", severity: "moderate", mechanism: "Reduces tetracycline absorption.", timing_fix: "2h separation" },
+      { with: "methotrexate", severity: "high", mechanism: "Salicylates reduce methotrexate clearance. Toxicity risk.", timing_fix: null },
+    ],
+    common_goals: ["diarrhea", "nausea", "stomach upset", "traveler's diarrhea", "heartburn"],
+    reference_ids: [],
+  },
+
+  metronidazole: {
+    canonical: "metronidazole",
+    aliases: ["flagyl", "metrogel"],
+    category: "medication",
+    adult_dose_range: { min: 250, max: 500, unit: "mg 2-3x daily for 7-10 days (varies by indication)" },
+    timing: { best_time: "with food to reduce GI upset", with_food: true, separate_from: ["alcohol (STRICT avoidance)"] },
+    populations: {
+      pregnancy: { safe: true, notes: "Generally safe in 2nd/3rd trimester for BV. Avoid 1st trimester if possible." },
+      renal: { safe: true, notes: "Dose reduce in severe hepatic impairment. Metabolites renally cleared." },
+      elderly: { safe: true, notes: "Standard dosing. Monitor for neuropathy with prolonged courses." },
+    },
+    interactions: [
+      { with: "alcohol", severity: "high", mechanism: "Disulfiram-like reaction: severe nausea, vomiting, flushing, rapid heartbeat, chest pain. AVOID ALL alcohol during treatment and for 48 hours after last dose. This includes mouthwash and cooking wine.", timing_fix: "Zero alcohol during + 48h after treatment" },
+      { with: "warfarin", severity: "moderate", mechanism: "May increase warfarin effect and INR.", timing_fix: null },
+      { with: "probiotics", severity: "beneficial", mechanism: "Probiotics help restore gut and vaginal flora after antibiotic treatment. Take 2h apart from antibiotic dose. Continue 1-2 weeks after course.", timing_fix: "2h separation from antibiotic dose" },
+    ],
+    common_goals: ["bacterial vaginosis", "BV", "vaginal infections", "parasitic infections", "C. diff"],
+    reference_ids: [],
+  },
+
+  fluconazole: {
+    canonical: "fluconazole",
+    aliases: ["diflucan"],
+    category: "medication",
+    adult_dose_range: { min: 150, max: 150, unit: "mg single dose (for uncomplicated vaginal yeast)" },
+    timing: { best_time: "any time", with_food: false, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Avoid especially in 1st trimester — teratogenic at high doses. Topical azoles (miconazole, clotrimazole) preferred in pregnancy." },
+      renal: { safe: true, notes: "Dose adjust in severe CKD." },
+      elderly: { safe: true, notes: "Standard dosing. Watch for drug interactions (CYP inhibitor)." },
+    },
+    interactions: [
+      { with: "warfarin", severity: "high", mechanism: "Strong CYP2C9 inhibitor. Significantly increases warfarin levels and bleeding risk. Monitor INR closely.", timing_fix: null },
+      { with: "statins (simvastatin, atorvastatin)", severity: "high", mechanism: "CYP3A4 inhibition raises statin levels. Rhabdomyolysis risk. Hold statin during fluconazole course.", timing_fix: null },
+      { with: "benzodiazepines (midazolam, triazolam)", severity: "moderate", mechanism: "CYP3A4 inhibition. Increased sedation.", timing_fix: null },
+    ],
+    common_goals: ["yeast infection", "vaginal candidiasis", "oral thrush", "fungal infections"],
+    reference_ids: [],
+  },
 };
 
 // ── Lookup functions ──
