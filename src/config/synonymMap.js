@@ -155,6 +155,19 @@ const SYNONYM_MAP = [
   [/\bblueprint\s*(protocol|stack|supplements?)?\b/g, "longevity protocol"],
   [/\bbryan\s*johnson\s*(stack|protocol|supplements?)?\b/g, "longevity protocol"],
 
+  // ── Weight loss / trending product synonyms ──
+  [/\bag1\b/g, "greens powder"],
+  [/\bathletic\s*greens\b/g, "greens powder"],
+  [/\bbeef\s*liver\s*(capsules?|pills?|supplement)?\b/g, "beef liver"],
+  [/\borgan\s*meat\s*(capsules?|pills?|supplement)?\b/g, "organ meat supplement"],
+  [/\bmushroom\s*coffee\b/g, "mushroom coffee"],
+  [/\bliquid\s*iv\b/g, "electrolytes"],
+  [/\bpedialyte\b/g, "electrolytes"],
+  [/\btums\b/g, "calcium carbonate antacid"],
+  [/\bpepto\s*(bismol)?\b/g, "bismuth subsalicylate"],
+  [/\bambien\b/g, "zolpidem"],
+  [/\bsam[\s-]?e\b/g, "sam-e"],
+
   // ── Alcohol normalization ──
   [/\btequila\b/g, "alcohol"],
   [/\brum\b/g, "alcohol"],
