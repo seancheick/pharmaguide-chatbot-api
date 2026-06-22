@@ -1837,6 +1837,46 @@ const KNOWLEDGE_BASE = {
     common_goals: ["testosterone", "libido", "energy", "muscle", "male fertility", "stress"],
     reference_ids: [],
   },
+
+  dhea: {
+    canonical: "dhea",
+    aliases: ["dehydroepiandrosterone", "dhea supplement", "7-keto dhea"],
+    category: "supplement",
+    adult_dose_range: { min: 25, max: 50, unit: "mg/day" },
+    timing: { best_time: "morning (follows natural cortisol rhythm)", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Hormonal effects. Contraindicated in pregnancy." },
+      renal: { safe: true, notes: "No significant renal concerns at standard doses." },
+      elderly: { safe: true, notes: "Natural DHEA declines with age. Some evidence for bone density, mood, and skin. Monitor hormones." },
+    },
+    interactions: [
+      { with: "hormone-sensitive conditions (breast/prostate cancer)", severity: "high", mechanism: "DHEA converts to estrogen and testosterone. May fuel hormone-sensitive cancers. Contraindicated.", timing_fix: null },
+      { with: "insulin/diabetes medications", severity: "moderate", mechanism: "DHEA may affect insulin sensitivity. Monitor blood sugar.", timing_fix: null },
+      { with: "blood thinners", severity: "moderate", mechanism: "DHEA may have antiplatelet effects.", timing_fix: null },
+      { with: "liver-metabolized drugs", severity: "moderate", mechanism: "DHEA is metabolized by CYP enzymes. May interact with CYP3A4 substrates.", timing_fix: null },
+    ],
+    common_goals: ["testosterone support", "anti-aging", "adrenal support", "bone density", "libido", "mood"],
+    reference_ids: [],
+  },
+
+  boron: {
+    canonical: "boron",
+    aliases: ["boron supplement", "boron citrate", "boron glycinate"],
+    category: "mineral",
+    adult_dose_range: { min: 3, max: 6, unit: "mg/day" },
+    upper_limit: { value: 20, unit: "mg/day", source: "NIH ODS" },
+    timing: { best_time: "with food", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: true, notes: "Likely safe at dietary levels (1-3 mg). Avoid high supplemental doses." },
+      renal: { safe: false, notes: "Renally excreted. Avoid with impaired kidney function." },
+      elderly: { safe: true, notes: "May support bone health and cognitive function." },
+    },
+    interactions: [
+      { with: "estrogen therapy", severity: "moderate", mechanism: "Boron may increase estrogen levels. Additive effect with HRT.", timing_fix: null },
+    ],
+    common_goals: ["testosterone support", "bone health", "joint health", "hormone balance", "cognitive function"],
+    reference_ids: [],
+  },
 };
 
 // ── Lookup functions ──

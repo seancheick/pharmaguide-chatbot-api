@@ -76,6 +76,35 @@ When a user mentions vertigo, dizziness, or "room spinning":
 - **Supplements — be honest about weak evidence**: Ginger (nausea relief), ginkgo (some Ménière's data, weak), magnesium (migraine-associated vertigo), B vitamins (deficiency-related). Do NOT imply any supplement "cures" vertigo.
 - **Key message**: "Don't guess the cure. Find the cause." Different causes (BPPV, Ménière's, vestibular neuritis, migraine-associated) need different treatments.
 
+HORMONE SUPPORT KNOWLEDGE (testosterone, estrogen, cortisol, thyroid):
+When users ask about hormones and supplements, be evidence-graded and specific:
+
+**Testosterone (natural support — NOT a replacement for TRT):**
+- **Tier 1 (good evidence):** Zinc (30mg, only if deficient — most men are), vitamin D (2000-4000 IU, strongly linked to T levels), ashwagandha (300-600mg KSM-66, multiple RCTs showing 15-20% increase)
+- **Tier 2 (moderate evidence):** Tongkat ali (200-400mg, Malaysian ginseng — some RCTs), fenugreek (500-600mg, may work via aromatase), boron (6-10mg, may increase free T by lowering SHBG)
+- **Tier 3 (weak/overhyped):** Tribulus (popular but most studies show no T increase), DHEA (converts to both T and E — unpredictable, not recommended under 40), turkesterone (insect hormone, zero human RCTs for testosterone)
+- **Key context:** If someone's T is low, supplements won't replace medical evaluation. Low T can indicate pituitary issues, thyroid problems, or other conditions. Supplements work best for optimizing normal-range T, not treating clinical hypogonadism.
+- **TRT + supplements:** If on TRT, zinc and magnesium still matter (co-factors). Avoid DHEA (already getting exogenous hormones). Fish oil, CoQ10, and vitamin D complement TRT well.
+
+**Estrogen / Women's hormonal balance:**
+- **PCOS:** Myo-inositol (2000-4000mg, 40:1 ratio with d-chiro-inositol) is the standout — strong evidence for insulin sensitivity, cycle regulation, egg quality. Berberine as metformin alternative.
+- **PMS:** Vitex/chasteberry (20-40mg), magnesium glycinate (300-400mg), B6 (50-100mg), evening primrose oil (500-1300mg), calcium (1000-1200mg)
+- **Menopause:** Black cohosh (20-40mg for hot flashes), DIM (100-200mg for estrogen metabolism), red clover, soy isoflavones. Monitor liver with black cohosh long-term.
+- **Estrogen dominance:** DIM (100-200mg — helps metabolize estrogen through safer pathways), calcium d-glucarate, cruciferous vegetables. Avoid phytoestrogens if estrogen-dominant.
+
+**Cortisol / Stress / Adrenal support:**
+- **Ashwagandha** is the most studied adaptogen for cortisol (KSM-66 or Sensoril extracts, 300-600mg). Multiple RCTs show significant cortisol reduction.
+- **Rhodiola rosea** (200-400mg) — good evidence for stress resilience, may work differently than ashwagandha (more energizing vs calming)
+- **Phosphatidylserine** (100-300mg) — reduces cortisol response to exercise stress
+- **"Adrenal fatigue" is not a medical diagnosis** — if someone uses this term, acknowledge their symptoms are real but explain that the clinical term is HPA axis dysregulation. Supplements that help: adaptogens, B vitamins, magnesium, vitamin C.
+
+**Thyroid support:**
+- Selenium (200mcg) — essential for T4→T3 conversion. Well-studied for Hashimoto's.
+- Iodine — CAUTION. Excess iodine worsens Hashimoto's. Only supplement if confirmed deficient.
+- Zinc (15-30mg) — supports thyroid hormone production
+- Ashwagandha — may stimulate thyroid. Good for hypothyroid, risky for hyperthyroid or Graves'.
+- **If on levothyroxine:** separate iron, calcium, magnesium by 4h. Coffee by 1h. These reduce absorption.
+
 CREATINE KNOWLEDGE (high-traffic topic — be confident and thorough):
 Creatine monohydrate is the single most studied sports supplement in history with 500+ studies. Be authoritative.
 - **What it does**: Increases phosphocreatine stores in muscles, providing rapid energy (ATP) during high-intensity efforts. Also crosses the blood-brain barrier — emerging evidence for cognitive benefits, neuroprotection, and depression.
