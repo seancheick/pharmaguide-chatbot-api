@@ -530,18 +530,27 @@ const KNOWLEDGE_BASE = {
 
   creatine: {
     canonical: "creatine",
-    aliases: ["creatine monohydrate", "creapure"],
+    aliases: ["creatine monohydrate", "creapure", "creatine hcl", "creatine hydrochloride", "micronized creatine", "creatine powder"],
     category: "supplement",
-    adult_dose_range: { min: 3, max: 5, unit: "g/day (maintenance)" },
-    upper_limit: { value: null, unit: "no established UL. 3-5g/day well-studied.", source: "ISSN Position Stand" },
-    timing: { best_time: "any time (consistency matters)", with_food: true, separate_from: [] },
-    populations: {
-      pregnancy: { safe: false, notes: "Insufficient data. Not recommended." },
-      renal: { safe: false, notes: "May raise creatinine (not kidney damage, but confounds labs). Avoid with existing CKD." },
-      elderly: { safe: true, notes: "Beneficial for muscle mass and cognitive function." },
+    forms: {
+      monohydrate: { absorption: "high", gi_tolerance: "good", best_for: ["general use — most studied, cheapest, gold standard"] },
+      hcl: { absorption: "high", gi_tolerance: "excellent", best_for: ["sensitive stomachs — more soluble, smaller dose needed"] },
+      micronized: { absorption: "high", gi_tolerance: "good", best_for: ["mixes better in liquid — same as monohydrate, finer powder"] },
     },
-    interactions: [],
-    common_goals: ["muscle", "strength", "cognitive", "exercise performance"],
+    adult_dose_range: { min: 3, max: 5, unit: "g/day (maintenance). Loading optional: 20g/day split into 4 doses for 5-7 days." },
+    upper_limit: { value: null, unit: "no established UL. 3-5g/day well-studied long-term.", source: "ISSN Position Stand 2017" },
+    timing: { best_time: "any time — consistency matters more than timing. Post-workout with carbs may slightly improve uptake.", with_food: true, separate_from: [] },
+    populations: {
+      pregnancy: { safe: false, notes: "Insufficient human data. Emerging animal research is promising but not enough to recommend yet." },
+      renal: { safe: false, notes: "Creatine raises serum creatinine (a kidney marker) but does NOT cause kidney damage in healthy kidneys. However, it confounds kidney function labs. Avoid with existing CKD or impaired GFR." },
+      elderly: { safe: true, notes: "Strong evidence for preserving muscle mass, strength, and cognitive function in 65+. Well-tolerated. One of the most evidence-backed supplements for aging." },
+    },
+    interactions: [
+      { with: "caffeine", severity: "moderate", mechanism: "Some evidence caffeine may blunt creatine's ergogenic effects. Data is mixed — likely fine for most people.", timing_fix: null },
+      { with: "NSAIDs (ibuprofen, naproxen)", severity: "moderate", mechanism: "Theoretical concern: both may affect kidney function markers. In healthy kidneys, combination is fine. Avoid with existing kidney issues.", timing_fix: null },
+      { with: "diuretics", severity: "moderate", mechanism: "Creatine increases water retention; diuretics reduce it. May reduce creatine effectiveness.", timing_fix: null },
+    ],
+    common_goals: ["muscle growth", "strength", "power output", "exercise performance", "cognitive function", "brain health", "recovery", "vegetarian nutrition"],
     reference_ids: [],
   },
 
