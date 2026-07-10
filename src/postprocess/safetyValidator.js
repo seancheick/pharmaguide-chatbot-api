@@ -53,15 +53,11 @@ function validateResponse(reply, route, entities, state) {
   }
 
   // 8. No fabricated URLs, emails, or non-emergency phone numbers (LLM only).
-  // Strip them in place rather than rejecting the whole reply — the rest
-  // of the content is usually legitimate and rejecting it would force
-  // the SAFE_FALLBACK_REPLY and lose useful clinical context.
   let sanitizedReply = reply;
   if (route === "llm") {
     const stripped = stripFabricatedContactInfo(reply);
     if (stripped.changed) {
       sanitizedReply = stripped.reply;
-      // Non-blocking — log it but don't fail the response.
       violations.push({
         rule: "stripped_fabricated_info",
         detail: "Stripped URLs/emails/phones from reply",
@@ -70,16 +66,12 @@ function validateResponse(reply, route, entities, state) {
     }
   }
 
-  // Only blocking violations gate the response. Non-blocking ones
-  // (like the URL strip above) are recorded but pass through.
   const blockingViolations = violations.filter((v) => !v.nonBlocking);
   const safe = blockingViolations.length === 0;
   return {
     safe,
     violations,
     fallback: safe ? null : SAFE_FALLBACK_REPLY,
-    // Sanitized reply — caller can use this in place of the raw LLM
-    // output when safe (the URL strip is the only sanitization for now).
     sanitizedReply: safe ? sanitizedReply : null,
   };
 }
@@ -97,9 +89,7 @@ function checkDiagnosingLanguage(lower) {
 }
 
 function checkStopMedInstructions(lower, route) {
-  // Allow "stop the serotonergic supplement" in serotonin-urgent context
   if (route === "system:serotonin-urgent") return false;
-  // Allow "stop" in context of supplements, not prescribed meds
   const stopPatterns = [
     /\bstop (taking (your )?|your )?(prescribed|medication|antidepressant|blood thinner|statin|insulin|thyroid med|blood pressure med|heart med)/,
     /\bdiscontinue your (prescribed|medication|antidepressant|blood thinner|statin)/,
@@ -110,28 +100,12 @@ function checkStopMedInstructions(lower, route) {
 }
 
 function checkProhibitedDosing(lower, entities) {
-  // Rule fires only if the response is RECOMMENDING dosing FOR
-  // pregnancy or children specifically — not when it merely mentions
-  // those populations as context ("Pregnant women may need higher
-  // intake — talk to your provider" is responsible clinical framing,
-  // not a violation).
-  //
-  // Strategy: locate dosing lines and check whether each one is in
-  // local proximity to a pregnancy/child mention WITHOUT an
-  // educational/upper-limit qualifier nearby.
-
   const populations = entities?.populations || [];
   const hasPregnancyEntity = populations.includes("pregnancy");
 
-  // Tokens that mark a passage as EDUCATIONAL / safe-context rather
-  // than prescriptive. Generous list — matches the natural language
-  // LLMs use when discussing dose ceilings and population caveats.
   const educationalRe =
-    /\b(max|maximum|upper limit|tolerable upper|tolerable upper intake|ul\b|not exceed|do(?:n't| not) exceed|no more than|limit(?: is|ed to)?|ceiling|ceiling of|stay (?:under|below)|under|below|cap|capped|threshold|recommended daily allowance|rda|adequate intake|ai\b|reference daily intake|talk to (?:your |a )?(?:doctor|provider|prescriber|clinician|pharmacist|obstetrician|pediatrician)|consult (?:your |a )?(?:doctor|provider|prescriber|clinician|pharmacist|obstetrician|pediatrician)|under (?:medical|professional|clinician) (?:guidance|supervision))\b/;
+    /\b(max|maximum|upper limit|tolerable upper|tolerable upper intake|ul\b|not exceed|do(?:n't| not) exceed|no more than|limit(?: is|ed to|ing)?|ceiling|ceiling of|stay (?:under|below)|under|below|cap|capped|threshold|recommended daily allowance|rda|adequate intake|ai\b|reference daily intake|avoid|should avoid|do(?:n't| not) take|unsafe|risk|danger|caution|warning|linked to|associated with|birth defects?|teratogen|talk to (?:your |a )?(?:doctor|provider|prescriber|clinician|pharmacist|obstetrician|ob.?gyn|pediatrician)|consult (?:your |a )?(?:doctor|provider|prescriber|clinician|pharmacist|obstetrician|ob.?gyn|pediatrician)|under (?:medical|professional|clinician) (?:guidance|supervision)|discuss with|ask (?:your |a )?(?:doctor|provider|prescriber))\b/;
 
-  // Find each dosing-pattern hit and look at a generous local window
-  // around it (±120 chars). If a pregnancy/child token is present
-  // within that window AND no educational qualifier is, flag it.
   const dosingRe = /\b(take|give|dose|dosage|recommend|suggest|try|administer)\b.{0,40}\b\d+\s*(mg|iu|mcg|ml|g|gram|milligram|microgram)\b/g;
   const childRe = /\b(child|kid|infant|toddler|baby|pediatric|your (?:son|daughter))\b/;
   const pregnancyRe = /\bpregnan(?:t|cy)\b/;
@@ -156,16 +130,13 @@ function checkProhibitedDosing(lower, entities) {
 function checkMultipleQuestions(reply) {
   const questions = reply.match(/[^\n.!?]*\?/g);
   if (!questions) return false;
-  // Filter out rhetorical or quoted questions
   const realQuestions = questions.filter((q) => {
     const t = q.trim();
-    // Skip if inside quotes (prescriber prompts)
     if (/["*]/.test(t.charAt(0))) return false;
-    // Skip if very short (likely part of a larger sentence)
     if (t.length < 10) return false;
     return true;
   });
-  return realQuestions.length > 3; // Allow some flexibility — flag egregious cases
+  return realQuestions.length > 3;
 }
 
 function checkPrescribingLanguage(lower) {
@@ -178,19 +149,9 @@ function checkPrescribingLanguage(lower) {
 }
 
 function checkFabricatedContactInfo(reply) {
-  // Kept for back-compat with any caller checking the boolean.
   return stripFabricatedContactInfo(reply).changed;
 }
 
-/**
- * Strip non-allowlisted URLs, emails, and phone numbers from the reply.
- * Returns { reply, changed } — the sanitized text plus a flag so the
- * validator can record that the strip happened (for monitoring) without
- * rejecting the whole response.
- *
- * Allowlist: pharmaguide.io for URLs/emails; emergency hotlines for
- * phones (911, 988, Poison Control, SAMHSA, Crisis Textline).
- */
 function stripFabricatedContactInfo(reply) {
   const ALLOWED_PHONES = ["911", "988", "1-800-222-1222", "1-888-426-4435", "1-855-764-7661", "741741"];
   const ALLOWED_DOMAINS = ["pharmaguide.io"];
@@ -198,7 +159,6 @@ function stripFabricatedContactInfo(reply) {
   let changed = false;
   let out = reply;
 
-  // URLs — replace non-allowlisted with the surrounding text minus the URL.
   out = out.replace(/https?:\/\/[^\s)]+|www\.[^\s)]+/gi, (match) => {
     const isAllowed = ALLOWED_DOMAINS.some((d) => match.toLowerCase().includes(d));
     if (isAllowed) return match;
@@ -206,7 +166,6 @@ function stripFabricatedContactInfo(reply) {
     return "";
   });
 
-  // Emails — drop non-allowlisted.
   out = out.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, (match) => {
     const isAllowed = ALLOWED_DOMAINS.some((d) => match.toLowerCase().includes(d));
     if (isAllowed) return match;
@@ -214,7 +173,6 @@ function stripFabricatedContactInfo(reply) {
     return "";
   });
 
-  // Phones — drop non-emergency.
   out = out.replace(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g, (match) => {
     const digits = match.replace(/\D/g, "");
     const isAllowed = ALLOWED_PHONES.some((p) => digits === p.replace(/\D/g, "") || digits.endsWith(p.replace(/\D/g, "")));
@@ -223,7 +181,6 @@ function stripFabricatedContactInfo(reply) {
     return "";
   });
 
-  // Tidy up artifacts from removal (double spaces, "(see )" stubs)
   if (changed) {
     out = out
       .replace(/\(\s*[,;:.]?\s*\)/g, "")
@@ -237,13 +194,6 @@ function stripFabricatedContactInfo(reply) {
   return { reply: out, changed };
 }
 
-// ══════════════════════════════════════════════════
-// Response linter — quality/style checks (non-blocking)
-// Unlike validateResponse, lint warnings don't trigger fallback.
-// Used for drift detection and quality monitoring.
-// ══════════════════════════════════════════════════
-
-// Prohibited jargon that makes responses less accessible
 const PROHIBITED_PHRASES = [
   /\bbioavailability\b/,
   /\bpharmacokinetic/,
@@ -252,29 +202,23 @@ const PROHIBITED_PHRASES = [
   /\bplasma (level|concentration)/,
   /\btrough level/,
   /\barea under the curve\b/,
-  /\bcytochrome p450\b/,  // use "liver enzyme" instead
+  /\bcytochrome p450\b/,
   /\bfirst[\s-]?pass (metabolism|effect)/,
-  /\brenal clearance\b/,   // use "kidney" instead
-  /\bhepatic\b/,           // use "liver" instead
+  /\brenal clearance\b/,
+  /\bhepatic\b/,
 ];
 
-// Word count bands: gate replies are short, LLM can be longer
 const WORD_COUNT_BANDS = {
   gate: { min: 20, max: 400 },
   llm: { min: 20, max: 500 },
 };
 
-/**
- * Lint a response for style/quality issues.
- * Returns { warnings: [{ rule, detail }], clean: boolean }.
- */
 function lintResponse(reply, source, entities) {
   const warnings = [];
   const lower = reply.toLowerCase();
   const wordCount = reply.split(/\s+/).filter(w => w.length > 0).length;
   const band = source === "llm" ? WORD_COUNT_BANDS.llm : WORD_COUNT_BANDS.gate;
 
-  // 1. Word count out of band
   if (wordCount < band.min) {
     warnings.push({ rule: "word_count_low", detail: `${wordCount} words (min: ${band.min})` });
   }
@@ -282,7 +226,6 @@ function lintResponse(reply, source, entities) {
     warnings.push({ rule: "word_count_high", detail: `${wordCount} words (max: ${band.max})` });
   }
 
-  // 2. Prohibited jargon
   for (const pattern of PROHIBITED_PHRASES) {
     if (pattern.test(lower)) {
       const match = lower.match(pattern);
@@ -290,7 +233,6 @@ function lintResponse(reply, source, entities) {
     }
   }
 
-  // 3. Interaction intent should have severity context
   const hasInteractionIntent = entities && entities.intents && entities.intents.includes("interaction_check");
   if (hasInteractionIntent && source === "gate") {
     const hasSeverityMarker = /\*\*[^*]*(risk|caution|warning|safe|concern)/i.test(reply);
@@ -299,7 +241,6 @@ function lintResponse(reply, source, entities) {
     }
   }
 
-  // 4. Response coherence — shouldn't start with lowercased fragment
   if (/^[a-z]/.test(reply.trim()) && !reply.trim().startsWith("http")) {
     warnings.push({ rule: "starts_lowercase", detail: "Response starts with lowercase letter" });
   }
