@@ -227,7 +227,7 @@ function vitaminDPalpitationsReply(text) {
 
 function pregnancyRetinolReply() {
   return [
-    "**🔴 Preformed vitamin A (retinol) during pregnancy needs careful attention.** Excess retinol — especially in the first trimester — is linked to birth defects *(Rothman et al., NEJM 1995)*. The upper limit for preformed vitamin A is **3,000 mcg/day (10,000 IU)** for adults and **2,800 mcg/day for ages 14-18**.",
+    "**🔴 Preformed vitamin A (retinol) during pregnancy needs careful attention.** Excess retinol — especially in the first trimester — is linked to birth defects *(Rothman et al., NEJM 1995)*. The upper limit for preformed vitamin A is **3,000 mcg/day (10,000 IU)** for adults and **2,800 mcg/day for ages 14-18** *(NIH ODS, 2025)*.",
     "",
     "• Beta-carotene (plant-based vitamin A) is generally considered safer because your body regulates conversion.",
     "• Cod liver oil and liver supplements can contain high retinol — check the label.",
