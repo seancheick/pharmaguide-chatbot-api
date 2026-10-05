@@ -76,10 +76,35 @@ function validateResponse(reply, route, entities, state) {
   };
 }
 
+// Wording that makes a match harmless: "if you have kidney disease, avoid…" is a
+// conditional, "you mentioned you have diabetes" repeats the user's own statement.
+const CONDITIONAL_BEFORE = /\b(?:if|when|unless|whether|in case|should|even if|assuming|suppose|since|because|as|given|mentioned|said|told|noted|stated|shared|reported|know|ask|tell)\W+(?:\w+\W+){0,3}$/;
+// "do not / never / without / before you stop…" protects the user instead of instructing them.
+const NEGATED_OR_PROTECTIVE_BEFORE = /\b(?:do not|don't|dont|never|should not|shouldn't|must not|cannot|can't|not|without|before|avoid|unless|if you|whether|how to|when to|ask about|talk to .{0,30} about|no need to|says|tells you|told you|advises|recommends|instructs)\W+(?:\w+\W+){0,3}$/;
+// "do not take your medication at the same time as calcium" is timing advice, not "skip your dose".
+const TIMING_OR_COMBINATION_AFTER = /^\W*(?:\w+\W+){0,3}?(?:with|at the same time|together|alongside|within|hours?|apart|before|after|without|until|unless|if)\b/;
+
+// True when at least one match of `re` is NOT neutralised by the text around it.
+function hasUnneutralisedMatch(lower, re, { beforeOk, afterOk } = {}) {
+  const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+  let m;
+  while ((m = g.exec(lower)) !== null) {
+    const prefix = lower.slice(Math.max(0, m.index - 40), m.index);
+    const suffix = lower.slice(m.index + m[0].length, m.index + m[0].length + 60);
+    if (beforeOk && beforeOk.test(prefix)) continue;
+    if (afterOk && afterOk.test(suffix)) continue;
+    return true;
+  }
+  return false;
+}
+
 function checkDiagnosingLanguage(lower) {
-  const diagnosingPatterns = [
+  const conditionalAware = [
     /\byou have\b.{0,30}\b(disease|disorder|syndrome|condition|infection|cancer|tumor|diabetes|hypothyroidism|hyperthyroidism)\b/,
     /\byou are (suffering from|diagnosed with|experiencing)\b/,
+  ];
+  if (conditionalAware.some((p) => hasUnneutralisedMatch(lower, p, { beforeOk: CONDITIONAL_BEFORE }))) return true;
+  const diagnosingPatterns = [
     /\bmy diagnosis is\b/,
     /\bi('m| am) diagnosing you\b/,
     /\bthis confirms (you have|a diagnosis of)\b/,
@@ -90,13 +115,14 @@ function checkDiagnosingLanguage(lower) {
 
 function checkStopMedInstructions(lower, route) {
   if (route === "system:serotonin-urgent") return false;
-  const stopPatterns = [
+  const stopOpts = { beforeOk: NEGATED_OR_PROTECTIVE_BEFORE };
+  const instructToStop = [
     /\bstop (taking (your )?|your )?(prescribed|medication|antidepressant|blood thinner|statin|insulin|thyroid med|blood pressure med|heart med)/,
     /\bdiscontinue your (prescribed|medication|antidepressant|blood thinner|statin)/,
     /\bquit (taking |your )?(prescribed|medication|antidepressant)/,
-    /\bdo not take your (prescribed|medication|antidepressant)/,
   ];
-  return stopPatterns.some((p) => p.test(lower));
+  if (instructToStop.some((p) => hasUnneutralisedMatch(lower, p, stopOpts))) return true;
+  return hasUnneutralisedMatch(lower, /\bdo not take your (prescribed|medication|antidepressant)/, { afterOk: TIMING_OR_COMBINATION_AFTER });
 }
 
 function checkProhibitedDosing(lower, entities) {

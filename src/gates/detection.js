@@ -1,9 +1,65 @@
 const { normalizeText } = require("../core/normalize");
 
+// ── Emergency phrasing beyond the core list below ──
+// All matched on normalizeText() output: apostrophes become spaces
+// ("don't" → "don t", "I'm" → "i m").
+const MEDS_AND_SUPPS = "pills?|tablets?|capsules?|medicines?|medications?|meds|vitamins?|supplements?|gummies|bottle|iron|melatonin|tylenol|acetaminophen|ibuprofen|aspirin|benadryl|adderall|[a-z]+ pills";
+const ANTICOAGULANTS = "warfarin|coumadin|eliquis|xarelto|apixaban|rivaroxaban|heparin|blood thinner";
+
+// Always an emergency reply, even in question form (safe-messaging practice).
+const EMERGENCY_ALWAYS = [
+  // Passive suicidal ideation ("I don't want to live on pills forever" must not match)
+  /\b(?:don t|dont|do not) want to (?:be alive|exist)\b/,
+  /\b(?:don t|dont|do not) want to (?:live|be here|wake up)(?:\s+(?:anymore|any more|tomorrow|again|like this|this way)|\s*$)/,
+  /\b(?:no reason to live|nothing to live for|better off dead|better off without me|wish i (?:was|were) dead|wish i (?:could )?(?:just )?(?:die|disappear|not wake up)|end my life|take my (?:own )?life|rather be dead|can t go on|cant go on)\b/,
+  // Lethal-dose questions
+  /\b(?:fatal|lethal|deadly) (?:dose|amount|level|quantity)\b/,
+  /\b(?:dose|amount|much|many)\b.{0,40}\b(?:is|are|would be|be) (?:fatal|lethal|deadly)\b/,
+  /\bhow (?:much|many)\b.{0,40}\b(?:to|would) (?:kill|die|be fatal|be lethal)\b/,
+];
+
+// Emergency unless the sentence is clearly educational (same exception as the core list).
+const EMERGENCY_EXTRA = [
+  // A child (or someone's child) got into pills / medicine / supplements
+  new RegExp("\\b(?:my|our|the)\\s+(?:toddler|baby|infant|child|kid|son|daughter|grandson|granddaughter|nephew|niece|\\d+\\s*(?:year|month)s?\\s*old)\\b.{0,50}\\b(?:got into|ate|eaten|swallowed|chewed|ingested|drank)\\b.{0,60}\\b(?:" + MEDS_AND_SUPPS + ")\\b"),
+  new RegExp("\\b(?:toddler|baby|infant|child|kid|son|daughter)\\b.{0,50}\\bgot into\\b.{0,40}\\b(?:medicine|medication|meds|vitamins?|supplements?|pills?|bottle)\\b"),
+  // Unconscious / collapsed / not waking / airway
+  /\b(?:passed out|collapsed|collapsing|won t wake up|wont wake up|not waking up|can t wake|cant wake|turning blue|lips (?:are |turned |turning )?blue|stopped breathing|gasping for air)\b/,
+  /\b(?:lips?|tongue|face|mouth)\b.{0,30}\bswell(?:ing|ed|s)?\b|\bswollen (?:lips?|tongue|face)\b|\b(?:trouble|difficulty|hard to|struggling to) breath/,
+  // Bleeding that will not stop, or an anticoagulant overdose with bleeding
+  /\b(?:won t|wont|will not|doesn t|doesnt|can t|cant) (?:stop|stopping) bleeding\b|\bbleeding (?:won t|wont|will not|doesn t|doesnt) stop\b|\bbleeding (?:profusely|uncontrollably)\b|\bblack tarry stools?\b/,
+  new RegExp("\\b(?:double|doubled|extra|too much|twice)\\b.{0,40}\\b(?:" + ANTICOAGULANTS + ")\\b.{0,80}\\bbleed"),
+  new RegExp("\\bbleed.{0,80}\\b(?:double|doubled|extra|too much|twice)\\b.{0,40}\\b(?:" + ANTICOAGULANTS + ")\\b"),
+  /\boverdosing\b/,
+];
+
+function matchEmergency(t, corePattern) {
+  const core = t.match(corePattern);
+  if (core) return core;
+  for (const p of EMERGENCY_ALWAYS) {
+    const m = t.match(p);
+    if (m) { m.always = true; return m; }
+  }
+  for (const p of EMERGENCY_EXTRA) {
+    const m = t.match(p);
+    if (m) { m.extra = true; return m; }
+  }
+  return null;
+}
+
+const QUESTION_START = /^(?:is|can|could|does|do|are|how|what|why|when|will|should)\b/;
+const PERSONAL_SUBJECT = /\b(?:i|me|my|mine|we|our|he|she|his|her|him|they|their|them|son|daughter|husband|wife|mom|dad|friend|baby|toddler|child|kid)\b/;
+
 function isEmergency(text) {
   const t = normalizeText(text);
-  const emergencyMatch = t.match(/\b(overdose[d]?|took too many|took \d+\s+\w*\s*pills|took \d+ pills|took a handful|swallowed .* pills|ingested too many|whole bottle|entire bottle|can ?t breathe|chest pain|heart attack|stroke|seizure|anaphyla(xis|ctic)?|throat.*(clos(ing|ed|es)?|swell(ing|ed|s)?|tight(en|ening)?)|passing out|faint(ed|ing)|suicid|kill myself|want to die|end it all|wanna die|hurt myself|self.?harm|slit|hanging|blacking out|coughing blood|blood in vomit|vomiting blood|can ?t stop bleeding|unresponsive|unconscious|not breathing|choking)\b/);
+  const emergencyMatch = matchEmergency(t, /\b(overdose[d]?|took too many|took \d+\s+\w*\s*pills|took \d+ pills|took a handful|swallowed .* pills|ingested too many|whole bottle|entire bottle|can ?t breathe|chest pain|heart attack|stroke|seizure|anaphyla(xis|ctic)?|throat.*(clos(ing|ed|es)?|swell(ing|ed|s)?|tight(en|ening)?)|passing out|faint(ed|ing)|suicid|kill myself|want to die|end it all|wanna die|hurt myself|self.?harm|slit|hanging|blacking out|coughing blood|blood in vomit|vomiting blood|can ?t stop bleeding|unresponsive|unconscious|not breathing|choking)\b/);
   if (!emergencyMatch) return false;
+  if (emergencyMatch.always) return true;
+  // "is melatonin overdose possible" / "can I overdose on iron" is a question about
+  // possibility; "I overdosed" / "I think I overdose..." is an event.
+  if (emergencyMatch[0] === "overdose" && QUESTION_START.test(t)) return false;
+  // A general question with nobody in it ("can zinc cause swollen lips") is not an event.
+  if (emergencyMatch.extra && QUESTION_START.test(t) && !PERSONAL_SUBJECT.test(t)) return false;
   // Allow educational/informational framing to pass through
   const idx = emergencyMatch.index;
   const prefix = t.substring(Math.max(0, idx - 60), idx);
@@ -181,6 +237,69 @@ function mentionsDeficiency(text) {
 function mentionsPregnancyContext(text) {
   const t = normalizeText(text);
   return /\b(pregnan(t|cy)|breastfeed(ing)?|nursing|prenatal|conceiv(e|ing)|ttc|trying to conceive|trying for a baby|first trimester|second trimester|third trimester|expecting|postpartum|lactating|pumping|new mom|just had a baby|due in \w+|\d+\s*weeks?\s*pregnant)\b/.test(t);
+}
+
+// ── Populations: one owner for "who is this question about" ──
+// Used by conversation state AND entity extraction. Ages are parsed as numbers and
+// bare words ("kidney", "baby", "I'm 35") are not enough on their own.
+const POPULATION_NOT_AN_AGE = /^\s*(?:mg|mcg|iu|g|ml|kg|lbs?|pounds?|cm|ft|feet|foot|inch(?:es)?|weeks?|days?|months?|hours?|minutes?|mins?|times?|units?|pills?|capsules?|tablets?|servings?|drinks?|cups?|x|percent)\b/;
+const POPULATION_FAMILY = "mom|mother|dad|father|grandma|grandmother|grandpa|grandfather|wife|husband|partner|aunt|uncle|son|daughter|child|kid|brother|sister";
+
+function extractAges(text) {
+  const t = String(text || "").toLowerCase().replace(/[’']/g, "").replace(/[-_]/g, " ");
+  const ages = [];
+  const collect = (re, checkUnit) => {
+    for (const m of t.matchAll(re)) {
+      const n = Number(m[1]);
+      if (n < 1 || n > 110) continue;
+      if (checkUnit && POPULATION_NOT_AN_AGE.test(t.slice(m.index + m[0].length))) continue;
+      ages.push(n);
+    }
+  };
+  collect(/\b(\d{1,3})\s*(?:years?|yrs?)\s*old\b/g, false);
+  collect(/\b(\d{1,3})\s*(?:yo|y[./ ]?o)\b/g, false);
+  collect(/\baged?\s*:?\s*(\d{1,3})\b/g, true);
+  collect(/\b(?:i\s?m|i am)\s+(\d{1,3})\b/g, true);
+  collect(new RegExp("\\bmy\\s+(?:" + POPULATION_FAMILY + ")\\s+(?:is|s)\\s+(\\d{1,3})\\b", "g"), true);
+  return ages;
+}
+
+function detectPopulations(text) {
+  const raw = String(text || "");
+  const t = normalizeText(raw);
+  const lower = raw.toLowerCase();
+  const ages = extractAges(raw);
+  const pops = [];
+
+  if (mentionsPregnancyContext(raw)) pops.push("pregnancy");
+
+  if (ages.some((a) => a >= 65) || /\b(elderly|geriatric|older\s*adult|senior)\b/.test(t) || /\b65\s?\+/.test(lower) || /\bover (?:6[5-9]|[7-9]\d)\b/.test(t)) {
+    pops.push("elderly");
+  }
+
+  // Kidney talk counts only with disease/impairment context: "is creatine bad for your
+  // kidney" is a general question, "kidney disease" / "CKD" / "dialysis" is a patient fact.
+  if (/\b(ckd|dialysis|creatinine|e?gfr|nephropathy|nephrotic|nephritis|kidney (?:disease|failure|damage|injury|transplant|problems?|issues?|function|impairment|insufficiency|dysfunction)|renal (?:disease|failure|impairment|insufficiency|function)|(?:one|single|only|1|bad|weak|poor|failing|damaged) kidneys?|kidneys? (?:are|is) (?:failing|bad|weak|damaged))\b/.test(t)) {
+    pops.push("renal");
+  }
+
+  if (/\b(liver (?:disease|damage|failure|cirrhosis)|hepatitis|cirrhosis|fatty liver)\b/.test(t)) pops.push("liver");
+
+  // A child is the subject: a number under 18, an explicit "for/give/can my child",
+  // pediatric wording — or "my son/daughter/child" unless the user is asking for themselves.
+  const childNoun = "(?:child|children|kid|kids|toddler|toddlers|infant|infants|newborn|newborns|baby|babies|son|daughter|boy|girl|teen|teenager)";
+  const askingForSelf = /\b(for me|myself|i take|i m taking|im taking|i have been taking)\b/.test(t);
+  if (
+    ages.some((a) => a < 18) ||
+    /\b(pediatric|paediatric)\b/.test(t) ||
+    new RegExp("\\b(?:for|give|giving|gave|can|could|should|is|are|does|do|will)\\s+(?:my |our |a |the )?" + childNoun + "\\b").test(t) ||
+    /\b(?:childrens|children s|kids|kid s)\s+(?:vitamin|gummy|gummies|supplement|multivitamin|melatonin|probiotic)/.test(t) ||
+    (!askingForSelf && /\bmy\s+(?:son|daughter|child|children|kid|kids|toddler|infant|newborn)\b/.test(t))
+  ) {
+    pops.push("pediatric");
+  }
+
+  return pops;
 }
 
 function mentionsRetinolRisk(text) {
@@ -511,6 +630,8 @@ module.exports = {
   mentionsHeartSymptoms,
   mentionsDeficiency,
   mentionsPregnancyContext,
+  detectPopulations,
+  extractAges,
   mentionsRetinolRisk,
   mentionsPregnancyLimitedEvidence,
   detectsIsotretinoinVitA,

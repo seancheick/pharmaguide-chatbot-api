@@ -47,9 +47,10 @@ async function runCanary(canary) {
 }
 
 (async () => {
-  console.log(`Smoke test against ${BASE} (${CANARIES.length} canaries)`);
+  const live = CANARIES.filter((c) => !c.inProcessOnly);
+  console.log(`Smoke test against ${BASE} (${live.length} canaries; ${CANARIES.length - live.length} in-process-only skipped)`);
   let failed = 0;
-  for (const canary of CANARIES) {
+  for (const canary of live) {
     try {
       const problems = await runCanary(canary);
       if (problems.length === 0) console.log(`PASS  ${canary.id}`);

@@ -26,7 +26,7 @@ const { validateResponse, SAFE_FALLBACK_REPLY } = require("../src/postprocess/sa
 const { classifyEntities } = require("../src/core/entityClassifier");
 const { correctMisspellings, resolveBrandName, detectUnknownDosedItems } = require("../src/core/unknownResolver");
 const { findMissingFields } = require("../src/core/requiredFields");
-const { buildAnalyticsEvent, emitAnalyticsEvent } = require("../src/infra/analytics");
+const { recordAnalytics } = require("../src/infra/analytics");
 const { buildCacheKey, isCacheable, getCachedResponse, setCachedResponse } = require("../src/infra/responseCache");
 const { callWithFallback, scoreComplexity } = require("../src/infra/providerRouter");
 const { buildAugmentedMessages } = require("../src/core/kbLookup");
@@ -232,7 +232,7 @@ module.exports = async function handler(req, res) {
       }
 
       // ── Analytics (gate path) ──
-      emitAnalyticsEvent(buildAnalyticsEvent({
+      recordAnalytics({
         route: triageRoute, scores, entities, message, safeHistory,
         latencyMs: Date.now() - requestStart,
         validationResult: validation, source: "gate", llmError: null,
@@ -241,7 +241,7 @@ module.exports = async function handler(req, res) {
         clarifierTriggered: triageRoute === "system:clarifier",
         unknownDosedCount: unknownDosed.length,
         missingFields,
-      }));
+      });
 
       const { confidence, label: confidenceLabel } = resolveConfidence("gate", 0);
       const payload = {
@@ -306,19 +306,23 @@ module.exports = async function handler(req, res) {
     // ── Cache check ──
     const systemPromptHash = crypto.createHash("sha256").update(SYSTEM_PROMPT).digest("hex").slice(0, 12);
     const cacheKey = buildCacheKey(message, systemPromptHash, "multi-provider");
-    const cached = getCachedResponse(cacheKey);
+    // Read the cache only for requests that would also be allowed to WRITE it: the
+    // entry is keyed on the message alone, so a pregnant user's follow-up must never be
+    // answered with a stranger's generic reply to the same words.
+    const cacheEligible = isCacheable(message, entities, hasConversation, null, "llm", scores);
+    const cached = cacheEligible ? getCachedResponse(cacheKey) : null;
     if (cached) {
       logGate("llm", message.length, hasConversation);
-      emitAnalyticsEvent(buildAnalyticsEvent({
+      recordAnalytics({
         route: "llm", scores, entities, message, safeHistory,
         latencyMs: Date.now() - requestStart,
         validationResult: { safe: true, violations: [] }, source: "cache", llmError: null,
         clientIP, misspellingCount: corrections.length,
         brandResolved: !!brandResult, clarifierTriggered: false,
         unknownDosedCount: unknownDosed.length, missingFields: [],
-      }));
+      });
       const { confidence: cacheConf } = resolveConfidence("cache", 0);
-      return res.status(200).json({ reply: cached, model: "cache", confidence: cacheConf });
+      return res.status(200).json({ reply: cached, model: "cache", confidence: cacheConf, _state: conversationState });
     }
 
     // ── LLM call via provider router (Gemini → Groq → degraded) ──
@@ -332,14 +336,14 @@ module.exports = async function handler(req, res) {
     const llmResult = await callWithFallback(finalMessages, { complexity, entities, kbHits });
 
     if (llmResult.degraded) {
-      emitAnalyticsEvent(buildAnalyticsEvent({
+      recordAnalytics({
         route: "llm", scores, entities, message, safeHistory,
         latencyMs: Date.now() - requestStart,
         validationResult: { safe: true, violations: [] }, source: "degraded", llmError: "all_providers_failed",
         clientIP, misspellingCount: corrections.length,
         brandResolved: !!brandResult, clarifierTriggered: false,
         unknownDosedCount: unknownDosed.length, missingFields: [],
-      }));
+      });
       const { confidence: degradedConf } = resolveConfidence("degraded", 0);
       // Surface chain-failure detail in the response so we can debug
       // without Vercel log access. Production-safe (no PII; just
@@ -429,14 +433,14 @@ module.exports = async function handler(req, res) {
     }
 
     // ── Analytics (LLM path) ──
-    emitAnalyticsEvent(buildAnalyticsEvent({
+    recordAnalytics({
       route: "llm", scores, entities, message, safeHistory,
       latencyMs: Date.now() - requestStart,
       validationResult: llmValidation, source: llmResult.provider, llmError: null,
       clientIP, misspellingCount: corrections.length,
       brandResolved: !!brandResult, clarifierTriggered: false,
       unknownDosedCount: unknownDosed.length, missingFields: [],
-    }));
+    });
 
     const { confidence: llmConf, label: llmConfLabel } = resolveConfidence("llm", kbHits, llmResult.provider);
     const response = { reply, model: llmResult.modelId, confidence: llmConf, _state: conversationState };
