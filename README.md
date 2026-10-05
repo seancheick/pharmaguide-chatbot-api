@@ -58,7 +58,7 @@ A production decision-and-explanation system for high-stakes supplement–medica
 | Safety-policy domains | 21 |
 | Post-response validator rules | 8 |
 | Pinned production canaries (replayable live) | 9 (8) |
-| Test suites | 22 |
+| Test suites | 23 |
 <!-- metrics:end -->
 
 *That table is generated from the code by `scripts/readme_metrics.js`; `npm test` fails if it drifts.*
@@ -139,6 +139,8 @@ Every response says where it came from, in the `model` field:
 | `system:degraded` | Every provider failed; the deterministic safe reply was returned |
 
 `confidence` (`high` / `moderate` / `low`) is derived from provenance, not from the model: deterministic and cached answers are `high`; a model answer grounded in two or more knowledge entries from the primary model is `high`; any other grounded answer is `moderate`; an ungrounded answer is `moderate` from the primary model and `low` from a lighter one.
+
+Which *rules* produced an answer is reported too: every response carries an `X-PG-Ruleset` header (policy version, gates version, system-prompt hash, knowledge-base and approved-claims content hashes, deployed commit), so two answers can be compared by header and any edit to the knowledge, claims or prompt changes the tag. The JSON contract is unchanged.
 
 Provenance supports debugging, audits, QA, analytics and model evaluation. (The website proxy strips `model` before it reaches browsers.)
 
@@ -243,7 +245,7 @@ Every reproduced production defect becomes a permanent regression case, and the 
 
 ## Observability
 
-- `GET /api/health`: provider configuration, circuit-breaker state and the provider that would serve the next request.
+- `GET /api/health`: provider configuration, circuit-breaker state, the provider that would serve the next request, and a `ruleset` block (the versions and content hashes of the policy, gates, prompt, knowledge base and claims, plus the deployed commit).
 - `GET /api/gaps`: coverage-gap telemetry from real traffic (keyword clusters only, 30-day retention, never raw messages).
 - Structured log lines for provider failover (`[PROVIDER]`), validator decisions (`[VALIDATOR]`) and degraded modes.
 - Optional PHI-free analytics: route distribution, validator rejections, degraded and cache rates, latency buckets, retry and repeat rates, medication and supplement classes.
@@ -327,10 +329,9 @@ This service currently carries its own bounded knowledge layer. The planned arch
 
 | Status | Item |
 |---|---|
-| Done | Deterministic routing, validator, multi-provider failover with soft-failure handling, privacy hardening, CI, production canaries and smoke workflow, generated README metrics, an enforced release gate (CI and deploy) with a 30-day claim-expiry warning |
+| Done | Deterministic routing, validator, multi-provider failover with soft-failure handling, privacy hardening, CI, production canaries and smoke workflow, generated README metrics, an enforced release gate (CI and deploy) with a 30-day claim-expiry warning, ruleset and knowledge versions reported by `/api/health` and an `X-PG-Ruleset` response header |
 | Planned | Model evaluation harness and measured model selection |
 | Planned | Dynamic clinical context assembly: a small invariant policy prompt plus retrieved context, instead of a large always-on prompt |
-| Planned | Richer provenance: ruleset and knowledge versions reported by `/api/health` and in responses |
 | Planned | Consume the pipeline's versioned clinical export; retire overlapping facts from this repository |
 
 See [`ROADMAP.md`](./ROADMAP.md) for the longer plan.
