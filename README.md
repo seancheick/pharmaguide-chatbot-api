@@ -2,145 +2,352 @@
 
 # PharmaGuide AI
 
-**A clinician-reviewed conversational AI for supplement &amp; medication safety.**
-Built as a four-layer defense-in-depth pipeline — gates, retrieval, LLM, validator — so the high-stakes questions never reach an LLM and the safe ones come back grounded.
+**Evidence-grounded health intelligence for supplement and medication safety.**
 
-<sub>Part of the **[pharmaguide.io](https://pharmaguide.io)** supplement-intelligence platform · this chatbot is one surface of the product</sub>
+A production decision-and-explanation system for high-stakes supplement–medication questions: deterministic clinical safety routing, structured knowledge retrieval, contextual entity and dose analysis, multi-provider language-model orchestration, and post-generation validation.
+
+<sub>One surface of the **[pharmaguide.io](https://pharmaguide.io)** supplement-intelligence platform</sub>
 
 <br />
 
-[![Status](https://img.shields.io/badge/Status-Production-12B886?style=for-the-badge)](#)
-[![Primary LLM](https://img.shields.io/badge/Primary-Gemini%202.5%20Flash-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/gemini-api/docs)
-[![Fallback LLM](https://img.shields.io/badge/Fallback-Llama%203.3%2070B-1A1A1A?style=for-the-badge&logo=meta&logoColor=white)](https://groq.com)
-[![Hosting](https://img.shields.io/badge/Vercel-Serverless-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com)
-
-[![Tests](https://img.shields.io/badge/tests-1%2C223%20passing-2EA043?style=flat-square&logo=node.js&logoColor=white)](./test)
-[![KB entries](https://img.shields.io/badge/KB-80%20entries-6E40C9?style=flat-square)](./src/config/knowledgeBase.js)
-[![Safety gates](https://img.shields.io/badge/safety%20gates-39%20deterministic-1F6FEB?style=flat-square)](./src/core/router.js)
-[![Wellness goals](https://img.shields.io/badge/wellness%20goals-11%20categories-DB2777?style=flat-square)](./src/core/wellnessGoalMap.js)
-[![Validator](https://img.shields.io/badge/post--response%20validator-8%20rules-EAB308?style=flat-square)](./src/postprocess/safetyValidator.js)
-[![Node](https://img.shields.io/badge/node-%E2%89%A518.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
-[![Code](https://img.shields.io/badge/code-10.7k%20LOC-555555?style=flat-square)](./src)
-[![License](https://img.shields.io/badge/license-Proprietary-CB2030?style=flat-square)](#license)
+[![CI](https://github.com/seancheick/pharmaguide-chatbot-api/actions/workflows/ci.yml/badge.svg)](https://github.com/seancheick/pharmaguide-chatbot-api/actions/workflows/ci.yml)
+[![Production smoke](https://github.com/seancheick/pharmaguide-chatbot-api/actions/workflows/smoke.yml/badge.svg)](https://github.com/seancheick/pharmaguide-chatbot-api/actions/workflows/smoke.yml)
+[![Node](https://img.shields.io/badge/node-%E2%89%A518-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
+[![Vercel](https://img.shields.io/badge/Vercel-serverless-000000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com)
+[![License](https://img.shields.io/badge/license-proprietary-CB2030?style=flat-square)](#license)
 
 </div>
 
 ---
 
-## Beyond the chatbot — the full PharmaGuide platform
+> **Not an LLM wrapper.** Known high-risk scenarios (a PDE5 inhibitor with a nitrate, an SSRI with 5-HTP, warfarin with ginkgo) are resolved by deterministic rules and never wait on a model. Generative models are used for language understanding and grounded explanation, after PharmaGuide has established the clinical context. Every reply, deterministic or generated, is checked by a validator before it leaves.
 
-This API answers questions. **[PharmaGuide](https://pharmaguide.io)** answers the harder question: *what does my entire supplement &amp; medication stack actually do together?*
-
-The full mobile + web product extends the same safety pipeline into a catalog-grade intelligence layer:
-
-- **Cross-reference your full stack** — every supplement and medication you take, continuously checked against each other for interactions, medication-nutrient depletions (statins → CoQ10, metformin → B12, PPIs → magnesium), dose accumulation across products, and timing conflicts that don't show up on any single label.
-- **180,000+ product catalog** with a 4-pillar PG Score (ingredient quality, safety &amp; purity, evidence, brand trust) — including the proprietary blends most apps can't decompose.
-- **Live FDA recall monitoring** on the products you've actually scanned — Adverse Event Reporting System (FAERS) signals surface alongside the warning before most users hear about it.
-- **Personal Fit** — every recommendation profile-gated against your conditions, medications, populations (pregnancy / renal / elderly), and goals.
-- **Privacy by architecture** — your stack and conditions stay encrypted on-device. AES-256 locally, nothing about your body is uploaded to a server we control, nothing to subpoena, nothing to leak.
-- **Clinician-reviewed** — every interaction and depletion mapping is signed off by a licensed PharmD before it ships.
-
-This chatbot is one surface. The mobile app does the heavier lifting — opening in waves through 2026. **Join the beta at [pharmaguide.io](https://pharmaguide.io)**, or just ask the assistant any supplement / medication / interaction question right there. Same engine, same safety pipeline.
-
----
-
-## Why this exists
-
-Most consumer-health chatbots fail one of two ways:
-
-1. **Refuse everything** — even legitimate questions about supplements, dosing, or interactions get a "consult a professional" wall.
-2. **Answer recklessly** — confident replies on YMYL topics with no clinical review, no source grounding, and no awareness of dangerous drug-drug-supplement combinations.
-
-PharmaGuide does neither. It's an architecture, not a wrapper:
-
-- High-stakes interactions (statin + red yeast rice, SSRI + 5-HTP, PDE5 inhibitor + L-arginine, warfarin + ginkgo) are intercepted by **deterministic gates** with canned clinician-reviewed replies — they **never reach an LLM**.
-- Wellness questions (sleep, stress, cholesterol, energy) flow to the LLM with a **grounded knowledge-base context** injected per-query so answers cite real dose ranges and contraindications instead of guessing.
-- Every response — gate, LLM, or fallback — is then re-checked by a **post-response safety validator** before reaching the user.
-
-The result is a chatbot that is *useful* on common wellness questions and *structurally unable* to invent dangerous advice on high-risk ones.
-
----
-
-## Architecture — four independent safety layers
-
-```
-                ┌──────────────────────────────────────────────┐
-                │  USER MESSAGE                                │
-                └────────────────────┬─────────────────────────┘
-                                     ▼
-   ┌──────────────────────────────────────────────────────────────┐
-   │  LAYER 1 — Detection gates           (<5ms · deterministic)  │
-   │  emergency · greeting · thanks · goodbye · flirty · creator  │
-   │  pet · business · off-topic · medical-condition · wellness   │
-   └────────────────────┬─────────────────────────────────────────┘
-                        ▼
-   ┌──────────────────────────────────────────────────────────────┐
-   │  LAYER 2 — Risk triage router        (<10ms · deterministic) │
-   │  39 routes — high-risk interactions get canned replies,      │
-   │  NEVER reach an LLM. Examples: nitrate-vasodilator,          │
-   │  serotonin-urgent, ssri-discontinuation, blood-thinner-risk, │
-   │  grapefruit-CYP3A4, lithium-NSAID, statin-myopathy.          │
-   └────────────────────┬─────────────────────────────────────────┘
-                        ▼
-   ┌──────────────────────────────────────────────────────────────┐
-   │  LAYER 3 — KB-grounded LLM chain     (~1.5–2.5s)             │
-   │  Gemini 2.5 Flash → Groq Llama 3.3 70B → degraded reply      │
-   │  80-entry clinical KB injected as context;                   │
-   │  per-provider circuit breakers + transparent failover.       │
-   │  Wellness goals fan out to candidate KB entries even when    │
-   │  the user named no specific supplement.                      │
-   └────────────────────┬─────────────────────────────────────────┘
-                        ▼
-   ┌──────────────────────────────────────────────────────────────┐
-   │  LAYER 4 — Post-response validator    (<2ms · deterministic) │
-   │  no diagnosing · no stop-med advice · no prescribing         │
-   │  no dosing for pregnancy/children without education          │
-   │  no fabricated URLs/emails/phone numbers                     │
-   │  single-question constraint · length sanity                  │
-   │  → Strip-in-place when possible; SAFE_FALLBACK_REPLY when not│
-   └────────────────────┬─────────────────────────────────────────┘
-                        ▼
-                  RESPONSE TO USER
+```text
+ Deterministic safety   +   Clinical retrieval   +   Context engine
+ +   Multi-LLM orchestration   +   Post-response validation   +   Production monitoring
 ```
 
-| Layer | Purpose | Latency | Failure mode |
-|---|---|---|---|
-| 1. Detection | Trivial intent triage | < 5 ms | Falls through to Layer 2 |
-| 2. Risk triage | High-stakes interception | < 10 ms | Falls through to Layer 3 |
-| 3. LLM chain | Knowledge-grounded reasoning | 1.5–2.5 s | Fails over Gemini → Groq → graceful degradation |
-| 4. Validator | Final safety check | < 2 ms | Sanitises in place or returns deterministic fallback |
+*PharmaGuide AI is an educational tool. It does not diagnose, prescribe, or replace a clinician or pharmacist.*
+
+**Contents:** [Engineering highlights](#engineering-highlights) · [How a request flows](#how-a-request-flows) · [LLMs do not own safety decisions](#llms-do-not-own-safety-decisions) · [Decision provenance](#decision-provenance) · [Designed for failure](#designed-for-failure) · [Context-aware conversations](#context-aware-conversations) · [Clinical retrieval and governance](#clinical-context-retrieval-and-governance) · [Model strategy](#model-strategy) · [Testing](#testing-and-production-canaries) · [Security and privacy](#security-and-privacy-architecture) · [Observability](#observability) · [Principles](#safety-philosophy-and-engineering-principles) · [Examples](#see-it-work) · [Explore the code](#explore-the-engineering) · [Roadmap](#toward-a-unified-pharmaguide-intelligence-layer) · [Platform](#the-pharmaguide-platform) · [API](#api) · [Configuration](#configuration) · [Limitations](#responsible-use-and-known-limits)
 
 ---
 
-## LLM provider chain
+## Engineering highlights
 
-| Provider | Role | Model | Typical latency | Known limit |
-|---|---|---|---|---|
-| **Gemini** | Primary | `gemini-2.5-flash` (thinking off) | ~1.5–3 s | Free tier: 20 requests/day/model (observed 2026-10-05) |
-| **Gemini Lite** | Interim second tier | `gemini-3.5-flash-lite` | ~1.5–2 s | Own quota per model; to be replaced by the eval-driven model choice |
-| **Groq** | Cross-vendor fallback | `openai/gpt-oss-120b` | — | Free tier: 8,000 tokens/min, below the ~10.4k-token system prompt, so every request is rejected (HTTP 413) until the prompt is slimmed or the account is on Dev Tier |
-| Degraded reply | Last resort | — | < 5 ms | always available |
+- **Deterministic safety before generation.** Emergency detection and known high-risk interactions are answered by reviewed rules, in milliseconds, with a fixed precedence order.
+- **A validator on every reply.** Gate replies and model replies pass the same post-response checks (no diagnosing, no stop-your-medication instructions, no prescribing, no unsafe dosing for pregnancy or children, no fabricated contact details, one question at a time).
+- **Multi-provider orchestration with failure handling.** Primary model, second model tier, cross-vendor fallback, per-provider circuit breakers, a shared time budget, and a deterministic safe reply when everything fails. A cut-off, blocked or empty answer is treated as a failed attempt, never shown to a user.
+- **Query-aware clinical retrieval.** Structured entries (forms, dose ranges, upper limits, timing, populations, interactions, source references) are retrieved per question instead of relying on model memory.
+- **Stateful safety context.** Pregnancy, age group, kidney and liver status and key conditions are derived from the conversation, carried between turns, and allow-listed so a client cannot inject free text.
+- **Dose and entity understanding.** Doses are parsed from messages and compared with known upper limits; medications, supplements, forms and wellness goals are extracted and classified.
+- **Privacy by construction.** No message text in logs, hashed rate-limit identifiers, website-only API access, no server-side chat storage, PHI-free analytics.
+- **Regression-driven.** Every reproduced production defect becomes a permanent test; a pinned set of production canaries runs after every deploy and daily.
+- **Governed clinical claims.** Claims carry review dates and source references. An enforced release gate (CI and every deploy) blocks a release when a claim is overdue, and a weekly job warns 30 days ahead.
+- **Honest roadmap.** Planned work (model evaluation, prompt minimisation, a shared clinical export) is labelled as planned, below.
 
-Each provider has its own circuit breaker (`src/infra/circuitBreaker.js`, `src/infra/geminiCircuitBreaker.js`; the lite tier has a short one inside `providerRouter.js`). When a provider fails, rate-limits, or returns an answer that is cut off, blocked or empty, the chain moves on. The whole chain shares a 12 s time budget so it finishes inside the website proxy's 15 s limit. When every provider fails, the user receives a deterministic graceful-degradation reply with provider/911/Poison-Control guidance rather than an error.
+<!-- metrics:start -->
+| Measured from the code | Count |
+|---|---:|
+| Deterministic response routes | 41 |
+| Declarative (data-driven) safety gates | 12 |
+| Detection functions | 58 |
+| Clinical knowledge entries | 102 |
+| Curated source references | 31 |
+| Approved clinical claims (with review dates) | 21 |
+| Safety-policy domains | 21 |
+| Post-response validator rules | 8 |
+| Pinned production canaries (replayable live) | 9 (8) |
+| Test suites | 23 |
+<!-- metrics:end -->
 
-Live `/api/health` exposes per-provider `configured`, `circuit`, and `model` so operators can monitor failover state.
+*That table is generated from the code by `scripts/readme_metrics.js`; `npm test` fails if it drifts.*
 
 ---
 
-## Knowledge-base grounding
+## How a request flows
 
-When entities are extracted from the user's message, matching KB entries are injected into the LLM prompt with structured fields:
+```text
+ POST /api/chat
+      │
+      ▼
+ Edge ─ proxy secret (when enforced) · input validation · size limits
+      │
+      ▼
+ 1  Emergency detection ........ deterministic · answered BEFORE the rate limiter
+      │                          so an infrastructure outage can never delay it
+      ▼
+ 2  Rate limit ................. hashed visitor key · in-memory fallback if Redis is down
+      │
+      ▼
+ 3  Conversation gates ......... greeting · scope · privacy · "what is PharmaGuide" · off-topic
+      │
+      ▼
+ 4  Context engine ............. entities · doses · populations · conversation state
+      │
+      ▼
+ 5  Deterministic safety engine  depletion lookup → risk scoring → rule-precedence router
+      │
+      ├── known high risk / known fact ──► verified reply  (provenance: system:<route>)
+      │
+      └── general question
+              │
+              ▼
+          6  Clinical context assembly ... knowledge entries · timing/washout · patient profile
+              │
+              ▼
+          7  LLM orchestration ........... cache → primary → second tier → fallback → safe reply
+              │
+              ▼
+          8  Post-processing ............. strip disclaimers/links · mineral spacing · dose flags
+              │
+              ▼
+ 9  Safety validator (every reply) ........ sanitise in place, or replace with a safe fallback
+      │
+      ▼
+ Response  { reply, model (provenance), confidence, _state }
+```
 
-- **Dose range** (`adult_dose_range.min / .max / .unit`)
-- **Upper limit** (with source)
-- **Timing** (best time, with-food, separation from other ingredients)
-- **Population safety** (pregnancy / renal / elderly with notes)
-- **Interactions** (with mechanism + severity + timing-fix)
-- **Common goals** (informational tags)
+The ordering is the design: steps 1–5 are rules, so the questions that matter most never depend on sampling, latency, quota or a vendor outage.
 
-When the user asks a *goal-only* question ("what can I take to sleep better") with no named supplement, the wellness-goal router maps the goal to candidate KB entries (sleep → melatonin / magnesium / glycine / l-theanine) and injects those as candidates — the LLM never has to answer from parametric memory alone.
+## LLMs do not own safety decisions
 
-**80 entries covering** vitamins (A, C, D, E, K2), minerals (Mg, Fe, Zn, Ca, K, Se, I, folate), adaptogens (ashwagandha, rhodiola), sleep (melatonin, glycine, valerian, L-theanine), cardiovascular (CoQ10, omega-3, red yeast rice, plant sterols), fiber (psyllium, glucomannan), nitric-oxide donors (L-arginine, L-citrulline), nootropics (alpha-GPC, creatine, L-theanine), prescription medications (warfarin, statins, SSRIs, metformin, levothyroxine, NSAIDs, PPIs, PDE5 inhibitors, nitrates), and more.
+```text
+ Known fact or rule              Unknown / general question
+        │                                  │
+        ▼                                  ▼
+ Deterministic PharmaGuide        Retrieve verified context
+ logic decides                            │
+        │                                  ▼
+        ▼                          LLM writes the answer
+ A model may explain it                    │
+ (it cannot override it)                   ▼
+                                    Validator checks the answer
+```
+
+A model can help with language. It cannot override a deterministic emergency or contraindication route, and nothing it writes reaches a user without passing the validator.
+
+## Decision provenance
+
+Every response says where it came from, in the `model` field:
+
+| Value | Meaning |
+|---|---|
+| `system:<route>` | A deterministic PharmaGuide route answered (e.g. `system:emergency`, `system:nitrate-vasodilator`, `system:pregnancy-retinol`, `system:depletion`) |
+| a model id | A generative answer, produced by that model after retrieval, then validated |
+| `cache` | A previously validated answer for a context-free question |
+| `system:degraded` | Every provider failed; the deterministic safe reply was returned |
+
+`confidence` (`high` / `moderate` / `low`) is derived from provenance, not from the model: deterministic and cached answers are `high`; a model answer grounded in two or more knowledge entries from the primary model is `high`; any other grounded answer is `moderate`; an ungrounded answer is `moderate` from the primary model and `low` from a lighter one.
+
+Which *rules* produced an answer is reported too: every response carries an `X-PG-Ruleset` header (policy version, gates version, system-prompt hash, knowledge-base and approved-claims content hashes, deployed commit), so two answers can be compared by header and any edit to the knowledge, claims or prompt changes the tag. The JSON contract is unchanged.
+
+Provenance supports debugging, audits, QA, analytics and model evaluation. (The website proxy strips `model` before it reaches browsers.)
+
+## Designed for failure
+
+| What goes wrong | What happens | Proven by |
+|---|---|---|
+| Primary model errors, rate-limits or times out | The next tier is tried; circuit breakers stop hammering a failing provider | `test/canaries.test.js`, `test/load.test.js` |
+| A model answer is cut off, blocked or empty | Treated as a failed attempt (not an outage): the next provider answers, and the partial text is never shown | `test/canaries.test.js` |
+| Every provider fails | A deterministic reply with pharmacist, prescriber and 911/Poison Control guidance | `test/golden-traces.test.js` |
+| The provider chain is slow | A shared 12 s time budget keeps the whole chain inside the website proxy's 15 s limit | `test/wave-c.test.js` |
+| The rate-limit backend (Redis) is down | Falls back to an in-memory limiter within 1.5 s; emergencies are answered before the limiter, so they never wait on it | `test/canaries.test.js` |
+| A generated answer breaks policy | The validator sanitises it in place or replaces it with a safe fallback | `test/validator.test.js` |
+| An optional post-processing step throws | Logged; the finished answer is still returned | `test/canaries.test.js` |
+| Analytics rejects an event | The event is dropped; the request is unaffected | `test/wave-b.test.js` |
+| Malformed JSON, oversized message, hostile client state | Clean `400`, or the bad fields are dropped by an allow-list | `test/canaries.test.js`, `test/wave-b.test.js` |
+| Clinical context is unclear | A clarifier route asks which medication is meant instead of guessing | `test/full-suite.test.js` |
+| Enforcement is requested but its secret is missing | Fails open with a logged error, because locking out every visitor is the worse failure | `test/wave-c.test.js` |
+
+## Context-aware conversations
+
+PharmaGuide derives structured facts from the conversation and carries them forward, rather than replaying raw history into every rule:
+
+- **Populations:** pregnancy, older adult, kidney disease, liver disease, pediatric.
+- **Conditions:** diabetes, thyroid disease, seizure history, bariatric surgery.
+- **Care in the details:** ages are parsed as numbers (so "I'm 35" is not "elderly" and "I'm 10 weeks pregnant" is not a child); "kidney" alone is a general question, "kidney disease" is a patient fact; a child must be the *subject* of the question.
+- **Bounded and untrusted:** the client may send `_state` back, but only known enum values survive; free text never reaches a prompt.
+
+```text
+ Turn 1   "I'm pregnant, can I take vitamin A?"   → system:pregnancy-retinol     state: [pregnancy]
+ Turn 2   "What about ashwagandha?"                → system:pregnancy-limited    state: [pregnancy]
+```
+
+The second question inherits the first turn's context, which a stateless chatbot would lose. This exact flow is a pinned production canary.
+
+## Clinical context retrieval and governance
+
+When entities are recognised, matching structured entries are retrieved and injected as context (capped, so the prompt stays focused). Each entry can carry: aliases and forms, adult dose range, upper limit, timing and separation rules, population restrictions, interactions with mechanism and severity, common goals, and source references.
+
+- **Goal-only questions** ("what can I take to sleep better") are mapped to candidate entries, so the model never answers from memory alone.
+- **Temporal context** (washout, onset, half-life) and **form-specific guidance** (for example oxide versus glycinate) are added when relevant.
+- **Dose awareness:** a stated dose is compared with the known upper limit and flagged in the reply.
+- **Source-backed:** entries link to curated references; approved claims carry a domain, confidence, review date, review cycle and references, and `scripts/check_release.js` (the release gate, run in CI and as the Vercel build command) checks policy version, claim review dates and forbidden analytics fields, then runs the whole test suite without any provider secrets.
+- **Coverage telemetry, not auto-learning:** `GET /api/gaps` shows which topics users ask about that the knowledge layer does not cover. It identifies topics for human review. It never adds clinical facts by itself.
+
+Design write-ups live in [`docs/safety-case/`](./docs/safety-case): safety architecture, risk domains, validation rules, threat model, failure modes and test coverage.
+
+## Model strategy
+
+Models are replaceable infrastructure, not part of the safety argument.
+
+- The provider chain, per-model generation settings and failure semantics live in one place (`src/infra/providerRouter.js`, `geminiClient.js`, `groqClient.js`), so changing a model is a small, tested change.
+- Quirks are encoded where they belong: for example, a model's hidden "thinking" tokens count against the output limit, so thinking is configured per model and any non-natural stop is a soft failure.
+- Generation parameters adapt to query complexity (more careful settings for multi-medication and population-specific questions).
+- `GET /api/health` reports each provider's configuration and circuit state.
+
+**Planned:** a health-specific evaluation harness so models are chosen on measured behaviour, ranked by critical safety failures first, then factual accuracy, fidelity to supplied facts, evidence overstatement, truncation, latency, cost, and data-use terms, rather than vendor preference.
+
+## Testing and production canaries
+
+Suites live in [`test/`](./test) and run with `npm test` on every push and pull request.
+
+| Area | Suites |
+|---|---|
+| End-to-end behaviour | `golden-traces`, `ux-scenarios`, `wellness-queries` |
+| Clinical safety cases | `safety-harness` (clinical IDs: route and reply content), `full-suite`, `edge-cases`, `router_precedence` |
+| Adversarial | `adversarial` (prompt injection, jailbreaks, safety bypass), hostile client state and forged headers (`wave-b`, `wave-c`) |
+| Failure paths | provider failure, truncation, Redis outage, malformed input, time-budget exhaustion (`canaries`, `wave-c`, `load`) |
+| Output safety | `validator` (every rule, positive and negative controls), emergency paraphrases with educational negatives (`wave-b`) |
+| Knowledge | `knowledge`, `references` (claim to citation integrity), `phase2` |
+| Operations | `operational` (release guard, circuit breaker), `scaling`, `load` (synthetic load and chaos), `analytics` |
+| Privacy | hashed limiter keys verified against a fake Redis, no message text in logs (`limiter-privacy`, `wave-c`) |
+| Docs | `readme-metrics` (README numbers match the code) |
+| Live providers | `llm-behavior`, opt-in with `RUN_LLM_TESTS=1` |
+
+**Production canaries** (`test/canaries.js`) are known catastrophic regressions, run in `npm test` against the handler and by `scripts/smoke_prod.js` against the deployed service (after every production deploy and daily, by `.github/workflows/smoke.yml`):
+
+```text
+Viagra + nitroglycerin          → deterministic contraindication route
+"I took too many pills"         → emergency route
+Double warfarin + bleeding      → emergency route
+Toddler + iron ingestion        → emergency route (Poison Control)
+Passive suicidal ideation       → crisis route with 988
+Pregnancy, then a follow-up     → context carried, answer not served from a shared cache
+Kidney wording (negative case)  → general question is not tagged as a renal patient
+Turmeric                        → a complete answer (a data bug once returned HTTP 500)
+```
+
+Every reproduced production defect becomes a permanent regression case, and the same list runs in CI and against production, so a regression cannot hide in only one of them.
+
+## Security and privacy architecture
+
+- **Website-only access.** The website's server-side proxy sends a shared secret (compared in constant time); enforcement is opt-in and staged so a roll-out cannot lock users out. Only a request carrying the secret is allowed to name the visitor's address.
+- **Hashed identifiers.** Rate limits use a keyed one-way hash of the visitor address. The address itself is never sent to the limiter backend.
+- **No message text in logs.** Validator rejections log rule names and message length only.
+- **No server-side chat storage.** The service keeps no conversation history; the website holds the conversation in memory for the visit only.
+- **Bounded inputs.** Message length, history length and per-message size are capped; client `_state` is an allow-list.
+- **No raw provider errors to browsers.** Provider names and upstream error text are returned only in development.
+- **PHI-free analytics.** Events contain coarse classes, hashed values and counts, never names, doses or messages, and a forbidden-key guard rejects anything else (behind `ANALYTICS_ENABLED`).
+- **CORS allow-list** limited to the production origins; credentials live only in environment variables.
+- **Third parties.** Message text is processed by the language-model providers to generate replies; see the [privacy policy](https://pharmaguide.io/privacy).
+
+## Observability
+
+- `GET /api/health`: provider configuration, circuit-breaker state, the provider that would serve the next request, and a `ruleset` block (the versions and content hashes of the policy, gates, prompt, knowledge base and claims, plus the deployed commit).
+- `GET /api/gaps`: coverage-gap telemetry from real traffic (keyword clusters only, 30-day retention, never raw messages).
+- Structured log lines for provider failover (`[PROVIDER]`), validator decisions (`[VALIDATOR]`) and degraded modes.
+- Optional PHI-free analytics: route distribution, validator rejections, degraded and cache rates, latency buckets, retry and repeat rates, medication and supplement classes.
+- The production smoke workflow doubles as an alarm: a failing canary fails the run.
+
+## Safety philosophy and engineering principles
+
+**Deterministic before generative.** Known high-risk cases bypass model reasoning.
+**Specific before generic.** Guidance follows the exact ingredient, form and population wherever the data allows.
+**Uncertainty before invention.** Missing evidence is reported as missing, never filled in.
+**Fail safely.** Provider, infrastructure, validation and state failures must not turn into unsafe answers.
+
+How the code is kept honest:
+
+- One owner for each decision (one population detector, one model-id owner, one canary list); two names for one meaning is treated as a defect.
+- Fix the defect class, not only the example: each fix ships with the test that fails without it.
+- No new clinical facts in this service. The clinical source of truth belongs to the PharmaGuide pipeline (see the roadmap).
+- Documentation numbers are generated, not typed.
+- Provider-agnostic by construction; no model is part of the safety argument.
+
+## See it work
+
+Real routes from the current code (deterministic routes answer in milliseconds in-process; model-backed answers typically take 1.5–3 s):
+
+| Question | Provenance |
+|---|---|
+| Can I take Viagra with nitroglycerin? | `system:nitrate-vasodilator` |
+| I took too many pills | `system:emergency` |
+| Can I take 5-HTP with sertraline? | `system:serotonin-risk` |
+| Is it safe to take ginkgo with warfarin? | `system:blood-thinner-risk` |
+| Can I take ibuprofen with warfarin? | `system:nsaid-anticoagulant` |
+| I'm pregnant, can I take vitamin A? | `system:pregnancy-retinol` |
+| Can I take magnesium with kidney disease? | `system:renal-magnesium` |
+| What's the best form of magnesium for sleep? | a model, grounded in retrieved knowledge entries |
+| Is turmeric good for joint pain? | a model, grounded in retrieved knowledge entries |
+| Is my data private? | `system:privacy` |
+
+**Try it locally** (deterministic routes need no API keys):
+
+```bash
+npm ci
+npm test
+vercel dev        # then, in another terminal:
+curl -s localhost:3000/api/chat -H 'Content-Type: application/json' \
+  -d '{"message":"Can I take Viagra with nitroglycerin?"}'
+```
+
+## Explore the engineering
+
+| Concern | Where |
+|---|---|
+| Request orchestration | [`api/chat.js`](./api/chat.js) |
+| Deterministic routing and precedence | [`src/core/router.js`](./src/core/router.js), [`src/gates/gates.json`](./src/gates/gates.json) |
+| Emergency and safety detection | [`src/gates/detection.js`](./src/gates/detection.js) |
+| Verified replies | [`src/gates/replies.js`](./src/gates/replies.js) |
+| Entities, doses, populations | [`src/core/entities.js`](./src/core/entities.js), [`src/core/doseExtractor.js`](./src/core/doseExtractor.js), [`src/core/history.js`](./src/core/history.js) |
+| Risk scoring and severity | [`src/core/riskScore.js`](./src/core/riskScore.js) |
+| Knowledge retrieval | [`src/core/kbLookup.js`](./src/core/kbLookup.js), [`src/config/knowledgeBase.js`](./src/config/knowledgeBase.js) |
+| Claims, references, policy | [`src/config/approvedClaims.js`](./src/config/approvedClaims.js), [`src/config/references.js`](./src/config/references.js), [`src/config/safetyPolicy.js`](./src/config/safetyPolicy.js) |
+| LLM orchestration and failover | [`src/infra/providerRouter.js`](./src/infra/providerRouter.js) |
+| Final safety validation | [`src/postprocess/safetyValidator.js`](./src/postprocess/safetyValidator.js) |
+| Access control and rate limiting | [`src/infra/proxyAuth.js`](./src/infra/proxyAuth.js), [`src/infra/rateLimit.js`](./src/infra/rateLimit.js) |
+| Production canaries | [`test/canaries.js`](./test/canaries.js), [`scripts/smoke_prod.js`](./scripts/smoke_prod.js) |
+| Safety regression suite | [`test/safety-harness.test.js`](./test/safety-harness.test.js) |
+| Design write-ups | [`docs/safety-case/`](./docs/safety-case) |
+
+## Toward a unified PharmaGuide intelligence layer
+
+This service currently carries its own bounded knowledge layer. The planned architecture moves overlapping clinical facts (interactions, contraindications, doses, pregnancy guidance, ingredient forms) to a versioned export from PharmaGuide's canonical pipeline, so every product surface consumes the same reviewed source of truth and the assistant explains pipeline truth rather than maintaining a second copy.
+
+```text
+                  Canonical PharmaGuide pipeline
+              identity · evidence · dose · interactions · safety
+                               │
+                     versioned clinical export
+                               │
+          ┌────────────────────┼─────────────────────┐
+          ▼                    ▼                     ▼
+      Mobile app            Website              Assistant
+```
+
+| Status | Item |
+|---|---|
+| Done | Deterministic routing, validator, multi-provider failover with soft-failure handling, privacy hardening, CI, production canaries and smoke workflow, generated README metrics, an enforced release gate (CI and deploy) with a 30-day claim-expiry warning, ruleset and knowledge versions reported by `/api/health` and an `X-PG-Ruleset` response header |
+| Planned | Model evaluation harness and measured model selection |
+| Planned | Dynamic clinical context assembly: a small invariant policy prompt plus retrieved context, instead of a large always-on prompt |
+| Planned | Consume the pipeline's versioned clinical export; retire overlapping facts from this repository |
+
+See [`ROADMAP.md`](./ROADMAP.md) for the longer plan.
+
+## The PharmaGuide platform
+
+This API answers questions. **[PharmaGuide](https://pharmaguide.io)** is the larger system: a data pipeline that ingests NIH's Dietary Supplement Label Database (200,000+ labels), resolves ingredient identity, and evaluates each product before it ships to the mobile app and website as a versioned, validated release.
+
+- **Quality and safety are separate judgements.** Product quality is a deterministic six-pillar score out of 100: Formulation (20), Dose (20), Evidence (20), Transparency (15), Verification (15), Safety/Hygiene (10). Safety is decided separately: a banned substance always blocks a product, whatever its quality score, and a quality tier never changes safety.
+- **Evidence is matched to the specific preparation.** Matching an ingredient name does not transfer a lozenge trial to a capsule, or a combination trial to one constituent, and a null or negative outcome never creates a positive evidence bonus.
+- **Evidence and dose are different questions.** Evidence asks whether research supports the intervention; dose asks whether the product supplies a comparable amount.
+- **Uncertainty is a result.** Products can be `not_scored` or `suppressed_safety` rather than given a number the data cannot support.
+- **Personal safety** (interactions, conditions, medications, populations) is evaluated against the person, separately from product quality.
+- **Health profile, conditions and medications stay on the device** in the mobile app; see the [privacy policy](https://pharmaguide.io/privacy).
+
+This assistant is built on the same safety philosophy, with migration to the shared clinical layer on the roadmap above. Join the beta at [pharmaguide.io](https://pharmaguide.io).
 
 ---
 
@@ -151,51 +358,39 @@ When the user asks a *goal-only* question ("what can I take to sleep better") wi
 ```json
 {
   "message": "Can I take magnesium with metformin?",
-  "history": [
-    { "role": "user", "content": "..." },
-    { "role": "assistant", "content": "..." }
-  ]
+  "history": [{ "role": "user", "content": "..." }, { "role": "assistant", "content": "..." }],
+  "_state": { "populations": ["pregnancy"], "conditions": [] }
 }
 ```
 
-**Response (LLM path)**
+- `message`: required, at most 2,000 characters. `history`: optional, the last 10 messages are used (1,000 characters each). `_state`: optional, send back what the previous response returned.
+- `confidence` and `_state` appear on triage and model responses. Early conversational and emergency routes return only `reply` and `model`.
 
 ```json
-{
-  "reply": "Magnesium and metformin have a documented interaction...",
-  "model": "gemini-2.5-flash",
-  "confidence": "moderate"
-}
+{ "reply": "...", "model": "gemini-2.5-flash", "confidence": "moderate",
+  "_state": { "populations": [], "known_meds": [], "known_supps": [], "conditions": [] } }
 ```
 
-**Response (gate path)** — the `model` field reflects which deterministic route answered:
+| Status | Meaning |
+|---|---|
+| `200` | Answered (including the deterministic degraded reply, `model: "system:degraded"`) |
+| `400` | Missing, malformed or oversized message |
+| `401` | Proxy secret required and missing or wrong (only when enforcement is on) |
+| `405` | Not `POST`/`OPTIONS` |
+| `429` | Rate limited; `retryAfter` in seconds |
+| `500` | Unexpected error (no internals returned) |
 
-```json
-{
-  "reply": "🔴 This combination can cause severe low blood pressure...",
-  "model": "system:nitrate-vasodilator"
-}
-```
-
-**Response (degraded)** — both LLM providers failed; user gets a safe redirect, operators get a diagnostic surface:
-
-```json
-{
-  "reply": "I wasn't able to fully process your question right now...",
-  "model": "system:degraded",
-  "_provider_failures": [{ "provider": "gemini", "status": 429, "message": "..." }]
-}
-```
+Rate limit: 10 requests per minute per visitor at this API (the website proxy adds its own limit). In development (`NODE_ENV=development`) responses also include `_scores`, `_entities`, `_validation` and provider detail.
 
 ### `GET /api/health`
 
 ```json
 {
   "status": "ok",
-  "version": "2.0.0",
   "providers": {
-    "gemini": { "configured": true, "circuit": "CLOSED", "model": "gemini-2.5-flash" },
-    "groq":   { "configured": true, "circuit": "CLOSED", "model": "llama-3.3-70b-versatile" }
+    "gemini":          { "configured": true, "circuit": "CLOSED", "model": "gemini-2.5-flash" },
+    "gemini_fallback": { "configured": true, "model": "gemini-3.5-flash-lite" },
+    "groq":            { "configured": true, "circuit": "CLOSED", "model": "openai/gpt-oss-120b" }
   },
   "active_provider": "gemini"
 }
@@ -203,67 +398,50 @@ When the user asks a *goal-only* question ("what can I take to sleep better") wi
 
 ### `GET /api/gaps`
 
-Operational dashboard — topic-coverage gaps detected over time from real queries. Drives KB expansion priorities.
+Coverage-gap telemetry: topics that real queries touched but the knowledge layer does not cover, ranked by frequency, to prioritise human review.
 
----
+## Configuration
 
-## Tech stack
-
-[![Node 18+](https://img.shields.io/badge/Node.js-18+-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
-[![Vercel](https://img.shields.io/badge/Vercel-Serverless%20Functions-000000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com)
-[![Gemini](https://img.shields.io/badge/Google-Gemini%202.5%20Flash-4285F4?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
-[![Groq](https://img.shields.io/badge/Groq-Llama%203.3%2070B-F55036?style=flat-square)](https://groq.com)
-[![Upstash](https://img.shields.io/badge/Upstash-Redis-DC2626?style=flat-square)](https://upstash.com)
-
-- **Runtime** · Node.js ≥ 18 on Vercel serverless functions (no build step)
-- **LLM SDKs** · `@google/generative-ai` + `groq-sdk`
-- **Rate limiting + conversation state + topic-gap tracker** · Upstash Redis (sliding-window per IP, with in-memory fallback for dev)
-- **Cache** · in-memory response cache (1-hour TTL, max 200 entries, LRU eviction, per-provider keying)
-- **Testing** · Node native `--test` runner, 1,223 cases across 17 suites; release gate via `scripts/check_release.js`
-- **CI/CD** · Vercel auto-deploys on push to `main`; `npm run check:release` enforces release-gate before deploy
-
----
-
-## Model lifecycle
-
-| Model | Status | Shutdown |
-|---|---|---|
-| `gemini-2.5-flash` | Active — primary | No shutdown date announced; Google limits access to projects that already use it |
-| `gemini-3.5-flash-lite` | Active — interim second tier | None announced |
-| `gemini-2.5-flash-lite` | Unavailable to new projects (HTTP 404) | — |
-| `gemini-2.0-flash` | **Do not use** — shut down | 2026-06-01 |
-| `openai/gpt-oss-120b` | Configured Groq model (see tier limit above) | None announced |
-| `llama-3.3-70b-versatile` | **Shut down** | 2026-08-16 |
-
-Sources (checked 2026-10-05): [Gemini deprecations](https://ai.google.dev/gemini-api/docs/deprecations), [Groq deprecations](https://console.groq.com/docs/deprecations).
-
----
-
-## Production notes
-
-- **Use a billing-enabled Google project for Gemini.** Free-tier quota is per project and per model (20 requests/day for `gemini-2.5-flash`), and Google's terms say unpaid usage may be used to improve its products and read by human reviewers. A new key in the same project does not change either.
-- **Groq needs Dev Tier or a slimmer prompt** before it can act as a fallback (see the provider table).
-- **Watch `/api/health`** + Vercel function logs for `[PROVIDER]` warnings. Each failover and each provider failure is logged with the provider name, HTTP status, and truncated error message. Provider detail is returned in the response only when `NODE_ENV=development`.
-- **Smoke test** — `node scripts/smoke_prod.js [baseUrl]` replays the pinned canaries (`test/canaries.js`) against a deployed URL. The `Production smoke` workflow runs it after every production deploy and daily.
-- **Release gate** — `npm test` (includes the canaries) and `scripts/check_release.js` (policy version, claim review dates, forbidden analytics keys).
-
-### Environment variables
+Runtime: Node.js ≥ 18 on Vercel serverless functions (no build step). Dependencies: `@google/generative-ai`, `groq-sdk`, `@upstash/redis`, `@upstash/ratelimit`.
 
 | Variable | Purpose |
 |---|---|
-| `GEMINI_API_KEY`, `GROQ_API_KEY` | LLM providers (a missing key just removes that provider from the chain) |
-| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Shared rate limiting and topic-gap tracking; without them each instance falls back to in-memory |
-| `RATE_LIMIT_SALT` (optional) | Key for the one-way hash of the visitor address used by the limiter. Falls back to `ANALYTICS_SALT`, then to the Upstash token. Visitor addresses are never stored or sent to Redis |
-| `PG_PROXY_SECRET` | Shared secret the website proxy sends as `x-pg-proxy-secret`, together with the visitor address as `x-pg-client-ip` |
-| `PG_REQUIRE_PROXY_SECRET` | Set to `true` (only after the proxy sends the secret) to reject every other caller with 401. Ignored, with a logged error, if `PG_PROXY_SECRET` is missing |
-| `ANALYTICS_ENABLED`, `ANALYTICS_SALT` | Optional PHI-free analytics events |
+| `GEMINI_API_KEY`, `GROQ_API_KEY` | LLM providers; a missing key removes that provider from the chain |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Shared rate limiting and coverage-gap telemetry; without them each instance uses memory |
+| `RATE_LIMIT_SALT` (optional) | Key for the one-way hash of visitor addresses; falls back to `ANALYTICS_SALT`, then the Upstash token |
+| `PG_PROXY_SECRET` | Shared secret the website proxy sends as `x-pg-proxy-secret` (with the visitor address as `x-pg-client-ip`) |
+| `PG_REQUIRE_PROXY_SECRET` | `true` rejects every caller without the secret (401). Set only after the proxy sends it. Ignored, with a logged error, if `PG_PROXY_SECRET` is missing |
+| `ANALYTICS_ENABLED`, `ANALYTICS_SALT` | Optional PHI-free analytics |
+
+Useful commands:
+
+```bash
+npm test                              # all suites, including the canaries and the README drift check
+node scripts/smoke_prod.js [baseUrl]  # replay the production canaries against a deployment
+node scripts/check_release.js         # release gate: policy version, claim review dates, forbidden analytics keys
+node scripts/readme_metrics.js --write  # refresh the generated numbers in this README
+RUN_LLM_TESTS=1 node test/llm-behavior.test.js   # opt-in live-provider behaviour tests
+```
+
+**Operational notes** (observed 2026-10-05; provider limits change, so check the provider's own pages):
+
+- Gemini quota is per Google Cloud project and per model, and Google's [terms](https://ai.google.dev/gemini-api/terms) treat unpaid usage differently from paid usage; use a billing-enabled project for production. A new key in the same project does not change the quota.
+- Groq's per-minute token limit on its free tier is lower than this service's system prompt, so Groq needs a higher tier (or the planned prompt minimisation) to serve as a fallback. See the [Groq](https://console.groq.com/docs/deprecations) and [Gemini](https://ai.google.dev/gemini-api/docs/deprecations) model-lifecycle pages for retirement dates.
+
+## Responsible use and known limits
+
+- **Educational, not medical advice.** The service does not diagnose, prescribe, or give dosing guidance for pregnancy or children; the validator enforces this on every reply.
+- **Pattern-based detection has recall limits.** Emergency and interaction detection is tested against paraphrases and negative controls, but tested is not proven complete; new gaps become permanent regression cases.
+- **The knowledge layer is bounded.** For topics it does not cover, the service answers more generally with lower confidence, and coverage telemetry flags the topic for review.
+- **Tested in English.**
+- **Language-model providers process message text.** See the privacy policy.
 
 ---
 
 ## Acknowledgements
 
-Clinical accuracy review by **Laurie Pham, PharmD** (Doctor of Pharmacy · 15+ years clinical pharmacy)
-Patient-education review by **Miriam Farez, NP** (Nurse Practitioner · integrative health practice)
+Clinical accuracy review by **Laurie Pham, PharmD** (Doctor of Pharmacy · 15+ years clinical pharmacy).
+Patient-education review by **Miriam Farez, NP** (Nurse Practitioner · integrative health practice).
 
 Built and maintained by **Sean Cheick Baradji** · founder, PharmaGuide · B&Br Technology, Boston, MA.
 
