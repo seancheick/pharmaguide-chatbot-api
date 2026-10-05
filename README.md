@@ -43,7 +43,7 @@ A production decision-and-explanation system for high-stakes supplement–medica
 - **Dose and entity understanding.** Doses are parsed from messages and compared with known upper limits; medications, supplements, forms and wellness goals are extracted and classified.
 - **Privacy by construction.** No message text in logs, hashed rate-limit identifiers, website-only API access, no server-side chat storage, PHI-free analytics.
 - **Regression-driven.** Every reproduced production defect becomes a permanent test; a pinned set of production canaries runs after every deploy and daily.
-- **Governed clinical claims.** Claims carry review dates and source references, and a release gate checks them.
+- **Governed clinical claims.** Claims carry review dates and source references. An enforced release gate (CI and every deploy) blocks a release when a claim is overdue, and a weekly job warns 30 days ahead.
 - **Honest roadmap.** Planned work (model evaluation, prompt minimisation, a shared clinical export) is labelled as planned, below.
 
 <!-- metrics:start -->
@@ -181,7 +181,7 @@ When entities are recognised, matching structured entries are retrieved and inje
 - **Goal-only questions** ("what can I take to sleep better") are mapped to candidate entries, so the model never answers from memory alone.
 - **Temporal context** (washout, onset, half-life) and **form-specific guidance** (for example oxide versus glycinate) are added when relevant.
 - **Dose awareness:** a stated dose is compared with the known upper limit and flagged in the reply.
-- **Source-backed:** entries link to curated references; approved claims carry a domain, confidence, review date, review cycle and references, and `scripts/check_release.js` (the release gate) checks policy version, claim review dates and forbidden analytics fields.
+- **Source-backed:** entries link to curated references; approved claims carry a domain, confidence, review date, review cycle and references, and `scripts/check_release.js` (the release gate, run in CI and as the Vercel build command) checks policy version, claim review dates and forbidden analytics fields, then runs the whole test suite without any provider secrets.
 - **Coverage telemetry, not auto-learning:** `GET /api/gaps` shows which topics users ask about that the knowledge layer does not cover. It identifies topics for human review. It never adds clinical facts by itself.
 
 Design write-ups live in [`docs/safety-case/`](./docs/safety-case): safety architecture, risk domains, validation rules, threat model, failure modes and test coverage.
@@ -327,10 +327,9 @@ This service currently carries its own bounded knowledge layer. The planned arch
 
 | Status | Item |
 |---|---|
-| Done | Deterministic routing, validator, multi-provider failover with soft-failure handling, privacy hardening, CI, production canaries and smoke workflow, generated README metrics |
+| Done | Deterministic routing, validator, multi-provider failover with soft-failure handling, privacy hardening, CI, production canaries and smoke workflow, generated README metrics, an enforced release gate (CI and deploy) with a 30-day claim-expiry warning |
 | Planned | Model evaluation harness and measured model selection |
 | Planned | Dynamic clinical context assembly: a small invariant policy prompt plus retrieved context, instead of a large always-on prompt |
-| Planned | Release gate enforced in CI and at deploy time (it is advisory today) |
 | Planned | Richer provenance: ruleset and knowledge versions reported by `/api/health` and in responses |
 | Planned | Consume the pipeline's versioned clinical export; retire overlapping facts from this repository |
 
