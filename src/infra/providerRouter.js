@@ -16,6 +16,13 @@ const { allowRequest: allowGroq, recordSuccess: groqSuccess, recordFailure: groq
 const { allowRequest: allowGemini, recordSuccess: geminiSuccess, recordFailure: geminiFailure } = require("./geminiCircuitBreaker");
 const { getDegradedResponse } = require("./gracefulDegradation");
 
+// Short breaker for the interim gemini-lite tier: 3 consecutive hard failures
+// (soft failures such as a cut-off answer do not count) skip it for 30 s.
+const LITE_TIMEOUT_MS = 6000;
+const LITE_FAILURE_THRESHOLD = 3;
+const LITE_OPEN_MS = 30000;
+const liteBreaker = { failures: 0, openUntil: 0 };
+
 // ── Query complexity scoring ──────────────────────────
 
 /**
@@ -171,11 +178,12 @@ function buildProviderChain() {
   }
 
   // 2. Second Gemini model — interim tier until the eval-driven model choice.
-  //    Covers a model-specific outage/overload of the primary. Deliberately no
-  //    breaker of its own: it is only reached after the primary failed or was
-  //    skipped, and it answers in ~1.5 s when healthy. Named "gemini-lite" so
-  //    confidence scoring does not treat it as the strong primary.
-  if (gemini.isAvailable()) {
+  //    Covers a model-specific outage/overload of the primary. Named
+  //    "gemini-lite" so confidence scoring does not treat it as the strong
+  //    primary. It has its own short breaker, independent of the primary's: in a
+  //    shared Gemini outage the primary circuit is open and this tier would
+  //    otherwise add up to LITE_TIMEOUT_MS to every request before Groq.
+  if (gemini.isAvailable() && Date.now() >= liteBreaker.openUntil) {
     chain.push({
       name: "gemini-lite",
       modelId: gemini.GEMINI_FALLBACK_MODEL_ID,
@@ -183,11 +191,17 @@ function buildProviderChain() {
         temperature: params.temperature,
         maxTokens: params.maxTokens,
         topP: params.topP,
-        timeout: 6000,
+        timeout: LITE_TIMEOUT_MS,
         model: gemini.GEMINI_FALLBACK_MODEL_ID,
       }),
-      onSuccess: () => {},
-      onFailure: () => {},
+      onSuccess: () => { liteBreaker.failures = 0; },
+      onFailure: () => {
+        liteBreaker.failures += 1;
+        if (liteBreaker.failures >= LITE_FAILURE_THRESHOLD) {
+          liteBreaker.openUntil = Date.now() + LITE_OPEN_MS;
+          liteBreaker.failures = 0;
+        }
+      },
     });
   }
 

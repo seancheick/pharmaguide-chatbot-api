@@ -181,6 +181,37 @@ test("router: soft failure falls through to the next provider without tripping t
   breaker.reset();
 });
 
+test("router: a shared Gemini outage stops costing a gemini-lite attempt on every request", async () => {
+  delete require.cache[require.resolve("../src/infra/providerRouter.js")];
+  const router = require("../src/infra/providerRouter.js");
+  const gemini = require("../src/infra/geminiClient");
+  require("../src/infra/geminiCircuitBreaker").reset();
+  delete process.env.GROQ_API_KEY;
+
+  let liteCalls = 0;
+  gemini.chatCompletion = async (messages, opts) => {
+    if (opts.model) liteCalls++;
+    throw Object.assign(new Error("503 overloaded"), { status: 503 });
+  };
+  for (let i = 0; i < 3; i++) await router.callWithFallback([{ role: "user", content: "hi" }], { complexity: 2 });
+  assert.equal(liteCalls, 3, "the lite tier is tried until its breaker opens");
+  const result = await router.callWithFallback([{ role: "user", content: "hi" }], { complexity: 2 });
+  assert.equal(liteCalls, 3, "after 3 hard failures the lite tier is skipped");
+  assert.equal(result.degraded, true);
+
+  // Soft failures (cut-off answers) never open the breaker.
+  delete require.cache[require.resolve("../src/infra/providerRouter.js")];
+  const router2 = require("../src/infra/providerRouter.js");
+  let softLiteCalls = 0;
+  gemini.chatCompletion = async (messages, opts) => {
+    if (opts.model) softLiteCalls++;
+    throw gemini.softError("GEMINI_TRUNCATED", "cap");
+  };
+  for (let i = 0; i < 5; i++) await router2.callWithFallback([{ role: "user", content: "hi" }], { complexity: 2 });
+  assert.equal(softLiteCalls, 5);
+  require("../src/infra/geminiCircuitBreaker").reset();
+});
+
 // ─── Finding 5: the limiter backend must never block anyone ──────────
 
 test("limiter backend down: emergencies answer instantly, normal requests fall back to memory", () => {
