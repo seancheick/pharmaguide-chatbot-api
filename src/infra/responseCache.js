@@ -49,6 +49,9 @@ function isCacheable(message, entities, hasConversation, validationResult, route
   // No populations (pregnancy, elderly, renal)
   if (entities && entities.populations && entities.populations.length > 0) return false;
 
+  // No persisted patient conditions (diabetes, thyroid, seizure history, bariatric surgery)
+  if (entities && entities._persisted_conditions && entities._persisted_conditions.length > 0) return false;
+
   // No symptoms
   if (entities && entities.symptoms && entities.symptoms.length > 0) return false;
 

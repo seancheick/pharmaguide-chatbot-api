@@ -46,7 +46,7 @@ function assert(label, actual, expected) {
 console.log("\n=== Gate 1: Emergency — Edge Cases ===");
 assert("typo: 'i took to many pills'", fns.isEmergency("i took to many pills"), false); // "to" not "too" — should NOT match (intentional, no fuzzy)
 assert("overdosed phrasing", fns.isEmergency("I think I overdosed on melatonin"), true);
-assert("passive suicidal: 'I don't want to be here anymore'", fns.isEmergency("I don't want to be here anymore"), false); // doesn't match — known limitation
+assert("passive suicidal: 'I don't want to be here anymore'", fns.isEmergency("I don't want to be here anymore"), true); // was a known gap; closed in Wave B (passive ideation → crisis reply)
 assert("chest pain + supplement context", fns.isEmergency("I have severe chest pain after taking pre-workout"), true);
 assert("seizure mention", fns.isEmergency("my kid is having a seizure"), true);
 assert("anaphylaxis phrasing", fns.isEmergency("I think I'm having anaphylaxis, my throat is closing"), true);

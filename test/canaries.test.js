@@ -51,6 +51,7 @@ async function send(body) {
 
 for (const canary of CANARIES) {
   test(`canary ${canary.id} (wave ${canary.wave})`, async () => {
+    for (const p of canary.prime || []) await send({ message: p.message });
     const results = [];
     const history = [];
     let state;

@@ -1,5 +1,5 @@
 const { normalizeText } = require("./normalize");
-const { mentionsPregnancyContext } = require("../gates/detection");
+const { detectPopulations } = require("../gates/detection");
 
 const ENTITY_PATTERNS = {
   antidepressants: /\b(sertraline|zoloft|fluoxetine|prozac|escitalopram|lexapro|citalopram|celexa|venlafaxine|effexor|bupropion|wellbutrin|duloxetine|cymbalta|trazodone|mirtazapine|paroxetine|paxil|fluvoxamine|luvox|desvenlafaxine|pristiq|phenelzine|tranylcypromine|selegiline|lithium|lamotrigine|quetiapine|aripiprazole|buspirone)\b/g,
@@ -54,10 +54,7 @@ function extractEntities(text, convoContext) {
     while ((m = p.exec(ctx)) !== null) supplements.add(m[0]);
   }
 
-  const populations = [];
-  if (mentionsPregnancyContext(ctx)) populations.push("pregnancy");
-  if (/\b(elderly|65\+|senior|geriatric|older\s*adult)\b/.test(normalizeText(ctx))) populations.push("elderly");
-  if (/\b(kidney|renal|ckd|dialysis|creatinine|gfr|nephro)\b/.test(normalizeText(ctx))) populations.push("renal");
+  const populations = detectPopulations(ctx);
 
   const symptoms = [];
   if (detection.mentionsSerotonergicSymptoms(text)) symptoms.push("serotonergic_symptoms");

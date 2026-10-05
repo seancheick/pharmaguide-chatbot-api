@@ -1,4 +1,8 @@
 const { normalizeText } = require("./normalize");
+const { detectPopulations } = require("../gates/detection");
+
+const ALLOWED_POPULATIONS = new Set(["pregnancy", "elderly", "renal", "liver", "pediatric"]);
+const ALLOWED_CONDITIONS = new Set(["diabetes", "thyroid", "seizure_history", "bariatric_surgery"]);
 
 function sanitizeHistory(history) {
   if (!Array.isArray(history)) return [];
@@ -35,15 +39,14 @@ function getConversationContext(message, safeHistory) {
  * @returns {{ populations: string[], known_meds: string[], known_supps: string[], conditions: string[] }}
  */
 function extractConversationState(currentMessage, safeHistory, previousState = null) {
-  // Validate and sanitize client-provided state (could be garbage or malicious)
-  const safeArr = (val) => (Array.isArray(val) ? val.filter(v => typeof v === "string") : []);
+  // Client-supplied state is untrusted: keep only known enum values. These strings end up
+  // in a system-role prompt message and in analytics events, so free text must never pass.
   const prev = previousState && typeof previousState === "object" ? previousState : {};
+  const onlyAllowed = (val, allowed) => (Array.isArray(val) ? val.filter((v) => typeof v === "string" && allowed.has(v)) : []);
 
   const state = {
-    populations: new Set(safeArr(prev.populations)),
-    known_meds: new Set(safeArr(prev.known_meds)),
-    known_supps: new Set(safeArr(prev.known_supps)),
-    conditions: new Set(safeArr(prev.conditions)),
+    populations: new Set(onlyAllowed(prev.populations, ALLOWED_POPULATIONS)),
+    conditions: new Set(onlyAllowed(prev.conditions, ALLOWED_CONDITIONS)),
   };
 
   // Scan all user messages (including current) for persistent facts
@@ -55,21 +58,7 @@ function extractConversationState(currentMessage, safeHistory, previousState = n
   const t = normalizeText(allUserText);
 
   // Populations (these are critical safety facts — never lose them)
-  if (/\b(pregnan(t|cy)|expecting|trimester|prenatal|breastfeed(ing)?|nursing|lactating)\b/.test(t)) {
-    state.populations.add("pregnancy");
-  }
-  if (/\b(elderly|65\+|senior|geriatric|older\s*adult|i m \d{2,}|my (mom|dad|mother|father|grandmother|grandfather).{0,20}(age|old|year))\b/.test(t)) {
-    state.populations.add("elderly");
-  }
-  if (/\b(kidney|renal|ckd|dialysis|creatinine|gfr|nephro|one kidney)\b/.test(t)) {
-    state.populations.add("renal");
-  }
-  if (/\b(liver (disease|damage|failure|cirrhosis)|hepatitis|cirrhosis|fatty liver)\b/.test(t)) {
-    state.populations.add("liver");
-  }
-  if (/\b(child|kid|infant|toddler|baby|pediatric|my (son|daughter)|year.?old)\b/.test(t)) {
-    state.populations.add("pediatric");
-  }
+  for (const pop of detectPopulations(allUserText)) state.populations.add(pop);
 
   // Key conditions (affect safety recommendations)
   if (/\b(diabetes|diabetic|type [12] diabetes|blood sugar|a1c)\b/.test(t)) {
@@ -85,10 +74,13 @@ function extractConversationState(currentMessage, safeHistory, previousState = n
     state.conditions.add("bariatric_surgery");
   }
 
+  // known_meds / known_supps are kept in the shape for client compatibility but are
+  // never populated: nothing server-side derives them, and echoing client values back
+  // would just launder untrusted text.
   return {
     populations: [...state.populations],
-    known_meds: [...state.known_meds],
-    known_supps: [...state.known_supps],
+    known_meds: [],
+    known_supps: [],
     conditions: [...state.conditions],
   };
 }

@@ -217,6 +217,18 @@ function emitAnalyticsEvent(event) {
   }
 }
 
+// Build + emit in one guarded step. Analytics is observability, never a dependency of
+// the answer: a failure here (e.g. the forbidden-key / max-length guard rejecting an
+// event) drops that event and must never turn a finished reply into a 500.
+function recordAnalytics(params) {
+  if (process.env.ANALYTICS_ENABLED !== "true") return;
+  try {
+    emitAnalyticsEvent(buildAnalyticsEvent(params));
+  } catch (e) {
+    console.warn("[ANALYTICS] event dropped:", e && e.message);
+  }
+}
+
 // ══════════════════════════════════════════════════
 // Dashboard query helpers (in-memory, dev diagnostics)
 // ══════════════════════════════════════════════════
@@ -503,6 +515,7 @@ module.exports = {
   // Core
   buildAnalyticsEvent,
   emitAnalyticsEvent,
+  recordAnalytics,
   assertNoForbiddenKeys,
   // Hashing
   bucketLatency,
