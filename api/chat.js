@@ -10,6 +10,7 @@
 
 const { setCors } = require("../src/config/cors");
 const { SYSTEM_PROMPT } = require("../src/config/systemPrompt");
+const { rulesetTag, systemPromptHash } = require("../src/infra/provenance");
 const { normalizeText } = require("../src/core/normalize");
 const { sanitizeHistory, getConversationContext, extractConversationState, mergeStateIntoEntities } = require("../src/core/history");
 const { extractEntities, extractKnownItems } = require("../src/core/entities");
@@ -35,7 +36,6 @@ const { extractDoses, getDoseSummary } = require("../src/core/doseExtractor");
 const { resolveConfidence } = require("../src/core/confidence");
 const { detectAndRecordGaps } = require("../src/infra/topicTracker");
 const { buildTemporalContext } = require("../src/core/temporalContext");
-const crypto = require("crypto");
 
 function getClientIP(req) {
   const xff = req.headers["x-forwarded-for"];
@@ -51,6 +51,7 @@ module.exports = async function handler(req, res) {
   // Once enforcement is on, only the website's proxy (which holds the shared secret) may call.
   const trustedProxy = isTrustedProxy(req);
   if (!trustedProxy && proxyEnforcement()) return res.status(401).json({ error: "Unauthorized" });
+  res.setHeader("X-PG-Ruleset", rulesetTag());
 
   // On Vercel `req.body` is parsed lazily and throws on malformed JSON.
   let body;
@@ -311,7 +312,6 @@ module.exports = async function handler(req, res) {
     }
 
     // ── Cache check ──
-    const systemPromptHash = crypto.createHash("sha256").update(SYSTEM_PROMPT).digest("hex").slice(0, 12);
     const cacheKey = buildCacheKey(message, systemPromptHash, "multi-provider");
     // Read the cache only for requests that would also be allowed to WRITE it: the
     // entry is keyed on the message alone, so a pregnant user's follow-up must never be

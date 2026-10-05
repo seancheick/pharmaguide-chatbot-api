@@ -22,6 +22,8 @@ const HEADERS = { "Content-Type": "application/json", Origin: "https://pharmagui
 if (process.env.PG_PROXY_SECRET) HEADERS["x-pg-proxy-secret"] = process.env.PG_PROXY_SECRET;
 if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) HEADERS["x-vercel-protection-bypass"] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 
+let servingRuleset = null; // the X-PG-Ruleset header of the last response: which rules the deployment is running
+
 async function post(body, attempt = 1) {
   const res = await fetch(`${BASE}/api/chat`, {
     method: "POST",
@@ -37,6 +39,8 @@ async function post(body, attempt = 1) {
     await new Promise((r) => setTimeout(r, wait * 1000));
     return post(body, 2);
   }
+  const ruleset = res.headers.get("x-pg-ruleset");
+  if (ruleset) servingRuleset = ruleset;
   return { status: res.status, json };
 }
 
@@ -68,6 +72,7 @@ async function runCanary(canary) {
       console.log(`FAIL  ${canary.id}\n      - request error: ${e.message}`);
     }
   }
-  console.log(failed === 0 ? "\nAll canaries passed." : `\n${failed} canary(ies) FAILED.`);
+  console.log(`\nServing: ${servingRuleset || "(no X-PG-Ruleset header: deployment predates it)"}`);
+  console.log(failed === 0 ? "All canaries passed." : `${failed} canary(ies) FAILED.`);
   process.exit(failed === 0 ? 0 : 1);
 })();
