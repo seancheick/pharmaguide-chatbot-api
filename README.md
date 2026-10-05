@@ -114,13 +114,14 @@ The result is a chatbot that is *useful* on common wellness questions and *struc
 
 ## LLM provider chain
 
-| Provider | Role | Model | Latency | Free-tier ceiling | Paid-tier ceiling |
-|---|---|---|---|---|---|
-| **Gemini** | Primary | `gemini-2.5-flash` | ~1.5–2.5 s | 250 RPD / 10 RPM | 1,000+ RPD / 300 RPM (Tier 1) |
-| **Groq** | Fallback | `llama-3.3-70b-versatile` | ~0.3–0.8 s | 1,000 RPD / 30 RPM / 100K TPD | scales with tier |
-| Degraded reply | Last resort | — | < 5 ms | always available | always available |
+| Provider | Role | Model | Typical latency | Known limit |
+|---|---|---|---|---|
+| **Gemini** | Primary | `gemini-2.5-flash` (thinking off) | ~1.5–3 s | Free tier: 20 requests/day/model (observed 2026-10-05) |
+| **Gemini Lite** | Interim second tier | `gemini-3.5-flash-lite` | ~1.5–2 s | Own quota per model; to be replaced by the eval-driven model choice |
+| **Groq** | Cross-vendor fallback | `openai/gpt-oss-120b` | — | Free tier: 8,000 tokens/min, below the ~10.4k-token system prompt, so every request is rejected (HTTP 413) until the prompt is slimmed or the account is on Dev Tier |
+| Degraded reply | Last resort | — | < 5 ms | always available |
 
-Each provider has its own circuit breaker (`src/infra/circuitBreaker.js`, `src/infra/geminiCircuitBreaker.js`). When the primary fails or rate-limits, the chain transparently falls back. When both fail, the user receives a deterministic graceful-degradation reply with provider/911/Poison-Control guidance rather than an error.
+Each provider has its own circuit breaker (`src/infra/circuitBreaker.js`, `src/infra/geminiCircuitBreaker.js`; the lite tier has a short one inside `providerRouter.js`). When a provider fails, rate-limits, or returns an answer that is cut off, blocked or empty, the chain moves on. The whole chain shares a 12 s time budget so it finishes inside the website proxy's 15 s limit. When every provider fails, the user receives a deterministic graceful-degradation reply with provider/911/Poison-Control guidance rather than an error.
 
 Live `/api/health` exposes per-provider `configured`, `circuit`, and `model` so operators can monitor failover state.
 
@@ -227,21 +228,35 @@ Operational dashboard — topic-coverage gaps detected over time from real queri
 
 | Model | Status | Shutdown |
 |---|---|---|
-| `gemini-2.5-flash` | Active — primary | **2026-10-16** — migrate before |
-| `gemini-2.5-flash-lite` | Reserved — high-volume tier | 2026-10-16 |
-| `gemini-2.0-flash` | **Do not use** — deprecated | 2026-06-01 |
-| `llama-3.3-70b-versatile` | Active — fallback | No sunset announced |
+| `gemini-2.5-flash` | Active — primary | No shutdown date announced; Google limits access to projects that already use it |
+| `gemini-3.5-flash-lite` | Active — interim second tier | None announced |
+| `gemini-2.5-flash-lite` | Unavailable to new projects (HTTP 404) | — |
+| `gemini-2.0-flash` | **Do not use** — shut down | 2026-06-01 |
+| `openai/gpt-oss-120b` | Configured Groq model (see tier limit above) | None announced |
+| `llama-3.3-70b-versatile` | **Shut down** | 2026-08-16 |
 
-Sources: [Gemini deprecations](https://ai.google.dev/gemini-api/docs/models#deprecated-models), [Groq model card](https://console.groq.com/docs/models).
+Sources (checked 2026-10-05): [Gemini deprecations](https://ai.google.dev/gemini-api/docs/deprecations), [Groq deprecations](https://console.groq.com/docs/deprecations).
 
 ---
 
 ## Production notes
 
-- **Enable Gemini paid billing before launch.** Free tier is acceptable for beta but daily-token caps will surface as `system:degraded` for users on real traffic. Paid tier also opts out of content-for-training use, which matters for YMYL.
-- **Enable Groq paid billing** for fallback reliability. Free Groq is bounded by 100K tokens/day — a single long KB-grounded conversation can consume thousands of tokens, so this ceiling hits faster than the per-day request ceiling.
-- **Watch `/api/health`** + Vercel function logs for `[PROVIDER]` warnings. Each failover and each provider failure is logged with the provider name, HTTP status, and truncated error message.
-- **Release gate** — every `git push origin main` runs through `scripts/check_release.js`. 1,223 tests + release-metadata checks must pass before Vercel ships.
+- **Use a billing-enabled Google project for Gemini.** Free-tier quota is per project and per model (20 requests/day for `gemini-2.5-flash`), and Google's terms say unpaid usage may be used to improve its products and read by human reviewers. A new key in the same project does not change either.
+- **Groq needs Dev Tier or a slimmer prompt** before it can act as a fallback (see the provider table).
+- **Watch `/api/health`** + Vercel function logs for `[PROVIDER]` warnings. Each failover and each provider failure is logged with the provider name, HTTP status, and truncated error message. Provider detail is returned in the response only when `NODE_ENV=development`.
+- **Smoke test** — `node scripts/smoke_prod.js [baseUrl]` replays the pinned canaries (`test/canaries.js`) against a deployed URL. The `Production smoke` workflow runs it after every production deploy and daily.
+- **Release gate** — `npm test` (includes the canaries) and `scripts/check_release.js` (policy version, claim review dates, forbidden analytics keys).
+
+### Environment variables
+
+| Variable | Purpose |
+|---|---|
+| `GEMINI_API_KEY`, `GROQ_API_KEY` | LLM providers (a missing key just removes that provider from the chain) |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Shared rate limiting and topic-gap tracking; without them each instance falls back to in-memory |
+| `RATE_LIMIT_SALT` (optional) | Key for the one-way hash of the visitor address used by the limiter. Falls back to `ANALYTICS_SALT`, then to the Upstash token. Visitor addresses are never stored or sent to Redis |
+| `PG_PROXY_SECRET` | Shared secret the website proxy sends as `x-pg-proxy-secret`, together with the visitor address as `x-pg-client-ip` |
+| `PG_REQUIRE_PROXY_SECRET` | Set to `true` (only after the proxy sends the secret) to reject every other caller with 401. Ignored, with a logged error, if `PG_PROXY_SECRET` is missing |
+| `ANALYTICS_ENABLED`, `ANALYTICS_SALT` | Optional PHI-free analytics events |
 
 ---
 

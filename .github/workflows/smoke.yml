@@ -1,0 +1,65 @@
+name: Production smoke
+
+# Replays the pinned canaries (test/canaries.js) against a deployed API.
+#   • after every successful production deployment
+#   • once a day, to catch drift that no deploy caused (expired keys, quota, provider outages)
+#   • after every successful preview deployment, once the bypass secret below is configured
+#   • by hand
+# A failed run emails the repository's watchers through GitHub's normal notifications.
+
+on:
+  schedule:
+    - cron: "17 14 * * *"
+  workflow_dispatch:
+  deployment_status:
+
+permissions:
+  contents: read
+
+jobs:
+  production:
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Let the production alias move to the new deployment
+        if: github.event_name == 'deployment_status'
+        run: sleep 20
+      - name: Replay canaries against production
+        env:
+          SMOKE_BASE_URL: https://pharmaguide-chatbot-api.vercel.app
+          PG_PROXY_SECRET: ${{ secrets.PG_PROXY_SECRET }}
+        run: node scripts/smoke_prod.js
+
+  preview:
+    # Previews sit behind Vercel Authentication. This job does nothing until the repository
+    # secret VERCEL_AUTOMATION_BYPASS_SECRET (Vercel → Settings → Deployment Protection →
+    # Protection Bypass for Automation) exists.
+    if: >-
+      github.event_name == 'deployment_status' &&
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment == 'Preview'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.deployment.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Replay canaries against the preview deployment
+        env:
+          PREVIEW_URL: ${{ github.event.deployment_status.target_url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          PG_PROXY_SECRET: ${{ secrets.PG_PROXY_SECRET }}
+        run: |
+          if [ -z "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
+            echo "VERCEL_AUTOMATION_BYPASS_SECRET is not configured; skipping the preview smoke test."
+            exit 0
+          fi
+          node scripts/smoke_prod.js "$PREVIEW_URL"

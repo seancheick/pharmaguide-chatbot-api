@@ -20,6 +20,7 @@ const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply
 const { getFormRecommendation } = require("../src/core/formAdvisor");
 const { tryDSLGate, isDSLRoute } = require("../src/gates/gateEngine");
 const { checkRateLimit } = require("../src/infra/rateLimit");
+const { isTrustedProxy, proxyEnforcement, forwardedClientIp } = require("../src/infra/proxyAuth");
 const { logGate } = require("../src/infra/logger");
 const { mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion, addDoseWarnings, stripMarkdownLinks } = require("../src/postprocess");
 const { validateResponse, SAFE_FALLBACK_REPLY } = require("../src/postprocess/safetyValidator");
@@ -47,6 +48,10 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
+  // Once enforcement is on, only the website's proxy (which holds the shared secret) may call.
+  const trustedProxy = isTrustedProxy(req);
+  if (!trustedProxy && proxyEnforcement()) return res.status(401).json({ error: "Unauthorized" });
+
   // On Vercel `req.body` is parsed lazily and throws on malformed JSON.
   let body;
   try {
@@ -66,7 +71,9 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ reply: emergencyReply(), model: "system:emergency" });
   }
 
-  const clientIP = getClientIP(req);
+  // Behind the proxy every request arrives from the proxy's own address, so the visitor's
+  // address is taken from the header the proxy sets, and only when the secret checks out.
+  const clientIP = (trustedProxy && forwardedClientIp(req)) || getClientIP(req);
   const rl = await checkRateLimit(clientIP);
   if (!rl.success) {
     const retryAfter = Math.max(1, Math.ceil((rl.reset - Date.now()) / 1000));
@@ -345,16 +352,18 @@ module.exports = async function handler(req, res) {
         unknownDosedCount: unknownDosed.length, missingFields: [],
       });
       const { confidence: degradedConf } = resolveConfidence("degraded", 0);
-      // Surface chain-failure detail in the response so we can debug
-      // without Vercel log access. Production-safe (no PII; just
-      // provider names + HTTP status + truncated error message).
       const degradedPayload = {
         reply: llmResult.text,
         model: "system:degraded",
         confidence: degradedConf,
-        _provider_failures: llmResult._failures || [],
-        _providers_skipped: llmResult._skipped || [],
       };
+      // Provider names and raw upstream error text are for developers only: in
+      // production they reach the visitor's browser. The same detail is in the
+      // [PROVIDER] log lines.
+      if (process.env.NODE_ENV === "development") {
+        degradedPayload._provider_failures = llmResult._failures || [];
+        degradedPayload._providers_skipped = llmResult._skipped || [];
+      }
       return res.status(200).json(degradedPayload);
     }
 
@@ -416,13 +425,13 @@ module.exports = async function handler(req, res) {
         console.warn("[VALIDATOR] LLM response sanitized:", nonBlocking.map((v) => v.rule));
       }
     } else {
-      // Production-visible: log the rules that fired so regressions
-      // are debuggable from Vercel logs without rebuilding.
+      // Production-visible: log the rules that fired so regressions are
+      // debuggable from Vercel logs without rebuilding. Never the user's text.
       console.warn(
         "[VALIDATOR] LLM response rejected:",
         (llmValidation.violations || []).map((v) => v.rule),
-        "| message:",
-        message.slice(0, 120)
+        "| message_length:",
+        message.length
       );
       reply = llmValidation.fallback;
     }

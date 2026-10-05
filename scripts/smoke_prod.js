@@ -6,6 +6,10 @@
  *   node scripts/smoke_prod.js [baseUrl]
  *   SMOKE_BASE_URL=https://pharmaguide-chatbot-api.vercel.app node scripts/smoke_prod.js
  *
+ * Optional environment:
+ *   PG_PROXY_SECRET                   sent as x-pg-proxy-secret (needed once the API enforces it)
+ *   VERCEL_AUTOMATION_BYPASS_SECRET   sent as x-vercel-protection-bypass (preview deployments)
+ *
  * Plain Node, no dependencies. Safe to run after every deploy and on a cron.
  */
 
@@ -14,10 +18,14 @@ const { CANARIES } = require("../test/canaries");
 const BASE = (process.argv[2] || process.env.SMOKE_BASE_URL || "https://pharmaguide-chatbot-api.vercel.app").replace(/\/+$/, "");
 const TIMEOUT_MS = 30000;
 
+const HEADERS = { "Content-Type": "application/json", Origin: "https://pharmaguide.io" };
+if (process.env.PG_PROXY_SECRET) HEADERS["x-pg-proxy-secret"] = process.env.PG_PROXY_SECRET;
+if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) HEADERS["x-vercel-protection-bypass"] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+
 async function post(body, attempt = 1) {
   const res = await fetch(`${BASE}/api/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Origin: "https://pharmaguide.io" },
+    headers: HEADERS,
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });

@@ -605,15 +605,13 @@ function whatIsReply() {
 
 function privacyReply() {
   return [
-    "Your privacy is taken seriously. Here's exactly how PharmaGuide handles your data:",
+    "Your conversations are not sold to advertisers. Messages may be processed by our AI service providers to generate your response and are handled according to our privacy policy.",
     "",
-    "• Your messages are NOT stored — conversations reset when you close the chat. There is no account, no login, no profile.",
-    "• No personal health information (PHI) is ever saved to a database. Analytics only track anonymous usage patterns (which topics are popular, which features are used) — never your actual messages or health details.",
-    "• IP addresses are hashed (one-way, non-reversible) for rate limiting only — your real IP is never stored.",
-    "• PharmaGuide does not sell, share, or monetize user data in any way.",
-    "• AI responses are generated in real-time and discarded after delivery — there is no conversation history on our end.",
-    "",
-    "In short: we don't know who you are, we don't store what you ask, and we have no way to link your questions back to you.",
+    "**What PharmaGuide keeps, and what it doesn't:**",
+    "• No account, login or profile is needed to chat.",
+    "• We don't save your chat messages in a database.",
+    "• To limit abuse, requests are rate-limited using a one-way hash of your IP address, not the address itself.",
+    "• We keep anonymous, topic-level usage statistics only, never your messages or health details.",
     "",
     "What can I help you check today?",
   ].join("\n");

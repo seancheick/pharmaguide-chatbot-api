@@ -16,9 +16,18 @@ const { allowRequest: allowGroq, recordSuccess: groqSuccess, recordFailure: groq
 const { allowRequest: allowGemini, recordSuccess: geminiSuccess, recordFailure: geminiFailure } = require("./geminiCircuitBreaker");
 const { getDegradedResponse } = require("./gracefulDegradation");
 
+// Time budget. The website proxy gives up after 15 s, so the whole chain must finish
+// well inside that to still hand back the degraded reply: each provider's own timeout
+// is capped by what is left of CHAIN_DEADLINE_MS, and a provider is not started with
+// less than MIN_ATTEMPT_MS left.
+const PRIMARY_TIMEOUT_MS = 8000;
+const LITE_TIMEOUT_MS = 5000;
+const GROQ_TIMEOUT_MS = 5000;
+const CHAIN_DEADLINE_MS = 12000;
+const MIN_ATTEMPT_MS = 1500;
+
 // Short breaker for the interim gemini-lite tier: 3 consecutive hard failures
 // (soft failures such as a cut-off answer do not count) skip it for 30 s.
-const LITE_TIMEOUT_MS = 6000;
 const LITE_FAILURE_THRESHOLD = 3;
 const LITE_OPEN_MS = 30000;
 const liteBreaker = { failures: 0, openUntil: 0 };
@@ -92,10 +101,9 @@ async function callWithFallback(messages, opts = {}) {
   const params = getGenerationParams(complexity);
 
   const providers = buildProviderChain();
-  // Capture WHICH providers were tried and how each failed. Surfaces
-  // in the degraded response (production-visible) so we can debug
-  // chain failures without needing Vercel log access. Also logged
-  // via console.warn for the Vercel Functions tab.
+  // Capture WHICH providers were tried and how each failed. Returned in the
+  // degraded response (development only) and always logged via console.warn
+  // for the Vercel Functions tab.
   const attempts = [];
   const skipped = [];
 
@@ -112,9 +120,18 @@ async function callWithFallback(messages, opts = {}) {
     skipped.push({ provider: "groq", reason: "not_configured" });
   }
 
+  const startedAt = Date.now();
+  const deadlineMs = opts.deadlineMs || CHAIN_DEADLINE_MS;
+
   for (const provider of providers) {
+    const remaining = deadlineMs - (Date.now() - startedAt);
+    if (remaining < MIN_ATTEMPT_MS) {
+      attempts.push({ provider: provider.name, status: null, message: "skipped: chain time budget used up" });
+      console.warn(`[PROVIDER] ${provider.name} skipped: chain time budget used up`);
+      continue;
+    }
     try {
-      const result = await provider.call(messages, params);
+      const result = await provider.call(messages, { ...params, timeoutMs: Math.min(provider.timeoutMs, remaining) });
       provider.onSuccess();
       return {
         text: result.text,
@@ -165,11 +182,12 @@ function buildProviderChain() {
       chain.push({
         name: "gemini",
         modelId: gemini.GEMINI_MODEL_ID,
+        timeoutMs: PRIMARY_TIMEOUT_MS,
         call: (messages, params) => gemini.chatCompletion(messages, {
           temperature: params.temperature,
           maxTokens: params.maxTokens,
           topP: params.topP,
-          timeout: 12000,
+          timeout: params.timeoutMs,
         }),
         onSuccess: geminiSuccess,
         onFailure: geminiFailure,
@@ -187,11 +205,12 @@ function buildProviderChain() {
     chain.push({
       name: "gemini-lite",
       modelId: gemini.GEMINI_FALLBACK_MODEL_ID,
+      timeoutMs: LITE_TIMEOUT_MS,
       call: (messages, params) => gemini.chatCompletion(messages, {
         temperature: params.temperature,
         maxTokens: params.maxTokens,
         topP: params.topP,
-        timeout: LITE_TIMEOUT_MS,
+        timeout: params.timeoutMs,
         model: gemini.GEMINI_FALLBACK_MODEL_ID,
       }),
       onSuccess: () => { liteBreaker.failures = 0; },
@@ -213,6 +232,7 @@ function buildProviderChain() {
       chain.push({
         name: "groq",
         modelId: groqClient.GROQ_MODEL_ID,
+        timeoutMs: GROQ_TIMEOUT_MS,
         call: async (messages, params) => {
           const completion = await groqClient.groq.chat.completions.create({
             model: groqClient.GROQ_MODEL_ID,
@@ -222,7 +242,7 @@ function buildProviderChain() {
             top_p: params.topP,
             stream: false,
             ...groqClient.GROQ_MODEL_PARAMS,
-          }, { timeout: 8000 });
+          }, { timeout: params.timeoutMs });
           const choice = completion.choices?.[0];
           if (choice?.finish_reason === "length") throw gemini.softError("GROQ_TRUNCATED", groqClient.GROQ_MODEL_ID);
           const text = choice?.message?.content?.trim() || "";
