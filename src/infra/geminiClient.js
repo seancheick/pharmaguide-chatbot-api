@@ -154,5 +154,6 @@ module.exports = {
   isAvailable,
   GEMINI_MODEL_ID,
   GEMINI_FALLBACK_MODEL_ID,
+  THINKING_CONFIG,
   softError,
 };
