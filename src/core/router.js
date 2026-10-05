@@ -40,7 +40,8 @@ const ROUTE_PRECEDENCE = [
   "system:medical-condition",
   "system:stack-triage",
   // Early-gate routes — these are intercepted by detection in chat.js
-  // BEFORE routeByRisk runs (flirty/creator/pet/business). Listed here
+  // BEFORE routeByRisk runs (flirty/creator/pet/business/what-is/privacy/
+  // depletion). Listed here
   // so the router_precedence test (which asserts every ROUTE_REPLY_MAP
   // key exists in ROUTE_PRECEDENCE) stays green. routeByRisk has no
   // detection branch for them — control never reaches these entries
@@ -52,6 +53,9 @@ const ROUTE_PRECEDENCE = [
   "system:creator",
   "system:pet-question",
   "system:business-inquiry",
+  "system:what-is",
+  "system:privacy",
+  "system:depletion",
   "llm",
 ];
 

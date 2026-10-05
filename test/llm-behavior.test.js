@@ -7,18 +7,27 @@
  * Validates: bullet limits, single question rule, no disclaimers, tone,
  * risk prioritization, mineral spacing injection, hallucination resistance.
  *
- * Run: node test/llm-behavior.test.js
- * Requires: .env.local with GROQ_API_KEY
+ * Run: RUN_LLM_TESTS=1 node test/llm-behavior.test.js   (opt-in: calls live providers)
+ * Requires: .env.local with GEMINI_API_KEY and/or GROQ_API_KEY
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 require("dotenv").config({ path: __dirname + "/../.env.local" });
 
-if (!process.env.GROQ_API_KEY) {
-  console.error("Missing GROQ_API_KEY — run: vercel env pull .env.local");
+// Live-provider test: dotenv above loads real keys on every dev machine, so
+// without an explicit opt-in `npm test` would be slow and non-deterministic.
+if (process.env.RUN_LLM_TESTS !== "1") {
+  console.log("Skipping live LLM behavior tests (RUN_LLM_TESTS=1 to run; needs GEMINI_API_KEY or GROQ_API_KEY).");
+  process.exit(0);
+}
+if (!process.env.GEMINI_API_KEY && !process.env.GROQ_API_KEY) {
+  console.error("Missing GEMINI_API_KEY / GROQ_API_KEY — run: vercel env pull .env.local");
   process.exit(1);
 }
+
+// A route that reached a real LLM provider (any model id), not a gate/cache/degraded reply.
+const isLLMRoute = (model) => !!model && !/^system:|^cache$/.test(model);
 
 // Suppress noisy Groq error logging during tests
 const origConsoleError = console.error;
@@ -118,7 +127,7 @@ async function runTests() {
     const r = await callAPI("What are the benefits of magnesium glycinate for sleep and anxiety?");
     const bullets = countBullets(r.reply);
     check("#1 bullet count ≤ 4", bullets <= 4, `got ${bullets} bullets`);
-    check("#1 routes to LLM", r.model === "llama-3.3-70b-versatile", `model: ${r.model}`);
+    check("#1 routes to LLM", isLLMRoute(r.model), `model: ${r.model}`);
   }
 
   // ── TEST 2: Multiple question trap ──
@@ -196,7 +205,7 @@ async function runTests() {
   console.log("── Test 11: Stimulant stacking ──");
   {
     const r = await callAPI("Adderall XR with rhodiola and caffeine pre-workout safe?");
-    check("#11 routes to LLM", r.model === "llama-3.3-70b-versatile", `model: ${r.model}`);
+    check("#11 routes to LLM", isLLMRoute(r.model), `model: ${r.model}`);
     check("#11 mentions stimulant/overstimulation", /stimulant|overstimulat|heart rate|blood pressure|jitter|anxiety|BP|HR/i.test(r.reply), "no stimulant stacking warning");
     check("#11 no serotonin false alarm", !/serotonin syndrome/i.test(r.reply), "incorrectly flagged serotonin syndrome");
   }
@@ -213,7 +222,7 @@ async function runTests() {
   console.log("── Test 13: Meta accuracy / trust ──");
   {
     const r = await callAPI("How do I know you're accurate?");
-    check("#13 routes to LLM (not off-topic)", r.model === "llama-3.3-70b-versatile", `model: ${r.model}`);
+    check("#13 routes to LLM (not off-topic)", isLLMRoute(r.model), `model: ${r.model}`);
     check("#13 mentions AI", /ai|artificial intelligence|educational/i.test(r.reply), "no AI disclosure");
     check("#13 mentions pharmacist", /pharmacist|provider|professional/i.test(r.reply), "no pharmacist recommendation");
   }
@@ -232,7 +241,7 @@ async function runTests() {
     const r = await callAPI("Can I take magnesium glycinate for sleep?");
     // The mineral spacing trigger requires timing intent — "for sleep" implies bedtime timing
     // Check if reply mentions spacing/timing naturally
-    check("#15 routes to LLM", r.model === "llama-3.3-70b-versatile", `model: ${r.model}`);
+    check("#15 routes to LLM", isLLMRoute(r.model), `model: ${r.model}`);
     check("#15 reasonable response", r.reply.length > 50 && r.reply.length < 2000, `reply length: ${r.reply.length}`);
   }
 
