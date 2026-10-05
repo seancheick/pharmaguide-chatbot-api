@@ -47,6 +47,25 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
+  // On Vercel `req.body` is parsed lazily and throws on malformed JSON.
+  let body;
+  try {
+    body = req.body || {};
+  } catch (e) {
+    return res.status(400).json({ error: "Invalid JSON body" });
+  }
+  const message = body.message;
+  if (!message || typeof message !== "string") return res.status(400).json({ error: "Message is required" });
+  if (message.length > 2000) return res.status(400).json({ error: "Message too long. Please keep it under 2000 characters." });
+
+  // ── 1. Emergency (instant) ──
+  // Answered BEFORE the rate limiter: the limiter talks to an external
+  // service, and an outage there must never delay or block an emergency reply.
+  if (detection.isEmergency(message)) {
+    logGate("system:emergency", message.length, false);
+    return res.status(200).json({ reply: emergencyReply(), model: "system:emergency" });
+  }
+
   const clientIP = getClientIP(req);
   const rl = await checkRateLimit(clientIP);
   if (!rl.success) {
@@ -56,18 +75,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const requestStart = Date.now();
-    const body = req.body || {};
-    const message = body.message;
     const history = body.history || [];
-
-    if (!message || typeof message !== "string") return res.status(400).json({ error: "Message is required" });
-    if (message.length > 2000) return res.status(400).json({ error: "Message too long. Please keep it under 2000 characters." });
-
-    // ── 1. Emergency (instant) ──
-    if (detection.isEmergency(message)) {
-      logGate("system:emergency", message.length, false);
-      return res.status(200).json({ reply: emergencyReply(), model: "system:emergency" });
-    }
 
     const safeHistory = sanitizeHistory(history);
     const hasConversation = safeHistory.length > 0;
@@ -369,16 +377,22 @@ module.exports = async function handler(req, res) {
     // Single question enforcement
     reply = enforceOneQuestion(reply);
 
-    // Dose-over-limit warnings
-    reply = addDoseWarnings(reply, doses);
+    // Optional decorators: a failure in one of these must never turn a
+    // finished answer into a 500 (a malformed KB entry once did exactly that).
+    try {
+      // Dose-over-limit warnings
+      reply = addDoseWarnings(reply, doses);
 
-    // Form-specific recommendations (e.g., "oxide → try glycinate for sleep")
-    for (const supp of (entities.supplements || [])) {
-      const formRec = getFormRecommendation(convoContext, supp, entities);
-      if (formRec) {
-        reply = reply + "\n\n" + formRec;
-        break; // One form rec per response to avoid clutter
+      // Form-specific recommendations (e.g., "oxide → try glycinate for sleep")
+      for (const supp of (entities.supplements || [])) {
+        const formRec = getFormRecommendation(convoContext, supp, entities);
+        if (formRec) {
+          reply = reply + "\n\n" + formRec;
+          break; // One form rec per response to avoid clutter
+        }
       }
+    } catch (decoratorError) {
+      console.warn("[POSTPROCESS] optional decorator failed:", decoratorError && decoratorError.message);
     }
 
     // Post-response safety validation. Two outcomes:

@@ -7,7 +7,7 @@
  */
 
 const { getKBEntry } = require("../config/knowledgeBase");
-const { normalizeText } = require("./normalize");
+const { normalizeText, escapeRegex } = require("./normalize");
 
 /**
  * Detect which form of a supplement the user mentioned.
@@ -20,7 +20,11 @@ function detectMentionedForm(text, supplementName) {
   const t = normalizeText(text);
 
   for (const [formName, formData] of Object.entries(kb.forms)) {
-    const formPattern = new RegExp("\\b" + formName.replace(/\s+/g, "\\s+") + "\\b", "i");
+    // Match on the same normalized form as `t` (punctuation stripped), then escape:
+    // KB names like "curcumin + piperine" or "meriva (phytosome)" are not regex.
+    const normalizedForm = normalizeText(formName);
+    if (!normalizedForm) continue;
+    const formPattern = new RegExp("\\b" + escapeRegex(normalizedForm).replace(/\s+/g, "\\s+") + "\\b", "i");
     if (formPattern.test(t)) {
       return { supplement: kb.canonical, form: formName, formData };
     }

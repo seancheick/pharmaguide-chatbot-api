@@ -111,6 +111,7 @@ function mergeStateIntoEntities(entities, conversationState) {
     symptoms: [...(entities.symptoms || [])],
     intents: [...(entities.intents || [])],
     unknowns: [...(entities.unknowns || [])],
+    drug_classes: [...(entities.drug_classes || [])],
     populations: [...mergedPops],
     _persisted_conditions: conversationState.conditions || [],
   };

@@ -1,6 +1,7 @@
 function createLLMClient(provider) {
   if (provider === "groq") {
     const Groq = require("groq-sdk");
+    const { GROQ_MODEL_ID } = require("./groqClient");
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
     return {
@@ -12,7 +13,7 @@ function createLLMClient(provider) {
         ];
 
         const completion = await groq.chat.completions.create({
-          model: constraints?.model || "llama-3.3-70b-versatile",
+          model: constraints?.model || GROQ_MODEL_ID,
           messages: fullMessages,
           temperature: constraints?.temperature ?? 0.45,
           max_tokens: constraints?.max_tokens ?? 650,
@@ -23,7 +24,7 @@ function createLLMClient(provider) {
         return {
           content: completion.choices?.[0]?.message?.content?.trim() || "",
           usage: completion.usage,
-          model: completion.model || constraints?.model || "llama-3.3-70b-versatile",
+          model: completion.model || constraints?.model || GROQ_MODEL_ID,
           provider: "groq",
         };
       },

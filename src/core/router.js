@@ -71,9 +71,13 @@ function routeByRisk(scores, entities, convoContext, message, hasConversation) {
   //   • the user mentioned a vasodilator supplement (L-arginine,
   //     L-citrulline, citrulline malate, high-dose niacin, yohimbine).
   const drugClasses = (entities && entities.drug_classes) || [];
-  const hasPDE5OrNitrate = drugClasses.includes("pde5_inhibitor") || drugClasses.includes("nitrate");
+  const hasPDE5 = drugClasses.includes("pde5_inhibitor");
+  const hasNitrate = drugClasses.includes("nitrate");
+  const hasPDE5OrNitrate = hasPDE5 || hasNitrate;
   const vasodilatorSupp = /\b((?:l.?)?arginine|(?:l.?)?citrulline|citrulline\s+malate|niacin|yohimbine)\b/.test(ctx || normalizedMsg);
-  const isNitrateVasodilatorCombo = hasPDE5OrNitrate && vasodilatorSupp;
+  // A PDE5 inhibitor plus a nitrate is the labelled contraindication itself
+  // (no supplement needed); a supplement needs one of the two drug classes.
+  const isNitrateVasodilatorCombo = (hasPDE5 && hasNitrate) || (hasPDE5OrNitrate && vasodilatorSupp);
 
   // Evaluate each route exactly in the order defined by ROUTE_PRECEDENCE
   for (const route of ROUTE_PRECEDENCE) {

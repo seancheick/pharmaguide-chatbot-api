@@ -117,7 +117,9 @@ async function callWithFallback(messages, opts = {}) {
         degraded: false,
       };
     } catch (err) {
-      provider.onFailure();
+      // A soft failure (answer cut off / blocked / empty) is not an outage:
+      // try the next provider but do not push this one toward an open circuit.
+      if (!(err && err.soft)) provider.onFailure();
       const reason = err && err.status ? `status_${err.status}` : (err && err.message) || "unknown";
       attempts.push({
         provider: provider.name,
@@ -168,23 +170,49 @@ function buildProviderChain() {
     }
   }
 
-  // 2. Groq (fallback — fast, good enough for most queries)
+  // 2. Second Gemini model — interim tier until the eval-driven model choice.
+  //    Covers a model-specific outage/overload of the primary. Deliberately no
+  //    breaker of its own: it is only reached after the primary failed or was
+  //    skipped, and it answers in ~1.5 s when healthy. Named "gemini-lite" so
+  //    confidence scoring does not treat it as the strong primary.
+  if (gemini.isAvailable()) {
+    chain.push({
+      name: "gemini-lite",
+      modelId: gemini.GEMINI_FALLBACK_MODEL_ID,
+      call: (messages, params) => gemini.chatCompletion(messages, {
+        temperature: params.temperature,
+        maxTokens: params.maxTokens,
+        topP: params.topP,
+        timeout: 6000,
+        model: gemini.GEMINI_FALLBACK_MODEL_ID,
+      }),
+      onSuccess: () => {},
+      onFailure: () => {},
+    });
+  }
+
+  // 3. Groq (cross-vendor fallback). See groqClient.js: currently rejected
+  //    with HTTP 413 on the free tier because the system prompt is too large.
   if (groqClient.isAvailable()) {
     const groqCircuit = allowGroq();
     if (groqCircuit.allowed) {
       chain.push({
         name: "groq",
-        modelId: "llama-3.3-70b-versatile",
+        modelId: groqClient.GROQ_MODEL_ID,
         call: async (messages, params) => {
           const completion = await groqClient.groq.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
+            model: groqClient.GROQ_MODEL_ID,
             messages,
             temperature: params.temperature,
             max_tokens: params.maxTokens,
             top_p: params.topP,
             stream: false,
+            ...groqClient.GROQ_MODEL_PARAMS,
           }, { timeout: 8000 });
-          const text = completion.choices?.[0]?.message?.content?.trim() || "";
+          const choice = completion.choices?.[0];
+          if (choice?.finish_reason === "length") throw gemini.softError("GROQ_TRUNCATED", groqClient.GROQ_MODEL_ID);
+          const text = choice?.message?.content?.trim() || "";
+          if (!text) throw gemini.softError("GROQ_EMPTY", groqClient.GROQ_MODEL_ID);
           return { text, usage: completion.usage || {} };
         },
         onSuccess: groqSuccess,

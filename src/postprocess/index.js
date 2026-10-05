@@ -1,4 +1,4 @@
-const { normalizeText } = require("../core/normalize");
+const { normalizeText, escapeRegex } = require("../core/normalize");
 const { mentionsMineralSpacingTrigger } = require("../gates/detection");
 
 function mineralSpacingNote() {
@@ -31,10 +31,6 @@ function enforceOneQuestion(text) {
     result = result.replace(new RegExp("\\n?[•\\-]?\\s*" + escapeRegex(trimmed) + "\\s*", ""), "\n");
   }
   return result.replace(/\n{3,}/g, "\n\n").trim();
-}
-
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**
