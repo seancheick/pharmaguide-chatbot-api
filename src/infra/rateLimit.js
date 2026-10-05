@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const { Redis } = require("@upstash/redis");
 const { Ratelimit } = require("@upstash/ratelimit");
 
@@ -13,7 +14,8 @@ let ratelimit = null;
 try {
   if (UPSTASH_URL && UPSTASH_TOKEN) {
     const redis = new Redis({ url: UPSTASH_URL, token: UPSTASH_TOKEN });
-    ratelimit = new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10, "1 m"), analytics: true, prefix: "pgchat" });
+    // analytics: false: the limiter's analytics feature keeps the identifiers it is given.
+    ratelimit = new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10, "1 m"), analytics: false, prefix: "pgchat" });
   }
 } catch (e) {
   console.error("Upstash init failed:", e.message);
@@ -37,20 +39,31 @@ function checkRateLimitMemory(ip) {
 // it and fall back to the per-instance limiter instead of failing the request.
 const LIMITER_TIMEOUT_MS = 1500;
 
+// Visitors are never keyed by their address: only a keyed one-way hash reaches the
+// limiter backend or the in-memory map. The key must be the same on every serverless
+// instance (a per-process random salt would give each instance its own bucket) and
+// secret, so it comes from the environment; the Upstash token is the fallback because
+// it is always present whenever the shared limiter is in use.
+function limiterKey(ip) {
+  const secret = process.env.RATE_LIMIT_SALT || process.env.ANALYTICS_SALT || UPSTASH_TOKEN || "pharmaguide-local-dev";
+  return crypto.createHmac("sha256", secret).update(String(ip)).digest("hex").slice(0, 32);
+}
+
 async function checkRateLimit(ip) {
-  if (!ratelimit) return checkRateLimitMemory(ip);
+  const key = limiterKey(ip);
+  if (!ratelimit) return checkRateLimitMemory(key);
   let timer;
   try {
     return await Promise.race([
-      ratelimit.limit(ip),
+      ratelimit.limit(key),
       new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("RATELIMIT_TIMEOUT")), LIMITER_TIMEOUT_MS); }),
     ]);
   } catch (e) {
     console.warn("[RATELIMIT] backend unavailable, using in-memory limiter:", e && e.message);
-    return checkRateLimitMemory(ip);
+    return checkRateLimitMemory(key);
   } finally {
     clearTimeout(timer);
   }
 }
 
-module.exports = { checkRateLimit };
+module.exports = { checkRateLimit, limiterKey };
