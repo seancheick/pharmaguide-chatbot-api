@@ -145,7 +145,7 @@ const KNOWLEDGE_BASE = {
       { with: "steroids (prednisone)", severity: "low", mechanism: "Steroids impair vitamin D metabolism. Higher doses may be needed.", timing_fix: null },
     ],
     common_goals: ["bone health", "immune", "mood", "deficiency correction"],
-    reference_ids: ["holick-2011", "ods-vitamin-a-2023"],
+    reference_ids: ["holick-2011", "ods-vitamin-a-2025"],
   },
 
   "vitamin k2": {
@@ -266,7 +266,7 @@ const KNOWLEDGE_BASE = {
     upper_limit: { value: 3000, unit: "mcg/day (preformed retinol)", source: "NIH ODS" },
     timing: { best_time: "with fat-containing meal", with_food: true, separate_from: [] },
     populations: {
-      pregnancy: { safe: false, notes: "Excess preformed retinol is teratogenic. Max 3,000 mcg/day. Beta-carotene is safer." },
+      pregnancy: { safe: false, notes: "Excess preformed retinol is teratogenic. Max 3,000 mcg/day (2,800 mcg for ages 14-18). Beta-carotene is safer." },
       renal: { safe: true, notes: "Generally safe at normal doses." },
       elderly: { safe: true, notes: "Use caution with liver supplements (high retinol)." },
     },
@@ -275,7 +275,7 @@ const KNOWLEDGE_BASE = {
       { with: "warfarin", severity: "moderate", mechanism: "High-dose vitamin A may increase anticoagulant effect.", timing_fix: null },
     ],
     common_goals: ["vision", "immune", "skin"],
-    reference_ids: ["rothman-1995", "ods-vitamin-a-2023"],
+    reference_ids: ["rothman-1995", "ods-vitamin-a-2025"],
   },
 
   ashwagandha: {

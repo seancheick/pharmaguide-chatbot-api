@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "npm run check:release || true",
+  "buildCommand": "npm run check:release",
   "outputDirectory": ".",
   "framework": null
 }
