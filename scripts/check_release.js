@@ -71,10 +71,22 @@ const testFiles = fs
   .filter((f) => f.endsWith(".test.js") && !SKIP_TESTS.has(f))
   .map((f) => path.join(testRoot, f));
 
+// The suite must behave the same on a developer machine, in CI and in a Vercel build, where the
+// real provider keys exist. Without this, tests that reach the LLM chain or the rate limiter would
+// spend the production Gemini quota and write test traffic into the production Redis.
+const SECRET_ENV = [
+  "GEMINI_API_KEY", "GROQ_API_KEY",
+  "UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN",
+  "PG_PROXY_SECRET", "PG_REQUIRE_PROXY_SECRET",
+  "ANALYTICS_ENABLED", "ANALYTICS_SALT", "RATE_LIMIT_SALT",
+];
+const testEnv = { ...process.env };
+for (const name of SECRET_ENV) delete testEnv[name];
+
 const testRun = spawnSync(
   process.execPath,
   ["--test", ...testFiles],
-  { stdio: "inherit" }
+  { stdio: "inherit", env: testEnv }
 );
 if (testRun.status !== 0) {
   console.log("\n  ⚠  Release blocked — unit-test suite failed.");

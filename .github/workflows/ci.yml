@@ -4,12 +4,16 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    # Mondays: fail early if a claim will be overdue within 30 days, so a deploy is never the first to find out.
+    - cron: "17 6 * * 1"
 
 permissions:
   contents: read
 
 jobs:
   test:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,6 +22,19 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # Includes the pinned canaries (test/canaries.test.js). No API keys are needed:
+      # The release gate (policy, claims governance, forbidden analytics keys) and then the whole
+      # suite, including the pinned canaries (test/canaries.test.js). No API keys are needed:
       # the LLM chain is stubbed and the live-provider test is opt-in.
-      - run: npm test
+      - run: npm run check:release
+
+  claims-expiring:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: node scripts/check_release.js --date "$(date -u -d '+30 days' +%F)"
