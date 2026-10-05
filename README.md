@@ -53,7 +53,7 @@ A production decision-and-explanation system for high-stakes supplement–medica
 | Declarative (data-driven) safety gates | 12 |
 | Detection functions | 58 |
 | Clinical knowledge entries | 102 |
-| Curated source references | 30 |
+| Curated source references | 31 |
 | Approved clinical claims (with review dates) | 21 |
 | Safety-policy domains | 21 |
 | Post-response validator rules | 8 |
