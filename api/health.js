@@ -12,6 +12,7 @@ const groqCircuit = require("../src/infra/circuitBreaker");
 const geminiCircuit = require("../src/infra/geminiCircuitBreaker");
 const { getGapSnapshot, getPersistedGapSnapshot } = require("../src/infra/topicTracker");
 const { getSnapshot: getAnalyticsSnapshot } = require("../src/infra/analytics");
+const { getProvenance } = require("../src/infra/provenance");
 
 module.exports = function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -50,6 +51,7 @@ module.exports = function handler(req, res) {
     service: 'PharmaGuide AI Chatbot',
     timestamp: new Date().toISOString(),
     version: '2.0.0',
+    ruleset: getProvenance(),
     providers,
     active_provider: activeProvider,
   };
