@@ -33,9 +33,24 @@ function checkRateLimitMemory(ip) {
   return { success: entry.count <= MAX_REQUESTS_PER_WINDOW, reset: entry.resetTime, remaining: Math.max(0, MAX_REQUESTS_PER_WINDOW - entry.count) };
 }
 
+// The limiter backend is an external dependency: bound how long we wait for
+// it and fall back to the per-instance limiter instead of failing the request.
+const LIMITER_TIMEOUT_MS = 1500;
+
 async function checkRateLimit(ip) {
-  if (ratelimit) return await ratelimit.limit(ip);
-  return checkRateLimitMemory(ip);
+  if (!ratelimit) return checkRateLimitMemory(ip);
+  let timer;
+  try {
+    return await Promise.race([
+      ratelimit.limit(ip),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("RATELIMIT_TIMEOUT")), LIMITER_TIMEOUT_MS); }),
+    ]);
+  } catch (e) {
+    console.warn("[RATELIMIT] backend unavailable, using in-memory limiter:", e && e.message);
+    return checkRateLimitMemory(ip);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 module.exports = { checkRateLimit };

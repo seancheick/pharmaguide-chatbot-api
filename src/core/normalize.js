@@ -5,4 +5,10 @@ function normalizeText(s) {
   return applySynonyms(t);
 }
 
-module.exports = { normalizeText };
+// Escape a string for literal use inside a RegExp (KB names such as
+// "curcumin + piperine" must never be compiled as pattern syntax).
+function escapeRegex(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+module.exports = { normalizeText, escapeRegex };

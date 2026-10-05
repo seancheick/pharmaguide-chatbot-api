@@ -896,7 +896,24 @@ function ginkgoBleedingReply() {
 // names a provider/pharmacist as the right resource, and surfaces the
 // 911 / Poison Control numbers for symptomatic users.
 
-function nitrateVasodilatorReply() {
+function nitrateVasodilatorReply(entities) {
+  const classes = (entities && entities.drug_classes) || [];
+  if (classes.includes("pde5_inhibitor") && classes.includes("nitrate")) {
+    return [
+      "**🔴 PDE5 inhibitors and nitrates should not be combined.**",
+      "",
+      "• **PDE5 inhibitors** — sildenafil (Viagra), tadalafil (Cialis), vardenafil (Levitra), avanafil (Stendra)",
+      "• **Nitrates** — nitroglycerin, isosorbide mononitrate, isosorbide dinitrate",
+      "",
+      "Both widen blood vessels. Together they can cause fainting and a severe, sudden drop in blood pressure, and the combination is **contraindicated**.",
+      "",
+      "**What to do:**",
+      "• Do not take them together. Talk to your prescriber or pharmacist FIRST — they can tell you whether and when either one is safe for you.",
+      "• If you have already taken both and feel dizzy, lightheaded, faint, or notice chest pain, **call 911 or Poison Control (1-800-222-1222) immediately**.",
+      "",
+      "Want to tell me which medications you're on so I can be more specific?",
+    ].join("\n");
+  }
   return [
     "**🔴 This combination can cause severe low blood pressure.**",
     "",
@@ -915,7 +932,7 @@ function nitrateVasodilatorReply() {
 }
 
 const ROUTE_REPLY_MAP = {
-  "system:nitrate-vasodilator": function() { return nitrateVasodilatorReply(); },
+  "system:nitrate-vasodilator": function(convoContext, message, entities) { return nitrateVasodilatorReply(entities); },
   "system:ssri-discontinuation": function(convoContext) { return ssriDiscontinuationReply(); },
   "system:serotonin-urgent": function() { return serotonergicUrgentReply(); },
   "system:serotonin-risk": function(convoContext) { return serotonergicWarningReply(convoContext); },

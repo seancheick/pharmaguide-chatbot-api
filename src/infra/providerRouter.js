@@ -16,6 +16,13 @@ const { allowRequest: allowGroq, recordSuccess: groqSuccess, recordFailure: groq
 const { allowRequest: allowGemini, recordSuccess: geminiSuccess, recordFailure: geminiFailure } = require("./geminiCircuitBreaker");
 const { getDegradedResponse } = require("./gracefulDegradation");
 
+// Short breaker for the interim gemini-lite tier: 3 consecutive hard failures
+// (soft failures such as a cut-off answer do not count) skip it for 30 s.
+const LITE_TIMEOUT_MS = 6000;
+const LITE_FAILURE_THRESHOLD = 3;
+const LITE_OPEN_MS = 30000;
+const liteBreaker = { failures: 0, openUntil: 0 };
+
 // ── Query complexity scoring ──────────────────────────
 
 /**
@@ -117,7 +124,9 @@ async function callWithFallback(messages, opts = {}) {
         degraded: false,
       };
     } catch (err) {
-      provider.onFailure();
+      // A soft failure (answer cut off / blocked / empty) is not an outage:
+      // try the next provider but do not push this one toward an open circuit.
+      if (!(err && err.soft)) provider.onFailure();
       const reason = err && err.status ? `status_${err.status}` : (err && err.message) || "unknown";
       attempts.push({
         provider: provider.name,
@@ -168,23 +177,56 @@ function buildProviderChain() {
     }
   }
 
-  // 2. Groq (fallback — fast, good enough for most queries)
+  // 2. Second Gemini model — interim tier until the eval-driven model choice.
+  //    Covers a model-specific outage/overload of the primary. Named
+  //    "gemini-lite" so confidence scoring does not treat it as the strong
+  //    primary. It has its own short breaker, independent of the primary's: in a
+  //    shared Gemini outage the primary circuit is open and this tier would
+  //    otherwise add up to LITE_TIMEOUT_MS to every request before Groq.
+  if (gemini.isAvailable() && Date.now() >= liteBreaker.openUntil) {
+    chain.push({
+      name: "gemini-lite",
+      modelId: gemini.GEMINI_FALLBACK_MODEL_ID,
+      call: (messages, params) => gemini.chatCompletion(messages, {
+        temperature: params.temperature,
+        maxTokens: params.maxTokens,
+        topP: params.topP,
+        timeout: LITE_TIMEOUT_MS,
+        model: gemini.GEMINI_FALLBACK_MODEL_ID,
+      }),
+      onSuccess: () => { liteBreaker.failures = 0; },
+      onFailure: () => {
+        liteBreaker.failures += 1;
+        if (liteBreaker.failures >= LITE_FAILURE_THRESHOLD) {
+          liteBreaker.openUntil = Date.now() + LITE_OPEN_MS;
+          liteBreaker.failures = 0;
+        }
+      },
+    });
+  }
+
+  // 3. Groq (cross-vendor fallback). See groqClient.js: currently rejected
+  //    with HTTP 413 on the free tier because the system prompt is too large.
   if (groqClient.isAvailable()) {
     const groqCircuit = allowGroq();
     if (groqCircuit.allowed) {
       chain.push({
         name: "groq",
-        modelId: "llama-3.3-70b-versatile",
+        modelId: groqClient.GROQ_MODEL_ID,
         call: async (messages, params) => {
           const completion = await groqClient.groq.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
+            model: groqClient.GROQ_MODEL_ID,
             messages,
             temperature: params.temperature,
             max_tokens: params.maxTokens,
             top_p: params.topP,
             stream: false,
+            ...groqClient.GROQ_MODEL_PARAMS,
           }, { timeout: 8000 });
-          const text = completion.choices?.[0]?.message?.content?.trim() || "";
+          const choice = completion.choices?.[0];
+          if (choice?.finish_reason === "length") throw gemini.softError("GROQ_TRUNCATED", groqClient.GROQ_MODEL_ID);
+          const text = choice?.message?.content?.trim() || "";
+          if (!text) throw gemini.softError("GROQ_EMPTY", groqClient.GROQ_MODEL_ID);
           return { text, usage: completion.usage || {} };
         },
         onSuccess: groqSuccess,

@@ -22,10 +22,14 @@ module.exports = function handler(req, res) {
       circuit: geminiCircuit.getState(),
       model: geminiClient.GEMINI_MODEL_ID,
     },
+    gemini_fallback: {
+      configured: geminiClient.isAvailable(),
+      model: geminiClient.GEMINI_FALLBACK_MODEL_ID,
+    },
     groq: {
       configured: groqClient.isAvailable(),
       circuit: groqCircuit.getState(),
-      model: "llama-3.3-70b-versatile",
+      model: groqClient.GROQ_MODEL_ID,
     },
   };
 

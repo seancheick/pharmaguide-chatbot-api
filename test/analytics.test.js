@@ -274,7 +274,7 @@ assert("not cacheable: validator violations", !isCacheable(
 
 assert("not cacheable: risk score >= 2", !isCacheable(
   "test", emptyEntities, false, { safe: true, violations: [] }, "llm",
-  { risk_flags: [{ domain: "serotonin", level: 2 }] }
+  { serotonin_risk: 2 }
 ));
 
 assert("not cacheable: 3+ entities", !isCacheable(
