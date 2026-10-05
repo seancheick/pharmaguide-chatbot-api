@@ -122,13 +122,21 @@ const REFERENCES = {
     type: "regulatory",
     domains: ["isotretinoin_vita"],
   },
-  "ods-vitamin-a-2023": {
-    short: "NIH ODS Vitamin A Fact Sheet, 2023",
+  "ods-vitamin-a-2025": {
+    short: "NIH ODS Vitamin A Fact Sheet, 2025",
     title: "Vitamin A and Carotenoids — Health Professional Fact Sheet",
-    source: "National Institutes of Health, Office of Dietary Supplements",
-    year: 2023,
+    source: "National Institutes of Health, Office of Dietary Supplements (updated March 10, 2025)",
+    year: 2025,
     type: "reference",
     domains: ["pregnancy_teratogen", "stacking"],
+  },
+  "ajgaonkar-2026": {
+    short: "Ajgaonkar et al., Front Glob Womens Health 2026",
+    title: "Efficacy and safety of Ashwagandha (Withania somnifera) root extract in pregnant women: a prospective, randomized, comparative, open-label, 12-week study",
+    source: "Frontiers in Global Women's Health, 7, 1767865 (doi:10.3389/fgwh.2026.1767865)",
+    year: 2026,
+    type: "rct",
+    domains: ["pregnancy_limited"],
   },
   "briggs-2017": {
     short: "Briggs & Freeman, Drugs in Pregnancy 2017",
