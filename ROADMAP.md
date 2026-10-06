@@ -691,7 +691,6 @@ src/
     entityClassifier.js      — Maps entity names → coarse privacy-safe classes
     riskScore.js             — Multi-dimension risk scoring + severity resolution
     router.js                — Risk-based routing to gates or LLM
-    state.js                 — Request state management
     requiredFields.js        — Missing field detection for gate routes
     twoTrack.js              — Dual-track processing
     unknownResolver.js       — Misspelling correction, brand resolution, unknown item detection
