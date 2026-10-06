@@ -1,7 +1,10 @@
 const { applySynonyms } = require("../config/synonymMap");
 
 function normalizeText(s) {
-  let t = String(s || "").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+  // "SAMe" (the supplement) and "same" (the word) are identical once lowercased, so the capitalised
+  // spelling is marked first. See the SAM-e rules in synonymMap.js.
+  const marked = String(s || "").replace(/\bSAMe\b/g, "SAM-e");
+  let t = marked.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
   return applySynonyms(t);
 }
 

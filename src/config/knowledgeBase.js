@@ -1949,7 +1949,7 @@ const KNOWLEDGE_BASE = {
 
   "sam-e": {
     canonical: "sam-e",
-    aliases: ["s-adenosyl methionine", "s-adenosylmethionine", "same"],
+    aliases: ["s-adenosyl methionine", "s-adenosylmethionine"],
     category: "supplement",
     adult_dose_range: { min: 400, max: 1600, unit: "mg/day (start 200mg, increase gradually)" },
     timing: { best_time: "morning on empty stomach", with_food: false, separate_from: [] },
