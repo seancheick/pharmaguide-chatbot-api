@@ -10,6 +10,11 @@
  *   topic  domain guidance that only matters when the question touches that domain. It is clinical
  *          content that the PharmaGuide pipeline will eventually own; until then it stays here.
  *
+ * Step 2: every topic section carries `triggers`: regexes tested on the NORMALISED text of the question
+ * and the last few user turns (see src/core/promptAssembly.js, which also handles the sections whose
+ * selection depends on the detected entities or wellness goals). Triggers are recall-oriented: a missed
+ * trigger drops optional guidance, never a rule, because every rule is in a core section.
+ *
  * Sections are in the order they appear in the prompt. The split is at every block header, so a
  * safety rule can never sit inside a topic section (the strict boundaries used to be the tail of
  * the wellness-goals block, and the general rules the tail of the meta-questions block).
@@ -86,6 +91,7 @@ Do NOT add a disclaimer or "educational only" line — the UI handles that.
   {
     id: "seasonal-allergy",
     kind: "topic",
+    triggers: [/\b(allerg\w*|hay fever|pollen|rhinitis|sneez\w*|itchy (eyes|nose)|runny nose|nasal congestion|antihistamines?|zyrtec|claritin|allegra|benadryl|cetirizine|loratadine|fexofenadine|diphenhydramine|butterbur|quercetin|nettle|bromelain)\b/],
     // domain guidance
     text: `SEASONAL ALLERGY GUIDANCE:
 - Distinguish between **seasonal/environmental allergies** (pollen, dust, mold → histamine-mediated) and **drug/food allergies** (immune-mediated, potentially dangerous — refer to prescriber/allergist).
@@ -105,6 +111,7 @@ Do NOT add a disclaimer or "educational only" line — the UI handles that.
   {
     id: "supplement-form-guide",
     kind: "topic",
+    triggers: [/\b(forms?|which (type|kind)|best (type|kind)|versus|vs|glycinate|citrate|oxide|malate|threonate|taurate|bisglycinate|sulfate|methylcobalamin|cyanocobalamin|methylfolate|ubiquinol|ubiquinone|liposomal|chelated|absorption|bioavailab\w*|magnesium|iron|zinc|b12|omega|fish oil|turmeric|curcumin|coq10|vitamin c|calcium)\b/],
     // form-specific guidance (glycinate vs oxide, ...)
     text: `SUPPLEMENT FORM GUIDE (a PharmaGuide signature feature):
 When users ask "which form is best" or "X vs Y" for a supplement, give a clear comparison. This is what differentiates PharmaGuide from generic AI. Don't just say "glycinate is better" — explain WHY with absorption, tolerance, and goal matching:
@@ -169,6 +176,7 @@ When users ask "which form is best" or "X vs Y" for a supplement, give a clear c
   {
     id: "food-drug-interactions",
     kind: "topic",
+    triggers: [/\b(foods?|meals?|eat|eating|ate|diet|drink\w*|alcohol|wine|beer|coffee|tea|green tea|grapefruit|kale|spinach|broccoli|dairy|milk|juice|fiber|fibre|cheese|licorice|vitamin k)\b/],
     // domain guidance
     text: `FOOD-DRUG & FOOD-SUPPLEMENT INTERACTIONS:
 When a user mentions food alongside medications or supplements, flag these:
@@ -211,6 +219,7 @@ When a user asks about interactions, complex stacks, or medication+supplement co
   {
     id: "timing-optimizer",
     kind: "topic",
+    triggers: [/\b(timing|time of day|when (should|to|do)|what time|morning|evening|night|bedtime|before bed|after (breakfast|lunch|dinner|meals?)|empty stomach|with food|with meals?|spac\w+|separate|apart|hours? (apart|before|after)|schedule|routine)\b/],
     // domain guidance
     text: `TIMING OPTIMIZER FOR STACKS:
 When someone lists 4+ supplements/medications and asks about timing, provide a practical daily schedule:
@@ -226,6 +235,7 @@ When someone lists 4+ supplements/medications and asks about timing, provide a p
   {
     id: "gi-digestive-otc",
     kind: "topic",
+    triggers: [/\b(heartburn|acid reflux|reflux|gerd|antacids?|tums|gas|gassy|bloat\w*|stomach|indigestion|dyspepsia|nausea|nauseous|diarrhea|constipat\w*|ibs|digest\w*|ppis?|omeprazole|prilosec|nexium|famotidine|pepcid|simethicone|pepto|bismuth|laxative|probiotics?)\b/],
     // domain guidance
     text: `GI / STOMACH / DIGESTIVE OTC GUIDANCE:
 When users ask about heartburn, gas, stomachache, or digestive issues:
@@ -239,6 +249,7 @@ When users ask about heartburn, gas, stomachache, or digestive issues:
   {
     id: "vaginal-health",
     kind: "topic",
+    triggers: [/\b(vagin\w*|bv|yeast infections?|candida|thrush|uti|utis|urinary|bladder|boric acid|metronidazole|flagyl|diflucan|fluconazole|cranberry|mannose|ph balance)\b/],
     // domain guidance
     text: `VAGINAL HEALTH GUIDANCE:
 - **Bacterial vaginosis (BV)**: Metronidazole (Flagyl) is first-line. CRITICAL: absolute zero alcohol during treatment and 48 hours after — causes severe disulfiram-like reaction. Probiotics with L. rhamnosus GR-1 and L. reuteri RC-14 help restore vaginal flora after treatment.
@@ -252,6 +263,7 @@ When users ask about heartburn, gas, stomachache, or digestive issues:
   {
     id: "iron-absorption",
     kind: "topic",
+    triggers: [/\b(iron|ferrous|ferritin|anemi\w*|heme|hemoglobin|bisglycinate)\b/],
     // domain guidance
     text: `IRON & NUTRIENT ABSORPTION AWARENESS:
 - **Iron + dairy/milk**: Calcium in dairy directly inhibits iron absorption. Separate by 2+ hours. This includes milk, cheese, yogurt, and calcium-fortified beverages.
@@ -264,6 +276,7 @@ When users ask about heartburn, gas, stomachache, or digestive issues:
   {
     id: "nutrient-depletion",
     kind: "topic",
+    triggers: [/\b(deplet\w*|lowers? my|metformin|ppis?|omeprazole|statins?|diuretics?|lasix|furosemide|hctz|birth control|oral contraceptives?|corticosteroids?|prednisone|ace inhibitors?|lisinopril|antibiotics?|ssris?)\b/],
     // domain guidance
     text: `MEDICATION-INDUCED NUTRIENT DEPLETION:
 When a user asks what nutrients their medication depletes, provide specific, actionable guidance:
@@ -283,6 +296,7 @@ When a user asks what nutrients their medication depletes, provide specific, act
   {
     id: "vertigo-dizziness",
     kind: "topic",
+    triggers: [/\b(vertigo|dizz\w*|room spinning|spinning|lightheaded|light headed|balance|meniere\w*|bppv|vestibular|meclizine|tinnitus)\b/],
     // domain guidance
     text: `VERTIGO & DIZZINESS GUIDANCE:
 When a user mentions vertigo, dizziness, or "room spinning":
@@ -297,6 +311,7 @@ When a user mentions vertigo, dizziness, or "room spinning":
   {
     id: "hormone-support",
     kind: "topic",
+    triggers: [/\b(testosterone|trt|estrogen|oestrogen|progesterone|cortisol|adrenal|thyroid|hypothyroid\w*|hyperthyroid\w*|hashimoto\w*|tsh|levothyroxine|synthroid|hormon\w*|dhea|pcos|pms|menopaus\w*|perimenopaus\w*|libido|ashwagandha|rhodiola|phosphatidylserine)\b/],
     // domain guidance
     text: `HORMONE SUPPORT KNOWLEDGE (testosterone, estrogen, cortisol, thyroid):
 When users ask about hormones and supplements, be evidence-graded and specific:
@@ -332,6 +347,7 @@ When users ask about hormones and supplements, be evidence-graded and specific:
   {
     id: "peptides",
     kind: "topic",
+    triggers: [/\b(peptides?|bpc|tb ?500|thymosin|ghk|ipamorelin|sermorelin|cjc|growth hormone|hgh|secretagogue)\b/],
     // domain guidance
     text: `PEPTIDES & LONGEVITY PROTOCOLS:
 Peptides and longevity supplements are a fast-growing topic. Be honest about the evidence level.
@@ -346,6 +362,7 @@ Peptides and longevity supplements are a fast-growing topic. Be honest about the
   {
     id: "longevity-protocols",
     kind: "topic",
+    triggers: [/\b(longevity|anti ?aging|bryan johnson|blueprint|rapamycin|nmn|nad|resveratrol|fisetin|spermidine|urolithin|pterostilbene|healthspan|biohack\w*|senolytic)\b/],
     // domain guidance
     text: `LONGEVITY / ANTI-AGING PROTOCOLS (Bryan Johnson Blueprint, etc.):
 When users ask about longevity stacks or mention Bryan Johnson:
@@ -360,6 +377,7 @@ When users ask about longevity stacks or mention Bryan Johnson:
   {
     id: "stack-review",
     kind: "topic",
+    triggers: [/\b(my stack|my supplements|my regimen|everything i take|am i good|review my|stack review|full list)\b/],
     // domain guidance
     text: `STACK REVIEW GUIDANCE:
 When a user pastes their full supplement/medication stack and asks "am I good?":
@@ -377,6 +395,7 @@ When a user pastes their full supplement/medication stack and asks "am I good?":
   {
     id: "creatine",
     kind: "topic",
+    triggers: [/\bcreatine\b/],
     // domain guidance
     text: `CREATINE KNOWLEDGE (high-traffic topic — be confident and thorough):
 Creatine monohydrate is the single most studied sports supplement in history with 500+ studies. Be authoritative.
@@ -396,6 +415,7 @@ Creatine monohydrate is the single most studied sports supplement in history wit
   {
     id: "pre-surgery",
     kind: "topic",
+    triggers: [/\b(surg\w*|operation|anesthe\w*|anaesthe\w*|pre ?op|procedure|colonoscopy|biopsy|dental work|dental extraction|wisdom teeth|knee replacement|hip replacement)\b/],
     // domain guidance
     text: `PRE-SURGERY SUPPLEMENT SAFETY:
 When a user mentions upcoming surgery or a procedure:
@@ -409,6 +429,7 @@ When a user mentions upcoming surgery or a procedure:
   {
     id: "glp1-agonists",
     kind: "topic",
+    triggers: [/\b(ozempic|wegovy|mounjaro|zepbound|semaglutide|tirzepatide|glp ?1|liraglutide|saxenda|victoza|trulicity|dulaglutide|rybelsus)\b/],
     // domain guidance
     text: `GLP-1 AGONIST AWARENESS (Ozempic, Mounjaro, Wegovy, etc.):
 - GLP-1 drugs slow gastric emptying significantly. This affects absorption of ALL oral medications and supplements.
@@ -422,6 +443,7 @@ When a user mentions upcoming surgery or a procedure:
   {
     id: "stimulant-interactions",
     kind: "topic",
+    triggers: [/\b(adderall|ritalin|vyvanse|concerta|modafinil|armodafinil|stimulants?|caffeine|pre ?workout|preworkout|yohimbine|synephrine|ephedra|ephedrine|energy drinks?|dmaa|guarana|rhodiola|ginseng|maca)\b/],
     // domain guidance
     text: `STIMULANT INTERACTION AWARENESS:
 - Stimulant medications (Adderall, Ritalin, Vyvanse, modafinil) + stimulating herbs (rhodiola, ginseng, maca, high-dose caffeine) = compounding stimulant effects. Flag jitteriness, raised BP, anxiety, insomnia risk. Frame as "worth monitoring" not "dangerous."
@@ -434,6 +456,7 @@ When a user mentions upcoming surgery or a procedure:
   {
     id: "stacking-cofactors",
     kind: "topic",
+    triggers: [/\b(multi\w*|prenatal|b complex|stack\w*|standalone|overlap|duplicat\w*|vitamin d|d3|vitamin k|k2|vitamin a|vitamin e|iron|cofactor|fat soluble|upper limit)\b/],
     // domain guidance
     text: `STACKING & COFACTOR AWARENESS:
 - When someone takes a standalone vitamin + a multi/prenatal, flag potential overlap — especially fat-soluble vitamins (A, D, E, K) which accumulate in body fat, unlike water-soluble (B, C).
@@ -448,6 +471,7 @@ When a user mentions upcoming surgery or a procedure:
   {
     id: "clinical-knowledge",
     kind: "topic",
+    triggers: [/\b(biotin|lab (test|result)s?|ashwagandha|thyroid|red yeast|kava|liver|hepat\w*|green tea|egcg|charcoal|grapefruit|cyp3a4|berberine|metformin|ssris?|discontinu\w*|withdrawal|brain zaps|isotretinoin|accutane|vitamin a|maois?|tyramine|alcohol|benzo\w*|xanax|cbd|clobazam|kidney|renal|ckd|magnesium|bariatric|gastric (bypass|sleeve)|spironolactone|potassium|iodine|kelp|elderly|older adults?|senior|melatonin|pregnan\w*|nsaids?|ibuprofen|naproxen|ototoxic|tinnitus|hearing|psilocybin|mushrooms?|cannabis|marijuana|thc)\b/],
     // domain knowledge, flagged in the prompt as use-when-relevant
     text: `CLINICAL KNOWLEDGE (use when relevant — do NOT volunteer unprompted):
 - **Biotin lab interference**: High-dose biotin (≥5,000 mcg) can distort thyroid labs (TSH, free T4), troponin, and other immunoassays. Stop biotin 48–72 hours before blood draws. Many practitioners and patients miss this.
@@ -507,6 +531,7 @@ When a user mentions upcoming surgery or a procedure:
   {
     id: "condition-specific",
     kind: "topic",
+    triggers: [/\b(what helps with|natural (treatment|remed\w*|alternative|way)|reproductive|fertility|sperm|prostate|gut health|women s health|men s health)\b/],
     // domain guidance
     text: `CONDITION-SPECIFIC SUPPLEMENT GUIDANCE:
 When users ask about supplements for specific conditions, provide evidence-graded guidance. These are in scope:
@@ -522,6 +547,7 @@ When users ask about supplements for specific conditions, provide evidence-grade
   {
     id: "wellness-goals",
     kind: "topic",
+    triggers: [/\b(red yeast|l ?arginine|l ?citrulline|niacin|glucomannan|psyllium|sildenafil|viagra|tadalafil|cialis)\b/],
     // wellness-goal answers (candidates, doses, major interactions); the scope-and-boundary rules that used to sit under this heading are the separate core block below
     text: `WELLNESS GOALS — ALWAYS IN SCOPE:
 For wellness-goal queries (sleep, stress / non-clinical anxiety, weight management, cholesterol support, sexual / hormonal health, energy, focus / cognitive support, immunity, cardiovascular support, joint comfort), provide evidence-graded supplement options. NEVER refuse a wellness question on the grounds that it is "medical advice" — provide educational guidance with the safety caveat.

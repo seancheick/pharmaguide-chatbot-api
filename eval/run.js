@@ -13,6 +13,8 @@
  *   --interactions PATH   pipeline interactions_verified.json (default: $PG_INTERACTIONS_PATH or the dsld_clean checkout)
  *   --per-severity N      interaction records per severity (default 6; each gives a neutral and a pressure case)
  *   --no-record           do not hand the pipeline record to the model (tests the model on the production prompt alone)
+ *   --prompt full|slim    the system prompt: the whole production prompt (default) or core plus the topics each question needs
+ *                         (PG_PROMPT_MODE=selective). Run both on the same models to compare them.
  *   --via-openrouter      send every candidate through OpenRouter (needs OPENROUTER_API_KEY)
  *   --limit N             at most N cases per model
  *   --sleep-ms N          pause between calls (free tiers: 2500)
@@ -38,6 +40,9 @@ const viaOpenRouter = flag("--via-openrouter");
 const wanted = (option("--models", "") || "").split(",").map((s) => s.trim()).filter(Boolean);
 const keyNames = [...new Set([...registry.map((m) => m.keyEnv), "OPENROUTER_API_KEY"])];
 const keys = loadKeys(keyNames); // read before the harness scrubs the environment
+
+// Before the harness loads: the handler reads the prompt mode per request, so the choice is just the environment.
+process.env.PG_PROMPT_MODE = option("--prompt", "full") === "slim" ? "selective" : "full";
 
 const { runCase, classify } = require("./lib/harness");
 const { fromCanaries, CURATED, fromInteractions, loadInteractions } = require("./lib/cases");
@@ -85,7 +90,7 @@ function report(results, meta) {
   const ranked = rank(results);
   const lines = [];
   lines.push(`# Model evaluation ${meta.when}`, "");
-  lines.push(`Cases: ${meta.dependent} reach a model, ${meta.gated} are answered by a deterministic gate (not model-dependent). Record supplied: ${meta.supplyRecord ? "yes" : "no"}. Route: ${viaOpenRouter ? "OpenRouter" : "direct"}.`, "");
+  lines.push(`Cases: ${meta.dependent} reach a model, ${meta.gated} are answered by a deterministic gate (not model-dependent). Record supplied: ${meta.supplyRecord ? "yes" : "no"}. Prompt: ${process.env.PG_PROMPT_MODE === "selective" ? "slim (core + triggered topics)" : "full"}. Route: ${viaOpenRouter ? "OpenRouter" : "direct"}.`, "");
   lines.push("Ranking is the product owner's order applied mechanically: critical failures, accuracy, supplied-facts, evidence overstatement, latency, cost. Read the flagged answers before trusting it; the checks are heuristics.", "");
   lines.push("| # | Model | Critical | Accuracy | Invented figures | Overstates | Failed/truncated | p50 ms | p95 ms | $/answer |", "|--:|---|--:|--:|--:|--:|--:|--:|--:|--:|");
   ranked.forEach(({ id, summary: s }, i) => {
@@ -128,10 +133,11 @@ function report(results, meta) {
   const limit = Number(option("--limit", "0")) || dependent.length;
   const run = dependent.slice(0, limit);
   const calls = run.length * models.length;
-  const estimate = models.reduce((sum, m) => sum + run.length * ((11000 * m.price.in + 400 * m.price.out) / 1e6), 0);
+  const promptTokens = process.env.PG_PROMPT_MODE === "selective" ? 3400 : 11000; // measured: the slim prompt averages about 3.4K tokens
+  const estimate = models.reduce((sum, m) => sum + run.length * ((promptTokens * m.price.in + 400 * m.price.out) / 1e6), 0);
 
   console.log(`${run.length} model-dependent cases (${gated.length} gate-answered, skipped) x ${models.length} models = ${calls} calls`);
-  console.log(`Rough cost at today's 11K-token prompt: about $${estimate.toFixed(2)} (reasoning tokens not included)`);
+  console.log(`Rough cost at a ${(promptTokens / 1000).toFixed(1)}K-token prompt: about $${estimate.toFixed(2)} (reasoning tokens not included)`);
   if (models.some((m) => m.keyEnv === "GEMINI_API_KEY")) console.log("Note: GEMINI_API_KEY may be the PRODUCTION key; this run spends from the same quota and billing.");
   if (!flag("--yes")) {
     console.log("Dry run only. Add --yes to make live calls.");
@@ -159,7 +165,7 @@ function report(results, meta) {
   const stamp = when.replace(/[:.]/g, "-");
   const md = report(results, { when, dependent: dependent.length, gated: gated.length, supplyRecord });
   fs.writeFileSync(path.join(outDir, `${stamp}.md`), md);
-  fs.writeFileSync(path.join(outDir, `${stamp}.json`), JSON.stringify({ when, supplyRecord, viaOpenRouter, results }, null, 1));
+  fs.writeFileSync(path.join(outDir, `${stamp}.json`), JSON.stringify({ when, supplyRecord, viaOpenRouter, prompt: process.env.PG_PROMPT_MODE, results }, null, 1));
   console.log(`\n\n${md.split("\n## ")[0]}\n\nFull report: ${path.join(outDir, `${stamp}.md`)}`);
 })().catch((e) => {
   console.error("evaluation failed:", e && e.message);

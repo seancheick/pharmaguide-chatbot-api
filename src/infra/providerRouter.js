@@ -74,6 +74,12 @@ function scoreComplexity(message, entities, kbHits, convoContext) {
 
 // ── Generation parameters by complexity ───────────────
 
+/** The same messages with the first system message (the prompt) replaced. */
+function withSystemPrompt(messages, text) {
+  const index = messages.findIndex((m) => m.role === "system");
+  return index === -1 ? messages : messages.map((m, i) => (i === index ? { ...m, content: text } : m));
+}
+
 function getGenerationParams(complexity) {
   if (complexity >= 4) {
     return { temperature: 0.2, maxTokens: 1000, topP: 0.8 };
@@ -131,7 +137,7 @@ async function callWithFallback(messages, opts = {}) {
       continue;
     }
     try {
-      const result = await provider.call(messages, { ...params, timeoutMs: Math.min(provider.timeoutMs, remaining) });
+      const result = await provider.call(messages, { ...params, timeoutMs: Math.min(provider.timeoutMs, remaining), slimSystemPrompt: opts.slimSystemPrompt });
       provider.onSuccess();
       return {
         text: result.text,
@@ -236,7 +242,7 @@ function buildProviderChain() {
         call: async (messages, params) => {
           const completion = await groqClient.groq.chat.completions.create({
             model: groqClient.GROQ_MODEL_ID,
-            messages,
+            messages: params.slimSystemPrompt ? withSystemPrompt(messages, params.slimSystemPrompt) : messages,
             temperature: params.temperature,
             max_tokens: params.maxTokens,
             top_p: params.topP,
