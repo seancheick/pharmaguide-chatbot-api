@@ -58,7 +58,7 @@ A production decision-and-explanation system for high-stakes supplement–medica
 | Safety-policy domains | 21 |
 | Post-response validator rules | 8 |
 | Pinned production canaries (replayable live) | 10 (9) |
-| Test suites | 32 |
+| Test suites | 33 |
 <!-- metrics:end -->
 
 *That table is generated from the code by `scripts/readme_metrics.js`; `npm test` fails if it drifts.*
@@ -318,7 +318,7 @@ curl -s localhost:3000/api/chat -H 'Content-Type: application/json' \
 
 ## Toward a unified PharmaGuide intelligence layer
 
-This service currently carries its own bounded knowledge layer. The planned architecture moves overlapping clinical facts (interactions, contraindications, doses, pregnancy guidance, ingredient forms) to a versioned export from PharmaGuide's canonical pipeline, so every product surface consumes the same reviewed source of truth and the assistant explains pipeline truth rather than maintaining a second copy.
+The architecture moves clinical facts (interactions, contraindications, doses, pregnancy guidance, ingredient forms) to a versioned export from PharmaGuide's canonical pipeline, so every product surface consumes the same reviewed source of truth and the assistant explains pipeline truth rather than maintaining a second copy. The first part is live: the pipeline's verified interaction records (severity, mechanism, management, evidence) and its drug-class membership lists are bundled as a byte-for-byte copy pinned by checksum ([`src/data/pipeline/`](./src/data/pipeline), refreshed with `node scripts/sync_pipeline.js`), and when a question names two agents a record joins, the record goes to the model as authoritative context ([`src/core/pipelineInteractions.js`](./src/core/pipelineInteractions.js)). `/api/health` and `X-PG-Ruleset` report the pipeline version (`pipeline=`). Deterministic gates still answer first.
 
 ```text
                   Canonical PharmaGuide pipeline
@@ -334,9 +334,10 @@ This service currently carries its own bounded knowledge layer. The planned arch
 | Status | Item |
 |---|---|
 | Done | Deterministic routing, validator, multi-provider failover with soft-failure handling, privacy hardening, CI, production canaries and smoke workflow, generated README metrics, an enforced release gate (CI and deploy) with a 30-day claim-expiry warning, ruleset and knowledge versions reported by `/api/health` and an `X-PG-Ruleset` response header, a model-evaluation harness (`eval/`) |
-| Planned | Measured model selection: run the evaluation across the candidate models and choose on the results |
-| In progress | Dynamic clinical context assembly: a small invariant policy prompt plus retrieved context, instead of a large always-on prompt. Done: the prompt is stored as core (always-on rules) and topic (domain guidance) sections, pinned byte-identical to the production prompt, and topic sections can be selected per question behind `PG_PROMPT_MODE` (off by default; about a quarter of the tokens on realistic questions, because the large topic sections are split into per-item sections). Not done: the measured comparison against the full prompt, which decides whether it becomes the default |
-| Planned | Consume the pipeline's versioned clinical export; retire overlapping facts from this repository |
+| Done | Dynamic clinical context assembly: core (always-on rules) plus the topic sections a question touches, instead of the whole prompt on every call. Measured on Gemini 2.5 Flash against the full prompt (56 cases): about a third of the cost per answer, the same latency, no critical-safety failure on hand review. In production since 2026-10-06 (`PG_PROMPT_MODE=selective`, reported as `mode=` in `X-PG-Ruleset`) |
+| Done | The pipeline's verified interaction records and drug-class membership supplied to the model (132 records, pipeline db 1.0.12), with brand names and everyday class words ("blood thinner") as chat glue; every record is found when its two agents are named in everyday words (`test/pipeline-interactions.test.js`) |
+| Planned | Retire the overlapping clinical facts in this repository (knowledge base, gate wording) once each gate maps to a pipeline rule; known gap: the PDE5 inhibitor + nitrate rule has no pipeline record yet |
+| Planned | Measured model selection: run the evaluation across the candidate models and choose on the results (needs keys for the candidates) |
 
 See [`ROADMAP.md`](./ROADMAP.md) for the longer plan.
 

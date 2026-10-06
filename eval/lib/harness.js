@@ -29,8 +29,10 @@ let active = null; // the case turn currently being answered
 providerRouter.callWithFallback = async (messages, opts = {}) => {
   const ctx = active;
   if (!ctx) throw new Error("eval harness: the model was called outside a case");
-  // The record, when supplied, goes right after the production system prompt.
-  const sent = ctx.record ? [messages[0], { role: "system", content: recordBlock(ctx.record) }, ...messages.slice(1)] : messages;
+  // The record goes right after the production system prompt, unless production already supplied it
+  // (src/core/pipelineInteractions.js matches the agents the question names).
+  const supplied = ctx.record && messages.some((m) => m.role === "system" && m.content.includes(`Record: ${ctx.record.id}\n`));
+  const sent = ctx.record && !supplied ? [messages[0], { role: "system", content: recordBlock(ctx.record) }, ...messages.slice(1)] : messages;
 
   if (!ctx.entry) {
     ctx.modelCalls.push({ dry: true, sent });

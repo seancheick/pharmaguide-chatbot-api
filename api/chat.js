@@ -33,6 +33,7 @@ const { recordAnalytics } = require("../src/infra/analytics");
 const { buildCacheKey, isCacheable, getCachedResponse, setCachedResponse } = require("../src/infra/responseCache");
 const { callWithFallback, scoreComplexity } = require("../src/infra/providerRouter");
 const { buildAugmentedMessages } = require("../src/core/kbLookup");
+const { findInteractions, recordBlock } = require("../src/core/pipelineInteractions");
 const { extractDoses, getDoseSummary } = require("../src/core/doseExtractor");
 const { resolveConfidence } = require("../src/core/confidence");
 const { detectAndRecordGaps } = require("../src/infra/topicTracker");
@@ -316,6 +317,13 @@ module.exports = async function handler(req, res) {
       finalMessages.splice(1, 0, { role: "system", content: temporalBlock });
     }
 
+    // Verified pipeline records for any two agents the conversation names: the model explains them
+    // and must not contradict them. Inserted last, so they sit right after the system prompt.
+    const pipelineRecords = findInteractions([...safeHistory.filter((m) => m.role === "user").map((m) => m.content), message].join("\n"));
+    if (pipelineRecords.length > 0) {
+      finalMessages.splice(1, 0, { role: "system", content: pipelineRecords.map(recordBlock).join("\n\n") });
+    }
+
     // ── Cache check ──
     const cacheKey = buildCacheKey(message, mode === "selective" ? promptHash(slimPrompt) : systemPromptHash, "multi-provider");
     // Read the cache only for requests that would also be allowed to WRITE it: the
@@ -465,6 +473,7 @@ module.exports = async function handler(req, res) {
       response._validation = llmValidation;
       response._confidence_label = llmConfLabel;
       response._kb_hits = kbHits;
+      response._pipeline_records = pipelineRecords.map((r) => r.id);
       response._dose_summary = doseSummary;
       response._complexity = complexity;
       response._provider = llmResult.provider;
