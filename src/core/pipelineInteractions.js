@@ -149,7 +149,19 @@ function recordBlock(record) {
   ].join("\n");
 }
 
+/**
+ * Does one of `records` (the ones supplied to the model for this request) join something named in `a`
+ * with something named in `b`? The knowledge base then drops its own line for that pair, so the model
+ * sees the pipeline's version only; pairs nobody asked about keep their knowledge-base line.
+ */
+function coveredBy(records, a, b) {
+  if (!records || records.length === 0) return false;
+  const left = agentsIn(a);
+  const right = agentsIn(b);
+  return records.some((r) => (left.has(r.agent1_id) && right.has(r.agent2_id)) || (left.has(r.agent2_id) && right.has(r.agent1_id)));
+}
+
 // Record ids look like DSI_WAR_GARLIC, SSI_IRON_GREENTEA, DDI_METFORMIN_ALCOHOL.
 const RECORD_ID = /\s*\*?\((?:DSI|SSI|DDI)_[A-Z0-9_]+\)\*?|\b(?:DSI|SSI|DDI)_[A-Z0-9_]+\b/g;
 
-module.exports = { RECORD_ID, findInteractions, agentsIn, recordBlock, AGENTS, PIPELINE_VERSION: MANIFEST.db_version, MANIFEST };
+module.exports = { RECORD_ID, coveredBy, findInteractions, agentsIn, recordBlock, AGENTS, PIPELINE_VERSION: MANIFEST.db_version, MANIFEST };

@@ -17,7 +17,7 @@ const { getCandidatesForGoals } = require("./wellnessGoalMap");
  * @param {number} complexity - query complexity score (1-5)
  * @returns {{ context: string, hits: number, entries: object[] }}
  */
-function buildKBContext(entities, complexity = 2) {
+function buildKBContext(entities, complexity = 2, supplied = []) {
   if (!entities) return { context: "", hits: 0, entries: [] };
 
   const allNames = [
@@ -100,6 +100,8 @@ function buildKBContext(entities, complexity = 2) {
       const maxIx = includeAllInteractions ? 4 : 2;
       const topIx = entry.interactions
         .filter(ix => ix.severity === "high" || ix.severity === "moderate")
+        .map(ix => ({ ...ix, with: itemsNotInPipeline(entry, ix.with, supplied) }))
+        .filter(ix => ix.with)
         .slice(0, maxIx);
       for (const ix of topIx) {
         const timingNote = ix.timing_fix ? ` (${ix.timing_fix})` : "";
@@ -116,7 +118,7 @@ function buildKBContext(entities, complexity = 2) {
   }
 
   // Cross-reference: flag known interactions between the entities the user mentioned
-  const crossInteractions = findCrossInteractions(entries, allNames);
+  const crossInteractions = findCrossInteractions(entries, allNames, supplied);
   if (crossInteractions.length > 0) {
     blocks.push("CROSS-INTERACTIONS BETWEEN USER'S ITEMS:\n" + crossInteractions.join("\n"));
   }
@@ -126,17 +128,33 @@ function buildKBContext(entities, complexity = 2) {
   return { context, hits: entries.length, entries };
 }
 
+// Verified pipeline records supplied with this same request retire the knowledge base's own wording for
+// the pairs they cover, so the model sees the pipeline's version only. An item of a combined line
+// ("turmeric/fish oil/ginkgo" with warfarin) is dropped when a supplied record covers it; the line keeps
+// its other items. Lines about pairs the question did not name are untouched.
+// Returns the items still to show (joined like the original), or "" when every item is covered.
+function itemsNotInPipeline(entry, ixWith, supplied) {
+  if (!supplied || supplied.length === 0) return ixWith;
+  const { coveredBy } = require("./pipelineInteractions"); // lazy: keeps module load order simple
+  const subject = [entry.canonical, ...(entry.aliases || [])].join(" ");
+  const parts = String(ixWith).split("/").map((p) => p.trim()).filter(Boolean);
+  const left = parts.filter((p) => !coveredBy(supplied, subject, p));
+  return left.length === parts.length ? ixWith : left.join("/");
+}
+
 /**
  * Find interactions between the entities the user is asking about.
  * This surfaces relevant pairwise interactions the LLM might otherwise miss.
  */
-function findCrossInteractions(entries, allNames) {
+function findCrossInteractions(entries, allNames, supplied = []) {
   const nameSet = new Set(allNames.map(n => n.toLowerCase()));
   const results = [];
 
   for (const entry of entries) {
     if (!entry.interactions) continue;
-    for (const ix of entry.interactions) {
+    for (const original of entry.interactions) {
+      const ix = { ...original, with: itemsNotInPipeline(entry, original.with, supplied) };
+      if (!ix.with) continue;
       // Check if the "with" field matches any other entity the user mentioned
       const ixWith = ix.with.toLowerCase();
       for (const name of nameSet) {
@@ -178,9 +196,11 @@ function buildAugmentedMessages(systemPrompt, safeHistory, userMessage, entities
       : opts;
   const complexity = typeof optsObj.complexity === "number" ? optsObj.complexity : 2;
   const wellnessGoals = Array.isArray(optsObj.wellnessGoals) ? optsObj.wellnessGoals : [];
+  // Verified pipeline records supplied with this request: they retire overlapping knowledge-base lines.
+  const pipelineRecords = Array.isArray(optsObj.pipelineRecords) ? optsObj.pipelineRecords : [];
 
   // Primary KB lookup driven by extracted entities.
-  let { context, hits } = buildKBContext(entities, complexity);
+  let { context, hits } = buildKBContext(entities, complexity, pipelineRecords);
   let source = hits > 0 ? "entities" : null;
 
   // Fallback: goal-only queries (no specific supplement named).
@@ -194,7 +214,7 @@ function buildAugmentedMessages(systemPrompt, safeHistory, userMessage, entities
         supplements: candidates,
         populations: entities && entities.populations ? entities.populations : [],
       };
-      const goalCtx = buildKBContext(synthEntities, complexity);
+      const goalCtx = buildKBContext(synthEntities, complexity, pipelineRecords);
       if (goalCtx.hits > 0) {
         // Prepend a hint so the LLM knows these were goal-derived
         // candidates rather than items the user explicitly named.
