@@ -106,6 +106,14 @@ test("no record without two named agents, and no near-miss drug stands in for an
   assert.deepEqual(P.findInteractions("I take metformin and I drink most nights").map((r) => r.id), ["DDI_METFORMIN_ALCOHOL"], "alcohol uses the gates' shared definition");
 });
 
+test("a supplement never stands in for a drug class (the pipeline lists glucosamine as an NSAID)", () => {
+  const ids = (q) => P.findInteractions(q).map((r) => r.id);
+  assert.deepEqual(ids("I take glucosamine and warfarin"), ["DSI_WAR_GLUCOSAMINE"], "not the NSAID + anticoagulant record");
+  assert.ok(!P.agentsIn("I take melatonin").has("class:sedatives"));
+  assert.ok(!P.agentsIn("I take cbd").has("class:anticonvulsants"));
+  assert.ok(ids("I take warfarin and turmeric").includes("DSI_ANTICOAG_TURMERIC"), "a real drug still names its class");
+});
+
 test("at most three records, most severe first", () => {
   const found = P.findInteractions("I take warfarin, sertraline and lithium, plus st john's wort, ginkgo, garlic, fish oil and turmeric");
   assert.ok(found.length <= 3 && found.length > 0);
