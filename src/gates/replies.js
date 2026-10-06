@@ -518,7 +518,7 @@ function complexStackTriageReply(convoContext, riskFamilies) {
 
 function nsaidAnticoagulantReply() {
   return [
-    "**🔴 NSAIDs + blood thinners significantly increase bleeding risk.** *(Lanas et al., Am J Gastro 2006)*",
+    "**🔴 NSAIDs + blood thinners significantly increase bleeding risk.** *(Battistella et al., Arch Intern Med 2005)*",
     "",
     "NSAIDs (ibuprofen, naproxen, etc.) both thin the blood on their own and irritate the stomach lining. Combined with an anticoagulant, this creates a **high risk of GI bleeding** and other hemorrhagic events.",
     "",
@@ -800,7 +800,7 @@ function medicalConditionRedirectReply() {
 
 function medInducedTinnitusReply() {
   return [
-    "**🟡 Tinnitus (ringing in the ears) is a known side effect of several medications** *(Rybak, JAMA 1995)*, especially at higher doses.",
+    "**🟡 Tinnitus (ringing in the ears) is a known side effect of several medications** *(Rybak & Ramkumar, Kidney Int 2007)*, especially at higher doses.",
     "",
     "• **High-dose aspirin** is one of the most common causes of medication-induced tinnitus. It's usually reversible when the dose is reduced.",
     "• **Loop diuretics** (furosemide/Lasix, bumetanide) can cause hearing changes, especially with IV use or high doses.",
@@ -815,7 +815,7 @@ function medInducedTinnitusReply() {
 
 function chronicNSAIDReply() {
   return [
-    "**🟡 Long-term or daily NSAID use carries real risks** *(Lanas et al., Am J Gastro 2006)* that are worth knowing about:",
+    "**🟡 Long-term or daily NSAID use carries real risks** *(Lanas et al., Eur J Gastroenterol Hepatol 2003)* that are worth knowing about:",
     "",
     "• **GI bleeding/ulcers** — NSAIDs irritate the stomach lining. Risk increases with duration, dose, age (65+), and concurrent blood thinners or corticosteroids.",
     "• **Kidney damage** — NSAIDs reduce blood flow to the kidneys. Daily use, especially with dehydration or existing kidney issues, can lead to acute or chronic kidney injury.",

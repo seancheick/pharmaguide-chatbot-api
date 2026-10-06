@@ -75,4 +75,21 @@ function stripMarkdownLinks(reply) {
   });
 }
 
-module.exports = { mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion, escapeRegex, addDoseWarnings, stripMarkdownLinks };
+// Citations the model writes are kept only when they are references we have verified against PubMed
+// (src/config/references.js, scripts/verify_references.js) or the listed regulatory and fact-sheet
+// sources. Anything else ("(Smith et al., Lancet 2019)") cannot be checked here, so it is removed:
+// an invented citation in a health answer is worse than none.
+const { REFERENCES } = require("../config/references");
+const citeKey = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const VERIFIED_CITATIONS = Object.values(REFERENCES).map((r) => ({ key: citeKey(r.short), author: citeKey(String(r.short).split(/[ ,&]/)[0]), year: String(r.year) }));
+// "(Author et al., Journal 2005)", "(NEJM, 2005)": starts with a capital, ends with a year.
+const CITATION = /\s*\*?\(([A-Z][^()\n]{1,90}?[ ,]((?:19|20)\d{2}))\)\*?/g;
+function isVerifiedCitation(inner, year) {
+  const k = citeKey(inner);
+  return VERIFIED_CITATIONS.some((v) => v.key === k || (v.year === year && v.author.length > 2 && k.split(" ")[0] === v.author));
+}
+function stripUnverifiedCitations(reply) {
+  return String(reply).replace(CITATION, (match, inner, year) => (isVerifiedCitation(inner, year) ? match : ""));
+}
+
+module.exports = { stripUnverifiedCitations, mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion, escapeRegex, addDoseWarnings, stripMarkdownLinks };
