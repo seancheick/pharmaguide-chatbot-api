@@ -1,0 +1,21 @@
+{
+  "source_repo": "dsld_clean (PharmaGuide pipeline)",
+  "source_commit": "604e2b2c7b43ea89d6473ba0acce6589cf436727",
+  "db_version": "1.0.12",
+  "schema_version": "2.0.0",
+  "pipeline_version": "3.4.0",
+  "built_at": "2026-09-22T20:34:52Z",
+  "interactions": 132,
+  "files": {
+    "interactions_verified.json": {
+      "source": "scripts/interaction_db_output/interactions_verified.json",
+      "sha256": "f10fc61c9b16c4416313c4b2ee57f3f977e286a2aa29e99783e5497ccabf7351",
+      "bytes": 303231
+    },
+    "drug_classes.json": {
+      "source": "scripts/data/drug_classes.json",
+      "sha256": "7e09d076aa1e49485bc8dea88ed7a6e9118a6b9d320fd6e93bae4a4b0981cec7",
+      "bytes": 51604
+    }
+  }
+}

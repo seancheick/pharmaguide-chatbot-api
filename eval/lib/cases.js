@@ -106,16 +106,7 @@ function loadInteractions(path) {
   return Array.isArray(data) ? data : data.interactions || [];
 }
 
-/** The record as supplied context: what the pipeline export would hand the model. */
-function recordBlock(record) {
-  return [
-    "VERIFIED PHARMAGUIDE RECORD (authoritative: explain it in plain language; do not contradict it or add to it)",
-    `Interaction: ${record.agent2} + ${record.agent1}`,
-    `Severity: ${record.severity}`,
-    `Mechanism: ${record.mechanism}`,
-    `Management: ${record.management}`,
-    `Evidence: ${record.evidence_level} (confidence: ${record.clinical_confidence})`,
-  ].join("\n");
-}
+// One owner of the record block: the same text production supplies to the model.
+const { recordBlock } = require("../../src/core/pipelineInteractions");
 
 module.exports = { fromCanaries, CURATED, fromInteractions, loadInteractions, recordBlock };

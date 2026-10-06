@@ -687,6 +687,7 @@ function detectWellnessGoal(text) {
 
 module.exports = {
   hepatotoxinsIn,
+  ALCOHOL,
   isEmergency,
   isGreeting,
   isThanks,
