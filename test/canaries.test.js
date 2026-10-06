@@ -17,7 +17,7 @@ delete process.env.UPSTASH_REDIS_REST_TOKEN;
 process.env.GEMINI_API_KEY = "test-key-not-used";
 delete process.env.GROQ_API_KEY;
 
-const { CANARIES } = require("./canaries");
+const { CANARIES, endsCleanly } = require("./canaries");
 const providerRouter = require("../src/infra/providerRouter");
 const STUB_REPLY = "Turmeric may support joint comfort for some people. Curcumin alone is poorly absorbed, so many products add black pepper extract.";
 providerRouter.callWithFallback = async () => ({
@@ -249,4 +249,29 @@ test("limiter backend down: emergencies answer instantly, normal requests fall b
   assert.equal(r.gateStatus, 200);
   assert.equal(r.gate, "system:nitrate-vasodilator");
   assert.ok(r.gateMs < 4000, `limiter fallback took ${r.gateMs} ms`);
+});
+
+// ── the "reply looks cut off" check ─────────────────────────────────────────
+// A complete answer can end on the flag/evidence label line the format asks for. This false alarm was
+// seen on the turmeric canary (a full answer ending "🟡 Moderate evidence") and would fail the daily smoke test.
+test("endsCleanly: sentence punctuation and the final flag or evidence label are complete endings", () => {
+  for (const text of [
+    "Turmeric may help.",
+    "Is that okay?",
+    "Ask your prescriber (they know your history)",
+    "A bold ending **Major Interaction**",
+    "Details here.\n\n🟡 Moderate evidence",
+    "Details here.\n\n🟢 Minor\n",
+    "Details here.\n🔴 Major interaction",
+  ]) assert.equal(endsCleanly(text), true, JSON.stringify(text));
+});
+
+test("endsCleanly: a reply cut off mid-sentence is still caught", () => {
+  for (const text of [
+    "Take it with a meal containing fa",
+    "Turmeric may help joint pain, especially when combined with",
+    "Details here.\n\n- Timing: Taking it with meals, especially those containing some",
+    "",
+    "Details here.\n🟡",           // a bare marker is not a label
+  ]) assert.equal(endsCleanly(text), false, JSON.stringify(text));
 });
