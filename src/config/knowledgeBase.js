@@ -652,7 +652,7 @@ const KNOWLEDGE_BASE = {
       { with: "NSAIDs", severity: "high", mechanism: "Antiplatelet + GI mucosal damage. High bleeding risk.", timing_fix: null },
     ],
     common_goals: ["anticoagulation", "atrial fibrillation", "DVT/PE prevention"],
-    reference_ids: ["lanas-2006"],
+    reference_ids: ["lanas-2003"],
   },
 
   levothyroxine: {
@@ -695,7 +695,7 @@ const KNOWLEDGE_BASE = {
       { with: "contrast dye", severity: "high", mechanism: "Hold metformin 48h before/after contrast. Lactic acidosis risk.", timing_fix: null },
     ],
     common_goals: ["type 2 diabetes", "blood sugar management", "PCOS"],
-    reference_ids: ["defrances-2008"],
+    reference_ids: ["defronzo-2016"],
   },
 
   lisinopril: {
@@ -738,7 +738,7 @@ const KNOWLEDGE_BASE = {
       { with: "caffeine", severity: "low", mechanism: "Caffeine increases lithium excretion. Abrupt cessation can raise levels.", timing_fix: null },
     ],
     common_goals: ["bipolar disorder", "mood stabilization"],
-    reference_ids: ["handler-2006", "lexi-comp-2023"],
+    reference_ids: ["handler-2009", "lexi-comp-2023"],
   },
 
   ibuprofen: {
@@ -760,7 +760,7 @@ const KNOWLEDGE_BASE = {
       { with: "methotrexate", severity: "high", mechanism: "Reduces clearance. Methotrexate toxicity risk.", timing_fix: null },
     ],
     common_goals: ["pain", "inflammation", "fever", "headache"],
-    reference_ids: ["lanas-2006", "warner-2011"],
+    reference_ids: ["lanas-2003", "whelton-1999"],
   },
 
   acetaminophen: {

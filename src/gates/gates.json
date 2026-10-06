@@ -66,9 +66,9 @@
       "confidence": "high",
       "detection_fn": "detectsNSAIDAnticoagulant",
       "required_fields_route": "system:nsaid-anticoagulant",
-      "reference_ids": ["lanas-2006"],
+      "reference_ids": ["battistella-2005", "lanas-2003"],
       "response": {
-        "opening": "**🔴 NSAIDs + blood thinners significantly increase bleeding risk.** *(Lanas et al., Am J Gastro 2006)*",
+        "opening": "**🔴 NSAIDs + blood thinners significantly increase bleeding risk.** *(Battistella et al., Arch Intern Med 2005)*",
         "body": [
           "NSAIDs (ibuprofen, naproxen, etc.) both thin the blood on their own and irritate the stomach lining. Combined with an anticoagulant, this creates a **high risk of GI bleeding** and other hemorrhagic events.",
           "**Acetaminophen (Tylenol)** is generally the safer pain reliever if you're on a blood thinner — but confirm dose with your prescriber.",
@@ -85,7 +85,7 @@
       "confidence": "high",
       "detection_fn": "detectsTripleWhammy",
       "required_fields_route": "system:triple-whammy",
-      "reference_ids": ["lapi-2013", "warner-2011"],
+      "reference_ids": ["lapi-2013", "whelton-1999"],
       "response": {
         "opening": "**🔴 This combination — NSAID + ACE inhibitor/ARB + diuretic — is known as the \"triple whammy.\"** *(Lapi et al., BMJ 2013)*",
         "body": [
@@ -105,7 +105,7 @@
       "confidence": "high",
       "detection_fn": "detectsLithiumNSAID",
       "required_fields_route": "system:lithium-nsaid",
-      "reference_ids": ["handler-2006", "lexi-comp-2023"],
+      "reference_ids": ["handler-2009", "lexi-comp-2023"],
       "response": {
         "opening": "**🔴 NSAIDs can raise lithium levels to a dangerous range.**",
         "body": [
@@ -124,7 +124,7 @@
       "confidence": "high",
       "detection_fn": "detectsMetforminAlcohol",
       "required_fields_route": "system:metformin-alcohol",
-      "reference_ids": ["defrances-2008"],
+      "reference_ids": ["defronzo-2016"],
       "response": {
         "opening": "**🟡 Alcohol + metformin increases the risk of lactic acidosis.**",
         "body": [
@@ -182,9 +182,9 @@
       "confidence": "high",
       "detection_fn": "detectsMedInducedTinnitus",
       "required_fields_route": "system:ototoxic-tinnitus",
-      "reference_ids": ["rybak-1995"],
+      "reference_ids": ["rybak-2007", "ding-2016"],
       "response": {
-        "opening": "**🟡 Tinnitus (ringing in the ears) is a known side effect of several medications** *(Rybak, JAMA 1995)*, especially at higher doses.",
+        "opening": "**🟡 Tinnitus (ringing in the ears) is a known side effect of several medications** *(Rybak & Ramkumar, Kidney Int 2007)*, especially at higher doses.",
         "body": [
           "**High-dose aspirin** is one of the most common causes of medication-induced tinnitus. It's usually reversible when the dose is reduced.",
           "**Loop diuretics** (furosemide/Lasix, bumetanide) can cause hearing changes, especially with IV use or high doses.",
@@ -202,9 +202,9 @@
       "confidence": "high",
       "detection_fn": "detectsChronicNSAIDUse",
       "required_fields_route": "system:nsaid-chronic",
-      "reference_ids": ["lanas-2006", "warner-2011"],
+      "reference_ids": ["lanas-2003", "whelton-1999"],
       "response": {
-        "opening": "**🟡 Long-term or daily NSAID use carries real risks** *(Lanas et al., Am J Gastro 2006)* that are worth knowing about:",
+        "opening": "**🟡 Long-term or daily NSAID use carries real risks** *(Lanas et al., Eur J Gastroenterol Hepatol 2003)* that are worth knowing about:",
         "body": [
           "**GI bleeding/ulcers** — NSAIDs irritate the stomach lining. Risk increases with duration, dose, age (65+), and concurrent blood thinners or corticosteroids.",
           "**Kidney damage** — NSAIDs reduce blood flow to the kidneys. Daily use, especially with dehydration or existing kidney issues, can lead to acute or chronic kidney injury.",

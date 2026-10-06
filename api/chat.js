@@ -24,7 +24,7 @@ const { tryDSLGate, isDSLRoute } = require("../src/gates/gateEngine");
 const { checkRateLimit } = require("../src/infra/rateLimit");
 const { isTrustedProxy, proxyEnforcement, forwardedClientIp } = require("../src/infra/proxyAuth");
 const { logGate } = require("../src/infra/logger");
-const { mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion, addDoseWarnings, stripMarkdownLinks } = require("../src/postprocess");
+const { mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion, addDoseWarnings, stripMarkdownLinks, stripUnverifiedCitations } = require("../src/postprocess");
 const { validateResponse, SAFE_FALLBACK_REPLY } = require("../src/postprocess/safetyValidator");
 const { classifyEntities } = require("../src/core/entityClassifier");
 const { correctMisspellings, resolveBrandName, detectUnknownDosedItems } = require("../src/core/unknownResolver");
@@ -395,6 +395,8 @@ module.exports = async function handler(req, res) {
 
     // Internal pipeline record ids are not sources a reader can look up.
     reply = reply.replace(RECORD_ID, "");
+    // Citations: only references verified against PubMed (or listed regulatory sources) survive.
+    reply = stripUnverifiedCitations(reply);
 
     // Strip Markdown link syntax (frontend doesn't render Markdown)
     reply = stripMarkdownLinks(reply);

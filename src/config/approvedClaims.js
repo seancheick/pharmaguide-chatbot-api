@@ -189,7 +189,7 @@ const APPROVED_CLAIMS = {
     status: "active",
     tags: ["nsaid", "anticoagulant", "bleeding", "ibuprofen", "warfarin"],
     related_claims: ["anticoagulant-supplement-interaction", "triple-whammy-aki"],
-    reference_ids: ["lanas-2006"],
+    reference_ids: ["battistella-2005", "lanas-2003"],
   },
   "triple-whammy-aki": {
     domain: "triple_whammy",
@@ -202,7 +202,7 @@ const APPROVED_CLAIMS = {
     status: "active",
     tags: ["triple-whammy", "nsaid", "ace-inhibitor", "diuretic", "kidney"],
     related_claims: ["nsaid-anticoagulant-bleeding", "lithium-nsaid-toxicity", "renal-magnesium-clearance"],
-    reference_ids: ["lapi-2013", "warner-2011"],
+    reference_ids: ["lapi-2013", "whelton-1999"],
   },
   "lithium-nsaid-toxicity": {
     domain: "lithium_nsaid",
@@ -215,7 +215,7 @@ const APPROVED_CLAIMS = {
     status: "active",
     tags: ["lithium", "nsaid", "toxicity", "renal-clearance"],
     related_claims: ["triple-whammy-aki"],
-    reference_ids: ["handler-2006", "lexi-comp-2023"],
+    reference_ids: ["handler-2009", "lexi-comp-2023"],
   },
   "metformin-alcohol-lactic-acidosis": {
     domain: "metformin_alcohol",
@@ -227,7 +227,7 @@ const APPROVED_CLAIMS = {
     review_cycle_months: 12,
     status: "active",
     tags: ["metformin", "alcohol", "lactic-acidosis", "diabetes"],
-    reference_ids: ["defrances-2008"],
+    reference_ids: ["defronzo-2016"],
   },
   "ototoxic-medication-hearing": {
     domain: "ototoxic",
@@ -240,7 +240,7 @@ const APPROVED_CLAIMS = {
     status: "active",
     tags: ["ototoxic", "tinnitus", "aspirin", "furosemide", "hearing-loss"],
     related_claims: ["nsaid-chronic-risk"],
-    reference_ids: ["rybak-1995"],
+    reference_ids: ["rybak-2007", "ding-2016"],
   },
   "nsaid-chronic-risk": {
     domain: "nsaid_chronic",
@@ -253,7 +253,7 @@ const APPROVED_CLAIMS = {
     status: "active",
     tags: ["nsaid", "chronic", "gi-bleeding", "kidney", "cardiovascular"],
     related_claims: ["nsaid-anticoagulant-bleeding", "triple-whammy-aki", "ototoxic-medication-hearing"],
-    reference_ids: ["lanas-2006", "warner-2011"],
+    reference_ids: ["lanas-2003", "whelton-1999"],
   },
   "stimulant-supplement-synergy": {
     domain: "stimulant",

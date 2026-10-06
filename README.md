@@ -44,6 +44,7 @@ A production decision-and-explanation system for high-stakes supplement–medica
 - **Privacy by construction.** No message text in logs, hashed rate-limit identifiers, website-only API access, no server-side chat storage, PHI-free analytics.
 - **Regression-driven.** Every reproduced production defect becomes a permanent test; a pinned set of production canaries runs after every deploy and daily.
 - **Governed clinical claims.** Claims carry review dates and source references. An enforced release gate (CI and every deploy) blocks a release when a claim is overdue, and a weekly job warns 30 days ahead.
+- **Citations that exist.** Every journal reference carries its PubMed ID and is checked against PubMed by `scripts/verify_references.js` (title, year, journal, first author, topic, retraction); the rest are FDA, NIH ODS, drug-reference or textbook sources. A citation the model writes reaches the user only if it matches a verified reference (`stripUnverifiedCitations`); anything else is removed rather than shown.
 - **Honest roadmap.** Planned work (measured model selection, prompt minimisation, a shared clinical export) is labelled as planned, below.
 
 <!-- metrics:start -->
@@ -58,7 +59,7 @@ A production decision-and-explanation system for high-stakes supplement–medica
 | Safety-policy domains | 21 |
 | Post-response validator rules | 8 |
 | Pinned production canaries (replayable live) | 10 (9) |
-| Test suites | 33 |
+| Test suites | 34 |
 <!-- metrics:end -->
 
 *That table is generated from the code by `scripts/readme_metrics.js`; `npm test` fails if it drifts.*

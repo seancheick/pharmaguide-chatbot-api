@@ -87,10 +87,10 @@ const CITED_REPLIES = {
   liverToxicityReply: "fda-kava-2002",
   pregnancyRetinolReply: "rothman-1995",
   potassiumACEiReply: "palmer-2004",
-  nsaidAnticoagulantReply: "lanas-2006",
+  nsaidAnticoagulantReply: "battistella-2005",
   tripleWhammyReply: "lapi-2013",
-  chronicNSAIDReply: "lanas-2006",
-  medInducedTinnitusReply: "rybak-1995",
+  chronicNSAIDReply: "lanas-2003",
+  medInducedTinnitusReply: "rybak-2007",
 };
 
 (function testCitedRepliesContainCitations() {
