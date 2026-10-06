@@ -3,7 +3,7 @@ const { normalizeText } = require("../core/normalize");
 // ── Emergency phrasing beyond the core list below ──
 // All matched on normalizeText() output: apostrophes become spaces
 // ("don't" → "don t", "I'm" → "i m").
-const MEDS_AND_SUPPS = "pills?|tablets?|capsules?|medicines?|medications?|meds|vitamins?|supplements?|gummies|bottle|iron|melatonin|tylenol|acetaminophen|ibuprofen|aspirin|benadryl|adderall|[a-z]+ pills";
+const MEDS_AND_SUPPS = "pills?|tablets?|capsules?|medicines?|medications?|meds|vitamins?|supplements?|gummies|bottle|iron|melatonin|tylenol|acetaminophen|ibuprofen|aspirin|benadryl|adderall|[a-z]+ pills|(?:cough )?syrup|edibles?|nicotine";
 const ANTICOAGULANTS = "warfarin|coumadin|eliquis|xarelto|apixaban|rivaroxaban|heparin|blood thinner";
 
 // Always an emergency reply, even in question form (safe-messaging practice).
@@ -12,6 +12,9 @@ const EMERGENCY_ALWAYS = [
   /\b(?:don t|dont|do not) want to (?:be alive|exist)\b/,
   /\b(?:don t|dont|do not) want to (?:live|be here|wake up)(?:\s+(?:anymore|any more|tomorrow|again|like this|this way)|\s*$)/,
   /\b(?:no reason to live|nothing to live for|better off dead|better off without me|wish i (?:was|were) dead|wish i (?:could )?(?:just )?(?:die|disappear|not wake up)|end my life|take my (?:own )?life|rather be dead|can t go on|cant go on)\b/,
+  // Intent to kill oneself, however it is framed: "thinking about how to kill myself" is not
+  // educational even though it contains "about"
+  /\b(?:kill|killing) myself\b|\b(?:end|ending) it all\b/,
   // Lethal-dose questions
   /\b(?:fatal|lethal|deadly) (?:dose|amount|level|quantity)\b/,
   /\b(?:dose|amount|much|many)\b.{0,40}\b(?:is|are|would be|be) (?:fatal|lethal|deadly)\b/,
@@ -31,44 +34,66 @@ const EMERGENCY_EXTRA = [
   new RegExp("\\b(?:double|doubled|extra|too much|twice)\\b.{0,40}\\b(?:" + ANTICOAGULANTS + ")\\b.{0,80}\\bbleed"),
   new RegExp("\\bbleed.{0,80}\\b(?:double|doubled|extra|too much|twice)\\b.{0,40}\\b(?:" + ANTICOAGULANTS + ")\\b"),
   /\boverdosing\b/,
+  // Chest pain in other words, breathing slowed by a drug, stroke signs, blood in vomit, the worst
+  // headache of one's life, and too much of a medicine
+  /\bchest (?:hurts|is hurting|hurting|feels tight|is tight|tightness|pressure)\b/,
+  /\bbreathing (?:is |has )?(?:gotten |become )?(?:really |very |so |too )?(?:slow|shallow)\b|\bbarely breathing\b|\b(?:slow|shallow) breathing\b/,
+  /\bface (?:is |was )?drooping\b|\bdrooping face\b|\bfacial droop|\bslurred speech\b|\bslurring (?:my |his |her |their )?(?:words|speech)\b/,
+  /\b(?:throwing up|threw up|puking|puked|vomited) blood\b/,
+  /\bworst headache (?:of|in) (?:my|his|her|their) life\b/,
+  /\btook (?:way )?too much (?:of )?(?:my |his |her |their )?(?:[a-z]+ ){0,3}(?:medicines?|medications?|meds|pills|tablets|prescription)\b/,
 ];
 
-function matchEmergency(t, corePattern) {
-  const core = t.match(corePattern);
-  if (core) return core;
-  for (const p of EMERGENCY_ALWAYS) {
-    const m = t.match(p);
-    if (m) { m.always = true; return m; }
-  }
-  for (const p of EMERGENCY_EXTRA) {
-    const m = t.match(p);
-    if (m) { m.extra = true; return m; }
-  }
-  return null;
-}
+// The original list. Educational framing ("signs of a stroke") and, for the symptom words, a general
+// question with nobody in it ("can magnesium cause a seizure") are not events.
+const EMERGENCY_CORE = /\b(overdose[d]?|took too many|took \d+\s+\w*\s*pills|took \d+ pills|took a handful|swallowed .* pills|ingested too many|whole bottle|entire bottle|can ?t breathe|chest pain|heart attack|stroke|seizure|anaphyla(xis|ctic)?|throat.*(clos(ing|ed|es)?|swell(ing|ed|s)?|tight(en|ening)?)|passing out|faint(ed|ing)|want to die|wanna die|hurt myself|slit|hanging|blacking out|coughing blood|blood in vomit|vomiting blood|can ?t stop bleeding|unresponsive|unconscious|not breathing|choking)\b/;
+const CORE_SYMPTOM = /^(?:can ?t breathe|chest pain|heart attack|stroke|seizure|anaphyla|throat|passing out|faint|blacking out|coughing blood|blood in vomit|vomiting blood|unresponsive|unconscious|not breathing|choking)/;
 
-const QUESTION_START = /^(?:is|can|could|does|do|are|how|what|why|when|will|should)\b/;
+// Talk of suicide or self-harm is an emergency. Only drug-risk wording with nobody in it ("Does
+// isotretinoin cause suicidal thoughts?", "accutane suicide risk") is left to the answer path; a
+// question alone is not enough ("Can 5-HTP help with suicidal thoughts?" is a disclosure). The
+// educational-wording exception does not apply: "thinking about suicide" is not educational. (The
+// old core stem `suicid` inside \b…\b never matched "suicide" or "suicidal".)
+const SELF_HARM_TALK = /\b(?:suicid(?:e|es|al|ality)|self.?harm(?:ing)?)\b/;
+const DRUG_RISK_WORDING = /\b(?:cause|causes|side effects?|risks?|warnings?|linked|associated|increase|increases)\b/;
+
+// "can't" normalises to "can t": a statement ("can't breathe"), not a question.
+const QUESTION_START = /^(?:is|can(?! t\b)|could|does|do|are|how|what|why|when|will|should)\b/;
 const PERSONAL_SUBJECT = /\b(?:i|me|my|mine|we|our|he|she|his|her|him|they|their|them|son|daughter|husband|wife|mom|dad|friend|baby|toddler|child|kid)\b/;
+const EDUCATIONAL_PREFIX = /\b(may indicate|can indicate|could indicate|sign of|signs of|risk of|cause of|caused by|known as|history of|prevent|research|about|what is|common cause|symptom of|symptoms of|lead to|associated with|linked to)\b/;
 
-function isEmergency(text) {
-  const t = normalizeText(text);
-  const emergencyMatch = matchEmergency(t, /\b(overdose[d]?|took too many|took \d+\s+\w*\s*pills|took \d+ pills|took a handful|swallowed .* pills|ingested too many|whole bottle|entire bottle|can ?t breathe|chest pain|heart attack|stroke|seizure|anaphyla(xis|ctic)?|throat.*(clos(ing|ed|es)?|swell(ing|ed|s)?|tight(en|ening)?)|passing out|faint(ed|ing)|suicid|kill myself|want to die|end it all|wanna die|hurt myself|self.?harm|slit|hanging|blacking out|coughing blood|blood in vomit|vomiting blood|can ?t stop bleeding|unresponsive|unconscious|not breathing|choking)\b/);
-  if (!emergencyMatch) return false;
-  if (emergencyMatch.always) return true;
+// Is this match a description rather than an event happening now?
+function notAnEvent(t, m, kind) {
   // "is melatonin overdose possible" / "can I overdose on iron" is a question about
   // possibility; "I overdosed" / "I think I overdose..." is an event.
-  if (emergencyMatch[0] === "overdose" && QUESTION_START.test(t)) return false;
+  if (kind === "core" && m[0] === "overdose" && QUESTION_START.test(t)) return true;
   // A general question with nobody in it ("can zinc cause swollen lips") is not an event.
-  if (emergencyMatch.extra && QUESTION_START.test(t) && !PERSONAL_SUBJECT.test(t)) return false;
-  // Allow educational/informational framing to pass through
-  const idx = emergencyMatch.index;
-  const prefix = t.substring(Math.max(0, idx - 60), idx);
-  if (/\b(may indicate|can indicate|could indicate|sign of|signs of|risk of|cause of|caused by|known as|history of|prevent|research|about|what is|common cause|symptom of|symptoms of|lead to|associated with|linked to)\b/.test(prefix)) {
-    // Still fire if there's also a first-person present-tense emergency signal
-    if (/\b(i (have|am|think|feel|can ?t)|my .{0,10}(is|are|having)|help me|someone is|they re)\b/.test(t)) return true;
-    return false;
+  if ((kind === "extra" || CORE_SYMPTOM.test(m[0])) && QUESTION_START.test(t) && !PERSONAL_SUBJECT.test(t)) return true;
+  // A match that itself names a person ("my toddler swallowed my iron pills") is an event, whatever
+  // came before it in the message.
+  if (PERSONAL_SUBJECT.test(m[0])) return false;
+  // Educational/informational framing, unless there is also a first-person present-tense signal
+  const prefix = t.substring(Math.max(0, m.index - 60), m.index);
+  if (EDUCATIONAL_PREFIX.test(prefix)) {
+    return !/\b(i (have|am|think|feel|can ?t)|my .{0,10}(is|are|having)|help me|someone is|they re)\b/.test(t);
   }
-  return true;
+  return false;
+}
+
+// Each kind of signal is judged on its own and any one is enough: an educational phrase earlier in a
+// message ("what are the signs of a stroke? my toddler swallowed my iron pills") used to stop the
+// check before the other lists were looked at.
+function isEmergency(text) {
+  const t = normalizeText(text);
+  if (EMERGENCY_ALWAYS.some((p) => p.test(t))) return true;
+  if (SELF_HARM_TALK.test(t) && (PERSONAL_SUBJECT.test(t) || !DRUG_RISK_WORDING.test(t))) return true;
+  const core = t.match(EMERGENCY_CORE);
+  if (core && !notAnEvent(t, core, "core")) return true;
+  for (const p of EMERGENCY_EXTRA) {
+    const m = t.match(p);
+    if (m && !notAnEvent(t, m, "extra")) return true;
+  }
+  return false;
 }
 
 function isGreeting(text) {

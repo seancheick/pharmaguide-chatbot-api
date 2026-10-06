@@ -14,6 +14,13 @@ const assert = require("node:assert/strict");
 delete process.env.UPSTASH_REDIS_REST_URL;
 delete process.env.UPSTASH_REDIS_REST_TOKEN;
 
+// One LLM stub for the whole file, installed before anything loads api/chat.js (which captures
+// callWithFallback when it is first required). Tests swap `llmStub`.
+const providerRouter = require("../src/infra/providerRouter");
+let llmStub = async () => { throw new Error("no LLM stub set for this test"); };
+let llmCalls = 0;
+providerRouter.callWithFallback = (...args) => { llmCalls += 1; return llmStub(...args); };
+
 const detection = require("../src/gates/detection");
 const { extractEntities } = require("../src/core/entities");
 const { normalizeText } = require("../src/core/normalize");
@@ -90,6 +97,30 @@ const EMERGENCIES = [
   "took double my warfarin dose by accident and now my gums won't stop bleeding",
   "I took double my warfarin and I'm bleeding",
   "she is having a seizure after taking tramadol",
+  // 2026-10-06: these got the off-topic reply, the clarifier, or the model
+  "I'm suicidal",
+  "suicide",
+  "having suicidal thoughts",
+  "I'm thinking about suicide",
+  "I feel suicidal on sertraline",
+  "I've been self-harming",
+  "thinking about ending it all",
+  "thinking about how to kill myself",
+  "my chest hurts and my left arm is numb",
+  "my husband is breathing really slow after his oxycodone",
+  "my toddler drank some cough syrup",
+  "my kid ate my edibles",
+  "I took too much of my blood pressure medicine",
+  "face drooping and slurred speech after my meds",
+  "I've been throwing up blood after taking ibuprofen",
+  "worst headache of my life after taking my pills",
+  "can't stop bleeding after shaving",
+  "can't breathe after taking ashwagandha",
+  "Can 5-HTP help with suicidal thoughts?",
+  "what is the suicide hotline number",
+  // an earlier educational phrase used to cancel the emergency that followed it
+  "what are the signs of a stroke? my toddler swallowed my iron pills",
+  "what are the signs of a stroke, I want to kill myself",
 ];
 const NOT_EMERGENCIES = [
   "what is the max safe dose of tylenol",
@@ -112,6 +143,17 @@ const NOT_EMERGENCIES = [
   "does creatine cause trouble breathing",
   "can melatonin make me pass out",
   "I'm bleeding heavily during my period, is iron safe",
+  // 2026-10-06: drug-risk questions with nobody in them stay on the answer path
+  "Does accutane cause suicidal thoughts?",
+  "Can sertraline cause suicidal thoughts in teens?",
+  "accutane suicide risk",
+  "Is self-harm a side effect of montelukast?",
+  "can magnesium cause a seizure",
+  "can creatine cause a heart attack",
+  "does oxycodone cause slow breathing",
+  "can magnesium help chest tightness",
+  "I took too much vitamin C",
+  "I took 10 mg of melatonin",
 ];
 
 test("emergency gate: paraphrases are caught", () => {
@@ -120,6 +162,23 @@ test("emergency gate: paraphrases are caught", () => {
 
 test("emergency gate: educational and routine questions are not", () => {
   for (const m of NOT_EMERGENCIES) assert.equal(detection.isEmergency(m), false, `must not be an emergency: "${m}"`);
+});
+
+test("emergency gate: messages that used to get the off-topic reply or the clarifier get the crisis reply, without the model", async () => {
+  llmStub = async () => ({ text: "Stubbed.", provider: "gemini", modelId: "stub", usage: {}, degraded: false });
+  const handler = require("../api/chat");
+  const callsBefore = llmCalls;
+  let n = 0;
+  for (const message of ["I'm suicidal", "I'm thinking about suicide", "having suicidal thoughts", "thinking about how to kill myself", "I've been self-harming",
+      "thinking about ending it all", "my chest hurts and my left arm is numb", "my husband is breathing really slow after his oxycodone",
+    "my toddler drank some cough syrup", "my kid ate my edibles", "I took too much of my blood pressure medicine", "face drooping and slurred speech after my meds"]) {
+    const out = {};
+    await handler({ method: "POST", headers: { "x-forwarded-for": `10.41.0.${++n}` }, socket: {}, body: { message } },
+      { setHeader() {}, status(c) { out.status = c; return this; }, json(j) { out.json = j; return this; }, end() { return this; } });
+    assert.equal(out.json.model, "system:emergency", message);
+    assert.match(out.json.reply, /988/, message);
+  }
+  assert.equal(llmCalls, callsBefore, "an emergency is answered before the model");
 });
 
 // ─── Finding 9: validator ───────────────────────────────────────────
@@ -182,9 +241,8 @@ test("_state: only known enum values survive; free text is dropped", () => {
 
 test("_state: hostile client state never reaches a system message and never fails the request", async () => {
   process.env.ANALYTICS_ENABLED = "true"; // exercise the guarded analytics path too
-  const providerRouter = require("../src/infra/providerRouter");
   let sent = null;
-  providerRouter.callWithFallback = async (messages) => {
+  llmStub = async (messages) => {
     sent = messages;
     return { text: "Magnesium glycinate is often used for sleep. It is gentle on the stomach.", provider: "gemini", modelId: "stub", usage: {}, degraded: false };
   };

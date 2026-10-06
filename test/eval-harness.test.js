@@ -237,7 +237,7 @@ test("the supplied record block carries the pipeline's mechanism and management 
 });
 
 test("canary and curated sets: the live canaries are reused, and every curated probe has an expectation", () => {
-  assert.equal(fromCanaries().length, 8, "the in-process-only canary is excluded");
+  assert.equal(fromCanaries().length, 9, "the in-process-only canary is excluded");
   assert.ok(CURATED.length >= 6);
   for (const c of CURATED) {
     assert.ok(c.id && c.turns.length > 0 && c.expect, c.id);

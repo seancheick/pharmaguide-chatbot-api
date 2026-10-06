@@ -57,7 +57,7 @@ A production decision-and-explanation system for high-stakes supplement–medica
 | Approved clinical claims (with review dates) | 21 |
 | Safety-policy domains | 21 |
 | Post-response validator rules | 8 |
-| Pinned production canaries (replayable live) | 9 (8) |
+| Pinned production canaries (replayable live) | 10 (9) |
 | Test suites | 30 |
 <!-- metrics:end -->
 
