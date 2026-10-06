@@ -1,6 +1,6 @@
 const Groq = require("groq-sdk");
 
-// Single owner of the Groq model id (router, /api/health and llmClient all read it here).
+// Single owner of the Groq model id (the router and /api/health read it here).
 // llama-3.3-70b-versatile was shut down by Groq on 2026-08-16 (HTTP 404 since).
 // gpt-oss is a reasoning model: reasoning tokens count against max_tokens, so
 // keep reasoning low and hidden or answers come back empty/truncated.

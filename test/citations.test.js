@@ -44,8 +44,9 @@ test("the references found not to exist are gone", () => {
   assert.ok(!/JAMA 1995|Am J Gastro 2006/.test(text), "a wrong citation is still shown to users");
 });
 
-test("every citation written into a fixed reply or gate is a verified reference", () => {
-  for (const file of ["src/gates/replies.js", "src/gates/gates.json"]) {
+test("every citation written into a fixed reply is a verified reference", () => {
+  assert.ok(!/"response"|\*\(/.test(fs.readFileSync(path.join(__dirname, "..", "src/gates/gates.json"), "utf8")), "gates.json holds metadata only; reply text lives in replies.js");
+  for (const file of ["src/gates/replies.js"]) {
     const text = fs.readFileSync(path.join(__dirname, "..", file), "utf8");
     const cites = text.match(/\*\(([A-Z][^()\n]{1,90}?[ ,](?:19|20)\d{2})\)\*/g) || [];
     assert.ok(cites.length > 0, `${file}: no citations found, so this test would prove nothing`);

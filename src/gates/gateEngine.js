@@ -1,14 +1,10 @@
 /**
  * Gate DSL engine — compiles and executes data-driven gate definitions.
  *
- * Simple pattern gates are defined in gates.json. Complex gates (serotonin
- * triage, blood thinner tiering, etc.) remain as code gates in replies.js.
- *
- * The engine:
- * 1. Loads gate definitions at require-time
- * 2. Compiles them into executable gate objects
- * 3. Provides a tryDSLGates() function that checks all DSL gates in order
- * 4. Provides a renderDSLReply() function that builds the response
+ * gates.json holds each simple gate's metadata (route, domain, severity, confidence, detection
+ * function, references). Reply text has one owner, replies.js (ROUTE_REPLY_MAP): gates.json used to
+ * carry a second copy that had drifted (production served the copy without "contact your prescriber"
+ * for tinnitus and without the form note for renal magnesium).
  */
 
 const gateDefinitions = require("./gates.json");
@@ -32,28 +28,7 @@ for (const def of gateDefinitions.gates) {
     reference_ids: def.reference_ids || [],
     detect: detectionFn,
     requiredFieldsRoute: def.required_fields_route,
-    response: def.response,
   });
-}
-
-/**
- * Render a DSL gate reply from its response template.
- * Format: opening + bullet body + question (one question, always last).
- */
-function renderDSLReply(gate) {
-  const lines = [];
-
-  lines.push(gate.response.opening);
-  lines.push("");
-
-  for (const item of gate.response.body) {
-    lines.push("• " + item);
-  }
-
-  lines.push("");
-  lines.push(gate.response.question);
-
-  return lines.join("\n");
 }
 
 /**
@@ -63,14 +38,15 @@ function renderDSLReply(gate) {
  * DSL gates are checked AFTER the main router decides the route —
  * this function is used as a reply generator, not as a router replacement.
  */
-function tryDSLGate(route) {
+function tryDSLGate(route, convoContext = "", message = "", entities = {}) {
   const gate = compiledGates.find(g => g.route === route);
   if (!gate) return { matched: false };
+  const { ROUTE_REPLY_MAP } = require("./replies"); // lazy: replies.js loads detection too
 
   return {
     matched: true,
     route: gate.route,
-    reply: renderDSLReply(gate),
+    reply: ROUTE_REPLY_MAP[route](convoContext, message, entities),
     confidence: gate.confidence,
     reference_ids: gate.reference_ids,
     gate,
@@ -135,13 +111,10 @@ function validateGateDefinitions() {
       issues.push(`Gate "${def.id}": reference_ids must be an array`);
     }
 
-    // Response structure
-    if (!def.response) {
-      issues.push(`Gate "${def.id}": missing response`);
-    } else {
-      if (!def.response.opening) issues.push(`Gate "${def.id}": missing response.opening`);
-      if (!def.response.body || !Array.isArray(def.response.body)) issues.push(`Gate "${def.id}": missing/invalid response.body`);
-      if (!def.response.question) issues.push(`Gate "${def.id}": missing response.question`);
+    // Reply text has one owner: replies.js must have this route, and gates.json must not repeat it.
+    if (def.response) issues.push(`Gate "${def.id}": reply text belongs in replies.js, not gates.json`);
+    if (def.route && typeof require("./replies").ROUTE_REPLY_MAP[def.route] !== "function") {
+      issues.push(`Gate "${def.id}": no reply for ${def.route} in replies.js`);
     }
   }
 
@@ -151,7 +124,6 @@ function validateGateDefinitions() {
 module.exports = {
   tryDSLGate,
   isDSLRoute,
-  renderDSLReply,
   getCompiledGates,
   validateGateDefinitions,
   compiledGates,

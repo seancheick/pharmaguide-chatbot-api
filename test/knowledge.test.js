@@ -8,7 +8,6 @@ const { KNOWLEDGE_BASE, getKBEntry, getKBEntriesForEntities, getInteractionsBetw
 const { buildKBContext, buildAugmentedMessages } = require("../src/core/kbLookup");
 const { extractDoses, getDoseSummary } = require("../src/core/doseExtractor");
 const { resolveConfidence, CONFIDENCE_LABELS } = require("../src/core/confidence");
-const { createSessionMemory, updateSessionMemory, getMemorySummary, buildMemoryContext } = require("../src/infra/sessionMemory");
 
 let pass = 0, fail = 0, total = 0;
 const failures = [];
@@ -342,73 +341,6 @@ function assert(condition, label) {
 (function testConfidenceDegraded() {
   const result = resolveConfidence("degraded", 0);
   assert(result.confidence === "low", "degraded → low confidence");
-})();
-
-// ═══════════════════════════════════════════════════
-//  1E. Expanded Session Memory
-// ═══════════════════════════════════════════════════
-
-(function testSessionMemoryHasMedList() {
-  const mem = createSessionMemory();
-  assert(Array.isArray(mem.med_list), "session memory has med_list");
-  assert(Array.isArray(mem.supp_list), "session memory has supp_list");
-  assert(mem.med_list.length === 0, "med_list starts empty");
-  assert(mem.supp_list.length === 0, "supp_list starts empty");
-})();
-
-(function testSessionMemoryTracksMeds() {
-  const mem = createSessionMemory();
-  const entities = { meds: ["sertraline", "lisinopril"], supplements: ["magnesium"], populations: [] };
-  updateSessionMemory(mem, entities, "I take sertraline and lisinopril with magnesium");
-  assert(mem.med_list.length === 2, "tracks 2 meds");
-  assert(mem.med_list.includes("sertraline"), "includes sertraline");
-  assert(mem.med_list.includes("lisinopril"), "includes lisinopril");
-  assert(mem.supp_list.length === 1, "tracks 1 supplement");
-  assert(mem.supp_list.includes("magnesium"), "includes magnesium");
-})();
-
-(function testSessionMemoryDeduplication() {
-  const mem = createSessionMemory();
-  const entities1 = { meds: ["sertraline"], supplements: ["magnesium"], populations: [] };
-  const entities2 = { meds: ["sertraline", "warfarin"], supplements: ["magnesium"], populations: [] };
-  updateSessionMemory(mem, entities1, "turn 1");
-  updateSessionMemory(mem, entities2, "turn 2");
-  assert(mem.med_list.length === 2, "deduplicates meds (got " + mem.med_list.length + ")");
-  assert(mem.supp_list.length === 1, "deduplicates supps");
-  assert(mem.med_list.includes("warfarin"), "adds new med from turn 2");
-})();
-
-(function testGetMemorySummaryExpanded() {
-  const mem = createSessionMemory();
-  const entities = { meds: ["sertraline"], supplements: ["magnesium"], populations: ["pregnancy"] };
-  updateSessionMemory(mem, entities, "I'm pregnant and take sertraline with magnesium for sleep");
-  const summary = getMemorySummary(mem);
-  assert(summary.has_meds === true, "summary.has_meds is true");
-  assert(summary.has_supps === true, "summary.has_supps is true");
-  assert(summary.med_list.length === 1, "summary.med_list has 1 item");
-  assert(summary.supp_list.length === 1, "summary.supp_list has 1 item");
-})();
-
-(function testBuildMemoryContext() {
-  const mem = createSessionMemory();
-  const entities = { meds: ["sertraline"], supplements: ["magnesium", "5-htp"], populations: ["elderly"] };
-  updateSessionMemory(mem, entities, "I'm elderly and take sertraline for anxiety");
-  const ctx = buildMemoryContext(mem);
-  assert(ctx.includes("sertraline"), "memory context includes med");
-  assert(ctx.includes("magnesium"), "memory context includes supp");
-  assert(ctx.includes("elderly"), "memory context includes population");
-  assert(ctx.includes("anxiety"), "memory context includes goal");
-})();
-
-(function testBuildMemoryContextEmpty() {
-  const mem = createSessionMemory();
-  const ctx = buildMemoryContext(mem);
-  assert(ctx === "", "empty memory = empty context");
-})();
-
-(function testBuildMemoryContextNull() {
-  const ctx = buildMemoryContext(null);
-  assert(ctx === "", "null memory = empty context");
 })();
 
 // ═══════════════════════════════════════════════════

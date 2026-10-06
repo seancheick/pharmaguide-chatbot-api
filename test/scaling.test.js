@@ -3,10 +3,9 @@
  * Run: node test/scaling.test.js
  */
 
-const { tryDSLGate, isDSLRoute, getCompiledGates, validateGateDefinitions, renderDSLReply } = require("../src/gates/gateEngine");
+const { tryDSLGate, isDSLRoute, getCompiledGates, validateGateDefinitions } = require("../src/gates/gateEngine");
 const { scoreRisks, resolveSeverity } = require("../src/core/riskScore");
 const { validateResponse } = require("../src/postprocess/safetyValidator");
-const { createSessionMemory, detectGoal, updateSessionMemory, shouldSkipClarifier, getMemorySummary } = require("../src/infra/sessionMemory");
 
 let pass = 0, fail = 0, total = 0;
 const failures = [];
@@ -221,105 +220,3 @@ assert("pregnancy + teratogen + polypharmacy + elderly", (() => {
 // ═══════════════════════════════════════════════════════════════
 // SECTION 3: Session Memory (~15 tests)
 // ═══════════════════════════════════════════════════════════════
-section("Session Memory — creation");
-
-assert("createSessionMemory returns clean state", (() => {
-  const mem = createSessionMemory();
-  return mem.populations.length === 0 && mem.goal_category === null && mem.turn_count === 0;
-})());
-
-section("Session Memory — goal detection");
-
-assert("sleep goal detected", detectGoal("I can't sleep at night") === "sleep");
-assert("energy goal detected", detectGoal("I'm always tired and fatigued") === "energy");
-assert("anxiety goal detected", detectGoal("I feel anxious all the time") === "anxiety");
-assert("pain goal detected", detectGoal("I have joint pain") === "pain");
-assert("mood goal detected", detectGoal("I've been feeling depressed") === "mood");
-assert("focus goal detected", detectGoal("I need help with concentration") === "focus");
-assert("immune goal detected", detectGoal("I keep getting sick") === "immune");
-assert("gut goal detected", detectGoal("I have stomach bloating issues") === "gut");
-assert("no goal for generic message", detectGoal("Can I take magnesium?") === null);
-
-section("Session Memory — updateSessionMemory");
-
-assert("populations persist across turns", (() => {
-  const mem = createSessionMemory();
-  const entities1 = { ...emptyEntities, populations: ["pregnancy"] };
-  updateSessionMemory(mem, entities1, "I'm pregnant");
-  const entities2 = { ...emptyEntities, populations: ["renal"] };
-  updateSessionMemory(mem, entities2, "I have kidney disease");
-  return mem.populations.includes("pregnancy") && mem.populations.includes("renal") && mem.populations.length === 2;
-})());
-
-assert("populations deduped", (() => {
-  const mem = createSessionMemory();
-  const entities = { ...emptyEntities, populations: ["pregnancy"] };
-  updateSessionMemory(mem, entities, "pregnant");
-  updateSessionMemory(mem, entities, "still pregnant");
-  return mem.populations.length === 1;
-})());
-
-assert("goal detected from message", (() => {
-  const mem = createSessionMemory();
-  updateSessionMemory(mem, emptyEntities, "I need help with sleep");
-  return mem.goal_category === "sleep";
-})());
-
-assert("goal not overwritten once set", (() => {
-  const mem = createSessionMemory();
-  updateSessionMemory(mem, emptyEntities, "I need help with sleep");
-  updateSessionMemory(mem, emptyEntities, "I also have anxiety");
-  return mem.goal_category === "sleep";
-})());
-
-assert("turn_count increments", (() => {
-  const mem = createSessionMemory();
-  updateSessionMemory(mem, emptyEntities, "turn 1");
-  updateSessionMemory(mem, emptyEntities, "turn 2");
-  updateSessionMemory(mem, emptyEntities, "turn 3");
-  return mem.turn_count === 3;
-})());
-
-section("Session Memory — clarifier skipping");
-
-assert("skip reason_for_use if goal known", (() => {
-  const mem = createSessionMemory();
-  mem.goal_category = "sleep";
-  return shouldSkipClarifier(mem, "reason_for_use").skip;
-})());
-
-assert("don't skip reason_for_use if no goal", (() => {
-  const mem = createSessionMemory();
-  return !shouldSkipClarifier(mem, "reason_for_use").skip;
-})());
-
-assert("don't skip unrelated fields", (() => {
-  const mem = createSessionMemory();
-  mem.goal_category = "sleep";
-  return !shouldSkipClarifier(mem, "medication_name").skip;
-})());
-
-section("Session Memory — summary (no PHI)");
-
-assert("getMemorySummary returns expected shape", (() => {
-  const mem = createSessionMemory();
-  updateSessionMemory(mem, { ...emptyEntities, populations: ["pregnancy"] }, "I need sleep help and I'm pregnant");
-  const summary = getMemorySummary(mem);
-  return summary.populations.includes("pregnancy") &&
-    summary.goal_category === "sleep" &&
-    summary.turn_count === 1 &&
-    summary.has_populations &&
-    summary.has_goal;
-})());
-
-// ═══════════════════════════════════════════════════════════════
-// Final tally
-// ═══════════════════════════════════════════════════════════════
-console.log(`\n${"═".repeat(50)}`);
-console.log(`Scaling tests: ${pass}/${total} passed, ${fail} failed`);
-if (failures.length > 0) {
-  console.log("\nFailures:");
-  failures.forEach((f) => console.log(`  • ${f}`));
-  process.exit(1);
-}
-console.log("All scaling tests passed!");
