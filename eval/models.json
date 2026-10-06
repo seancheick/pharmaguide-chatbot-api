@@ -1,0 +1,57 @@
+{
+  "_comment": "Candidate models for the bake-off. Prices are USD per 1M tokens, read 2026-10-05 (see .claude/state/LLM_OPTIONS_2026-10-05.md); they are for cost estimates only. 'request' holds per-model request quirks and is UNVERIFIED for every non-Gemini entry until `node eval/run.js --smoke` has been run against it: a wrong parameter shows up there as a visible API error. Keys are read by name from the environment or .env.local; none are stored here.",
+  "models": [
+    {
+      "id": "gemini-2.5-flash",
+      "label": "Gemini 2.5 Flash (incumbent)",
+      "adapter": "gemini",
+      "model": "gemini-2.5-flash",
+      "keyEnv": "GEMINI_API_KEY",
+      "price": { "in": 0.30, "out": 2.50 }
+    },
+    {
+      "id": "gpt-5.4-nano",
+      "label": "OpenAI gpt-5.4-nano",
+      "adapter": "openai",
+      "baseUrl": "https://api.openai.com/v1",
+      "keyEnv": "OPENAI_API_KEY",
+      "model": "gpt-5.4-nano",
+      "openrouter": "openai/gpt-5.4-nano",
+      "price": { "in": 0.20, "out": 1.25 },
+      "request": { "omit": ["temperature", "top_p"], "tokenParam": "max_completion_tokens", "extra": { "reasoning_effort": "minimal" } }
+    },
+    {
+      "id": "gpt-5-nano",
+      "label": "OpenAI gpt-5-nano",
+      "adapter": "openai",
+      "baseUrl": "https://api.openai.com/v1",
+      "keyEnv": "OPENAI_API_KEY",
+      "model": "gpt-5-nano",
+      "openrouter": "openai/gpt-5-nano",
+      "price": { "in": 0.05, "out": 0.40 },
+      "request": { "omit": ["temperature", "top_p"], "tokenParam": "max_completion_tokens", "extra": { "reasoning_effort": "minimal" } }
+    },
+    {
+      "id": "gpt-6-luna",
+      "label": "OpenAI gpt-6-luna (thinking off)",
+      "adapter": "openai",
+      "baseUrl": "https://api.openai.com/v1",
+      "keyEnv": "OPENAI_API_KEY",
+      "model": "gpt-6-luna",
+      "openrouter": "openai/gpt-6-luna",
+      "price": { "in": 0.10, "out": 0.50 },
+      "request": { "omit": ["temperature", "top_p"], "tokenParam": "max_completion_tokens", "extra": { "reasoning_effort": "none" } }
+    },
+    {
+      "id": "gpt-oss-120b",
+      "label": "gpt-oss-120b on Groq (current fallback)",
+      "adapter": "openai",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "keyEnv": "GROQ_API_KEY",
+      "model": "openai/gpt-oss-120b",
+      "openrouter": "openai/gpt-oss-120b",
+      "price": { "in": 0.15, "out": 0.60 },
+      "request": { "tokenParam": "max_completion_tokens", "extra": { "reasoning_effort": "low" } }
+    }
+  ]
+}

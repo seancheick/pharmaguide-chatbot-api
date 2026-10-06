@@ -44,7 +44,7 @@ A production decision-and-explanation system for high-stakes supplement–medica
 - **Privacy by construction.** No message text in logs, hashed rate-limit identifiers, website-only API access, no server-side chat storage, PHI-free analytics.
 - **Regression-driven.** Every reproduced production defect becomes a permanent test; a pinned set of production canaries runs after every deploy and daily.
 - **Governed clinical claims.** Claims carry review dates and source references. An enforced release gate (CI and every deploy) blocks a release when a claim is overdue, and a weekly job warns 30 days ahead.
-- **Honest roadmap.** Planned work (model evaluation, prompt minimisation, a shared clinical export) is labelled as planned, below.
+- **Honest roadmap.** Planned work (measured model selection, prompt minimisation, a shared clinical export) is labelled as planned, below.
 
 <!-- metrics:start -->
 | Measured from the code | Count |
@@ -58,7 +58,7 @@ A production decision-and-explanation system for high-stakes supplement–medica
 | Safety-policy domains | 21 |
 | Post-response validator rules | 8 |
 | Pinned production canaries (replayable live) | 9 (8) |
-| Test suites | 23 |
+| Test suites | 24 |
 <!-- metrics:end -->
 
 *That table is generated from the code by `scripts/readme_metrics.js`; `npm test` fails if it drifts.*
@@ -197,7 +197,9 @@ Models are replaceable infrastructure, not part of the safety argument.
 - Generation parameters adapt to query complexity (more careful settings for multi-medication and population-specific questions).
 - `GET /api/health` reports each provider's configuration and circuit state.
 
-**Planned:** a health-specific evaluation harness so models are chosen on measured behaviour, ranked by critical safety failures first, then factual accuracy, fidelity to supplied facts, evidence overstatement, truncation, latency, cost, and data-use terms, rather than vendor preference.
+**Model evaluation harness.** [`eval/`](./eval) runs a golden set through the real production handler with only the model call swapped, so each candidate is judged on what a user would actually have received (routing, retrieval, prompt, post-processing and the safety validator are the production code). The set reuses the pinned canaries, adds behaviour probes (overclaiming, capitulating to "my friend says it's fine", inventing figures), and is generated from the pipeline's verified interaction records, which serve as both the answer key and the supplied context. Answers are scored in a fixed order: critical safety failures, accuracy against the record, fidelity to supplied facts (no invented dose figures), evidence overstatement, then latency and cost; truncation and availability are measured too. The checks are transparent heuristics, so every flagged answer is printed in full for a person to read. A live run refuses to start without `--yes`.
+
+**Planned:** the measured comparison itself (the candidates need their own API keys), after which the model is chosen on that table and on data-use terms rather than vendor preference.
 
 ## Testing and production canaries
 
@@ -209,6 +211,7 @@ Suites live in [`test/`](./test) and run with `npm test` on every push and pull 
 | Clinical safety cases | `safety-harness` (clinical IDs: route and reply content), `full-suite`, `edge-cases`, `router_precedence` |
 | Adversarial | `adversarial` (prompt injection, jailbreaks, safety bypass), hostile client state and forged headers (`wave-b`, `wave-c`) |
 | Failure paths | provider failure, truncation, Redis outage, malformed input, time-budget exhaustion (`canaries`, `wave-c`, `load`) |
+| Model evaluation | adapters, scoring and ranking order, the real handler with a stubbed model, no network (`eval-harness`) |
 | Output safety | `validator` (every rule, positive and negative controls), emergency paraphrases with educational negatives (`wave-b`) |
 | Knowledge | `knowledge`, `references` (claim to citation integrity), `phase2` |
 | Operations | `operational` (release guard, circuit breaker), `scaling`, `load` (synthetic load and chaos), `analytics` |
@@ -309,6 +312,7 @@ curl -s localhost:3000/api/chat -H 'Content-Type: application/json' \
 | Final safety validation | [`src/postprocess/safetyValidator.js`](./src/postprocess/safetyValidator.js) |
 | Access control and rate limiting | [`src/infra/proxyAuth.js`](./src/infra/proxyAuth.js), [`src/infra/rateLimit.js`](./src/infra/rateLimit.js) |
 | Production canaries | [`test/canaries.js`](./test/canaries.js), [`scripts/smoke_prod.js`](./scripts/smoke_prod.js) |
+| Model evaluation | [`eval/`](./eval) (runner, adapters, golden set, scoring), [`test/eval-harness.test.js`](./test/eval-harness.test.js) |
 | Safety regression suite | [`test/safety-harness.test.js`](./test/safety-harness.test.js) |
 | Design write-ups | [`docs/safety-case/`](./docs/safety-case) |
 
@@ -329,8 +333,8 @@ This service currently carries its own bounded knowledge layer. The planned arch
 
 | Status | Item |
 |---|---|
-| Done | Deterministic routing, validator, multi-provider failover with soft-failure handling, privacy hardening, CI, production canaries and smoke workflow, generated README metrics, an enforced release gate (CI and deploy) with a 30-day claim-expiry warning, ruleset and knowledge versions reported by `/api/health` and an `X-PG-Ruleset` response header |
-| Planned | Model evaluation harness and measured model selection |
+| Done | Deterministic routing, validator, multi-provider failover with soft-failure handling, privacy hardening, CI, production canaries and smoke workflow, generated README metrics, an enforced release gate (CI and deploy) with a 30-day claim-expiry warning, ruleset and knowledge versions reported by `/api/health` and an `X-PG-Ruleset` response header, a model-evaluation harness (`eval/`) |
+| Planned | Measured model selection: run the evaluation across the candidate models and choose on the results |
 | Planned | Dynamic clinical context assembly: a small invariant policy prompt plus retrieved context, instead of a large always-on prompt |
 | Planned | Consume the pipeline's versioned clinical export; retire overlapping facts from this repository |
 
