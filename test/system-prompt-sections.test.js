@@ -38,8 +38,15 @@ test("sections are well formed: unique ids, a known kind, text that starts at a 
     assert.ok(s.text.trim().length > 0, `${s.id} is empty`);
   }
   assert.ok(SECTIONS[0].text.startsWith("You are PharmaGuide AI"), "the identity block comes first");
-  for (const s of SECTIONS.filter((x) => x.kind === "topic")) {
+  for (const s of SECTIONS.filter((x) => x.kind === "topic" && (!x.group || x.groupHeader))) {
     assert.match(s.text, /^[A-Z][A-Z0-9 &\/\-—()',.]+(?:\([^)]*\))?:/, `${s.id} should start with its own header`);
+  }
+  // Split sections: one header per group, listed first, and every item names its group.
+  for (const g of new Set(SECTIONS.filter((x) => x.group).map((x) => x.group))) {
+    const members = SECTIONS.filter((x) => x.group === g);
+    assert.equal(members.filter((x) => x.groupHeader).length, 1, `${g} needs exactly one header`);
+    assert.ok(members[0].groupHeader, `${g}: the header comes first`);
+    assert.ok(members.slice(1).every((x) => x.id.startsWith(`${g}:`) && x.triggers && x.triggers.length), `${g}: every item needs an id in the group and its own triggers`);
   }
 });
 

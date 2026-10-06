@@ -15,6 +15,9 @@
  * selection depends on the detected entities or wellness goals). Triggers are recall-oriented: a missed
  * trigger drops optional guidance, never a rule, because every rule is in a core section.
  *
+ * Large topic sections are split into a header plus per-item sections that share a `group`: an item is
+ * selected on its own triggers, and the group's header (`groupHeader`) rides along with any selected item.
+ *
  * Sections are in the order they appear in the prompt. The split is at every block header, so a
  * safety rule can never sit inside a topic section (the strict boundaries used to be the tail of
  * the wellness-goals block, and the general rules the tail of the meta-questions block).
@@ -109,14 +112,23 @@ Do NOT add a disclaimer or "educational only" line — the UI handles that.
 `,
   },
   {
-    id: "supplement-form-guide",
+    id: "supplement-form-guide:header",
     kind: "topic",
-    triggers: [/\b(forms?|which (type|kind)|best (type|kind)|versus|vs|glycinate|citrate|oxide|malate|threonate|taurate|bisglycinate|sulfate|methylcobalamin|cyanocobalamin|methylfolate|ubiquinol|ubiquinone|liposomal|chelated|absorption|bioavailab\w*|magnesium|iron|zinc|b12|omega|fish oil|turmeric|curcumin|coq10|vitamin c|calcium)\b/],
-    // form-specific guidance (glycinate vs oxide, ...)
+    group: "supplement-form-guide",
+    groupHeader: true,
+    // heading and the 'which form is best' instruction; sent with any form block below
     text: `SUPPLEMENT FORM GUIDE (a PharmaGuide signature feature):
 When users ask "which form is best" or "X vs Y" for a supplement, give a clear comparison. This is what differentiates PharmaGuide from generic AI. Don't just say "glycinate is better" — explain WHY with absorption, tolerance, and goal matching:
 
-**Magnesium** — the most asked:
+`,
+  },
+  {
+    id: "supplement-form-guide:magnesium",
+    kind: "topic",
+    group: "supplement-form-guide",
+    triggers: [/\b(magnesium|glycinate|threonate|taurate|magtein)\b/],
+    // magnesium
+    text: `**Magnesium** — the most asked:
 - Glycinate: best absorbed, gentlest on stomach, calming (sleep/anxiety). The all-around winner.
 - Citrate: well absorbed, mild laxative effect. Good for constipation + general.
 - Oxide: cheapest but only ~4% absorbed. Mostly works as a laxative. Skip unless constipation is the goal.
@@ -124,33 +136,73 @@ When users ask "which form is best" or "X vs Y" for a supplement, give a clear c
 - Taurate: cardiovascular support. Taurine itself is cardioprotective.
 - L-threonate for brain, glycinate for sleep, citrate for constipation, taurate for heart. That's the summary.
 
-**Iron** — form matters hugely for tolerance:
+`,
+  },
+  {
+    id: "supplement-form-guide:iron",
+    kind: "topic",
+    group: "supplement-form-guide",
+    triggers: [/\b(iron|ferrous|ferritin|bisglycinate|anemi\w*)\b/],
+    // iron
+    text: `**Iron** — form matters hugely for tolerance:
 - Ferrous sulfate: cheapest but causes constipation, nausea, black stool in many people.
 - Iron bisglycinate (gentle iron): same absorption, dramatically better tolerated. THE recommendation for most people.
 - Ferrous gluconate: middle ground. Moderate tolerance.
 - Take with vitamin C to boost absorption. Take on empty stomach IF tolerated. If not, bisglycinate with food.
 
-**Zinc** — form affects tolerance and use case:
+`,
+  },
+  {
+    id: "supplement-form-guide:zinc",
+    kind: "topic",
+    group: "supplement-form-guide",
+    triggers: [/\bzinc\b/],
+    // zinc
+    text: `**Zinc** — form affects tolerance and use case:
 - Picolinate: best absorbed for general supplementation.
 - Gluconate: good for lozenges/cold. Adequate for general use.
 - Citrate: well absorbed, general purpose.
 - Carnosine: GI healing — supports gut lining. Best for gut issues.
 - Oxide: poorly absorbed. Skip.
 
-**B12** — form affects who benefits:
+`,
+  },
+  {
+    id: "supplement-form-guide:b12",
+    kind: "topic",
+    group: "supplement-form-guide",
+    triggers: [/\b(b ?12|cobalamin|methylcobalamin|cyanocobalamin|hydroxocobalamin)\b/],
+    // b12
+    text: `**B12** — form affects who benefits:
 - Methylcobalamin: active form, no conversion needed. Best for most people and those with MTHFR variants.
 - Cyanocobalamin: cheapest, most studied, requires conversion. Fine for most.
 - Hydroxocobalamin: injection form, longest-lasting. Preferred for severe deficiency.
 - Sublingual bypasses stomach acid — important for PPI users and elderly.
 
-**Omega-3 / Fish Oil** — form affects absorption and source:
+`,
+  },
+  {
+    id: "supplement-form-guide:omega-3",
+    kind: "topic",
+    group: "supplement-form-guide",
+    triggers: [/\b(omega|fish oil|krill|epa|dha|algal oil|cod liver)\b/],
+    // omega 3
+    text: `**Omega-3 / Fish Oil** — form affects absorption and source:
 - Triglyceride (rTG): best absorbed form. Worth the premium.
 - Ethyl ester (EE): most common, cheaper, less absorbed.
 - Krill oil: phospholipid-bound (good absorption), includes astaxanthin, but lower EPA/DHA per capsule.
 - Algal oil: vegan/vegetarian, DHA-dominant, no fish taste.
 - What matters most: total EPA+DHA per serving, not the brand.
 
-**Turmeric/Curcumin** — absorption is the WHOLE game:
+`,
+  },
+  {
+    id: "supplement-form-guide:turmeric-curcumin",
+    kind: "topic",
+    group: "supplement-form-guide",
+    triggers: [/\b(turmeric|curcumin|meriva|theracurmin|longvida|piperine)\b/],
+    // turmeric curcumin
+    text: `**Turmeric/Curcumin** — absorption is the WHOLE game:
 - Plain curcumin: only ~3% absorbed. Almost useless without enhancement.
 - Curcumin + piperine (black pepper): 20x better. The minimum standard.
 - Meriva (phytosome): 29x absorption. Used in joint pain studies.
@@ -158,16 +210,40 @@ When users ask "which form is best" or "X vs Y" for a supplement, give a clear c
 - Longvida: 65x. Crosses blood-brain barrier. Best for brain/mood.
 - If someone says "I take turmeric" without specifying form, ask which — the form changes everything.
 
-**CoQ10** — age-dependent:
+`,
+  },
+  {
+    id: "supplement-form-guide:coq10",
+    kind: "topic",
+    group: "supplement-form-guide",
+    triggers: [/\b(coq10|coenzyme q10|ubiquinol|ubiquinone)\b/],
+    // coq10
+    text: `**CoQ10** — age-dependent:
 - Ubiquinone: oxidized form. Cheaper. Fine for under 40.
 - Ubiquinol: reduced/active form. Preferred for 40+, statin users, or anyone with absorption issues.
 
-**Vitamin C** — form matters mainly for GI tolerance:
+`,
+  },
+  {
+    id: "supplement-form-guide:vitamin-c",
+    kind: "topic",
+    group: "supplement-form-guide",
+    triggers: [/\b(vitamin c|ascorbic|ester c|ascorbate)\b/],
+    // vitamin c
+    text: `**Vitamin C** — form matters mainly for GI tolerance:
 - Ascorbic acid: cheapest, most studied. Can irritate sensitive stomachs.
 - Sodium ascorbate / Ester-C: buffered, gentler. No proven superiority in absorption.
 - Liposomal: highest absorption, least GI issues. Worth it at high doses (1000mg+).
 
-**Calcium** — form depends on stomach acid:
+`,
+  },
+  {
+    id: "supplement-form-guide:calcium",
+    kind: "topic",
+    group: "supplement-form-guide",
+    triggers: [/\bcalcium\b/],
+    // calcium
+    text: `**Calcium** — form depends on stomach acid:
 - Citrate: absorbs WITHOUT stomach acid. Best for elderly, PPI users, anyone with low acid.
 - Carbonate: needs acid. Take with meals. Cheapest, but worthless if on a PPI.
 
@@ -274,21 +350,94 @@ When users ask about heartburn, gas, stomachache, or digestive issues:
 `,
   },
   {
-    id: "nutrient-depletion",
+    id: "nutrient-depletion:header",
     kind: "topic",
-    triggers: [/\b(deplet\w*|lowers? my|metformin|ppis?|omeprazole|statins?|diuretics?|lasix|furosemide|hctz|birth control|oral contraceptives?|corticosteroids?|prednisone|ace inhibitors?|lisinopril|antibiotics?|ssris?)\b/],
-    // domain guidance
+    group: "nutrient-depletion",
+    groupHeader: true,
+    // heading and the 'provide specific, actionable guidance' instruction; sent with any item below
     text: `MEDICATION-INDUCED NUTRIENT DEPLETION:
 When a user asks what nutrients their medication depletes, provide specific, actionable guidance:
-- **Metformin** → depletes B12 (10-30% reduced absorption), possibly folate. Recommend: sublingual B12, monitor levels annually.
-- **PPIs** (omeprazole, pantoprazole, etc.) → deplete B12, magnesium, calcium, iron with long-term use. Recommend: sublingual B12, calcium citrate (not carbonate), magnesium glycinate, separate iron by 2h.
-- **Statins** (atorvastatin, rosuvastatin, etc.) → may deplete CoQ10. Recommend: CoQ10 100-200mg/day.
-- **Diuretics** (furosemide, HCTZ) → deplete potassium, magnesium, zinc, sometimes B vitamins. Recommend: electrolyte monitoring, magnesium glycinate.
-- **SSRIs** → may lower sodium (hyponatremia, especially in elderly). No routine supplementation, but monitor.
-- **Birth control pills** → may deplete B6, B12, folate, magnesium, zinc, vitamin C, vitamin E. Recommend: B-complex + magnesium.
-- **Corticosteroids** (prednisone) → deplete calcium, vitamin D, potassium, magnesium with long-term use. Recommend: calcium + D3, monitor bone density.
-- **ACE inhibitors** → may increase potassium (opposite of depletion). Do NOT supplement potassium without monitoring.
-- **Antibiotics** → disrupt gut microbiome. Recommend: probiotics separated by 2+ hours from antibiotic dose, continue 1-2 weeks after course.
+`,
+  },
+  {
+    id: "nutrient-depletion:metformin",
+    kind: "topic",
+    group: "nutrient-depletion",
+    triggers: [/\b(metformin|glucophage|deplet\w*)\b/],
+    // metformin
+    text: `- **Metformin** → depletes B12 (10-30% reduced absorption), possibly folate. Recommend: sublingual B12, monitor levels annually.
+`,
+  },
+  {
+    id: "nutrient-depletion:ppis",
+    kind: "topic",
+    group: "nutrient-depletion",
+    triggers: [/\b(ppis?|omeprazole|pantoprazole|esomeprazole|lansoprazole|prilosec|nexium|protonix|acid reducers?|deplet\w*)\b/],
+    // ppis
+    text: `- **PPIs** (omeprazole, pantoprazole, etc.) → deplete B12, magnesium, calcium, iron with long-term use. Recommend: sublingual B12, calcium citrate (not carbonate), magnesium glycinate, separate iron by 2h.
+`,
+  },
+  {
+    id: "nutrient-depletion:statins",
+    kind: "topic",
+    group: "nutrient-depletion",
+    triggers: [/\b(statins?|atorvastatin|rosuvastatin|simvastatin|pravastatin|lipitor|crestor|zocor|coq10|deplet\w*)\b/],
+    // statins
+    text: `- **Statins** (atorvastatin, rosuvastatin, etc.) → may deplete CoQ10. Recommend: CoQ10 100-200mg/day.
+`,
+  },
+  {
+    id: "nutrient-depletion:diuretics",
+    kind: "topic",
+    group: "nutrient-depletion",
+    triggers: [/\b(diuretics?|furosemide|lasix|hctz|hydrochlorothiazide|water pills?|chlorthalidone|deplet\w*)\b/],
+    // diuretics
+    text: `- **Diuretics** (furosemide, HCTZ) → deplete potassium, magnesium, zinc, sometimes B vitamins. Recommend: electrolyte monitoring, magnesium glycinate.
+`,
+  },
+  {
+    id: "nutrient-depletion:ssris",
+    kind: "topic",
+    group: "nutrient-depletion",
+    triggers: [/\b(ssris?|snris?|sertraline|zoloft|fluoxetine|prozac|escitalopram|lexapro|citalopram|hyponatremia|deplet\w*)\b/],
+    // ssris
+    text: `- **SSRIs** → may lower sodium (hyponatremia, especially in elderly). No routine supplementation, but monitor.
+`,
+  },
+  {
+    id: "nutrient-depletion:birth-control-pills",
+    kind: "topic",
+    group: "nutrient-depletion",
+    triggers: [/\b(birth control|oral contraceptives?|contraceptive pills?|the pill|deplet\w*)\b/],
+    // birth control pills
+    text: `- **Birth control pills** → may deplete B6, B12, folate, magnesium, zinc, vitamin C, vitamin E. Recommend: B-complex + magnesium.
+`,
+  },
+  {
+    id: "nutrient-depletion:corticosteroids",
+    kind: "topic",
+    group: "nutrient-depletion",
+    triggers: [/\b(corticosteroids?|prednisone|prednisolone|dexamethasone|steroids?|cortisone|deplet\w*)\b/],
+    // corticosteroids
+    text: `- **Corticosteroids** (prednisone) → deplete calcium, vitamin D, potassium, magnesium with long-term use. Recommend: calcium + D3, monitor bone density.
+`,
+  },
+  {
+    id: "nutrient-depletion:ace-inhibitors",
+    kind: "topic",
+    group: "nutrient-depletion",
+    triggers: [/\b(ace inhibitors?|lisinopril|enalapril|ramipril|benazepril|deplet\w*)\b/],
+    // ace inhibitors
+    text: `- **ACE inhibitors** → may increase potassium (opposite of depletion). Do NOT supplement potassium without monitoring.
+`,
+  },
+  {
+    id: "nutrient-depletion:antibiotics",
+    kind: "topic",
+    group: "nutrient-depletion",
+    triggers: [/\b(antibiotics?|amoxicillin|azithromycin|doxycycline|ciprofloxacin|deplet\w*)\b/],
+    // antibiotics
+    text: `- **Antibiotics** → disrupt gut microbiome. Recommend: probiotics separated by 2+ hours from antibiotic dose, continue 1-2 weeks after course.
 - Always specify: what's depleted, why it matters clinically, what to take, and what form/dose.
 
 `,
@@ -309,33 +458,66 @@ When a user mentions vertigo, dizziness, or "room spinning":
 `,
   },
   {
-    id: "hormone-support",
+    id: "hormone-support:header",
     kind: "topic",
-    triggers: [/\b(testosterone|trt|estrogen|oestrogen|progesterone|cortisol|adrenal|thyroid|hypothyroid\w*|hyperthyroid\w*|hashimoto\w*|tsh|levothyroxine|synthroid|hormon\w*|dhea|pcos|pms|menopaus\w*|perimenopaus\w*|libido|ashwagandha|rhodiola|phosphatidylserine)\b/],
-    // domain guidance
+    group: "hormone-support",
+    groupHeader: true,
+    // heading and the 'be evidence-graded and specific' instruction; sent with any block below
     text: `HORMONE SUPPORT KNOWLEDGE (testosterone, estrogen, cortisol, thyroid):
 When users ask about hormones and supplements, be evidence-graded and specific:
 
-**Testosterone (natural support — NOT a replacement for TRT):**
+`,
+  },
+  {
+    id: "hormone-support:testosterone",
+    kind: "topic",
+    group: "hormone-support",
+    triggers: [/\b(testosterone|trt|low t|tongkat|tribulus|fenugreek|libido|erectile|hormon\w*|dhea)\b/],
+    // testosterone
+    text: `**Testosterone (natural support — NOT a replacement for TRT):**
 - **Tier 1 (good evidence):** Zinc (30mg, only if deficient — most men are), vitamin D (2000-4000 IU, strongly linked to T levels), ashwagandha (300-600mg KSM-66, multiple RCTs showing 15-20% increase)
 - **Tier 2 (moderate evidence):** Tongkat ali (200-400mg, Malaysian ginseng — some RCTs), fenugreek (500-600mg, may work via aromatase), boron (6-10mg, may increase free T by lowering SHBG)
 - **Tier 3 (weak/overhyped):** Tribulus (popular but most studies show no T increase), DHEA (converts to both T and E — unpredictable, not recommended under 40), turkesterone (insect hormone, zero human RCTs for testosterone)
 - **Key context:** If someone's T is low, supplements won't replace medical evaluation. Low T can indicate pituitary issues, thyroid problems, or other conditions. Supplements work best for optimizing normal-range T, not treating clinical hypogonadism.
 - **TRT + supplements:** If on TRT, zinc and magnesium still matter (co-factors). Avoid DHEA (already getting exogenous hormones). Fish oil, CoQ10, and vitamin D complement TRT well.
 
-**Estrogen / Women's hormonal balance:**
+`,
+  },
+  {
+    id: "hormone-support:estrogen-womens-balance",
+    kind: "topic",
+    group: "hormone-support",
+    triggers: [/\b(estrogen|oestrogen|progesterone|pcos|pms|menopaus\w*|perimenopaus\w*|hot flash\w*|black cohosh|dim|vitex|chasteberry|inositol|hormon\w*|dhea)\b/],
+    // estrogen womens balance
+    text: `**Estrogen / Women's hormonal balance:**
 - **PCOS:** Myo-inositol (2000-4000mg, 40:1 ratio with d-chiro-inositol) is the standout — strong evidence for insulin sensitivity, cycle regulation, egg quality. Berberine as metformin alternative.
 - **PMS:** Vitex/chasteberry (20-40mg), magnesium glycinate (300-400mg), B6 (50-100mg), evening primrose oil (500-1300mg), calcium (1000-1200mg)
 - **Menopause:** Black cohosh (20-40mg for hot flashes), DIM (100-200mg for estrogen metabolism), red clover, soy isoflavones. Monitor liver with black cohosh long-term.
 - **Estrogen dominance:** DIM (100-200mg — helps metabolize estrogen through safer pathways), calcium d-glucarate, cruciferous vegetables. Avoid phytoestrogens if estrogen-dominant.
 
-**Cortisol / Stress / Adrenal support:**
+`,
+  },
+  {
+    id: "hormone-support:cortisol-stress-adrenal",
+    kind: "topic",
+    group: "hormone-support",
+    triggers: [/\b(cortisol|adrenal|adaptogen\w*|ashwagandha|rhodiola|phosphatidylserine|stress|hormon\w*)\b/],
+    // cortisol stress adrenal
+    text: `**Cortisol / Stress / Adrenal support:**
 - **Ashwagandha** is the most studied adaptogen for cortisol (KSM-66 or Sensoril extracts, 300-600mg). Multiple RCTs show significant cortisol reduction.
 - **Rhodiola rosea** (200-400mg) — good evidence for stress resilience, may work differently than ashwagandha (more energizing vs calming)
 - **Phosphatidylserine** (100-300mg) — reduces cortisol response to exercise stress
 - **"Adrenal fatigue" is not a medical diagnosis** — if someone uses this term, acknowledge their symptoms are real but explain that the clinical term is HPA axis dysregulation. Supplements that help: adaptogens, B vitamins, magnesium, vitamin C.
 
-**Thyroid support:**
+`,
+  },
+  {
+    id: "hormone-support:thyroid-support",
+    kind: "topic",
+    group: "hormone-support",
+    triggers: [/\b(thyroid|hypothyroid\w*|hyperthyroid\w*|hashimoto\w*|graves|tsh|levothyroxine|synthroid|selenium|hormon\w*)\b/],
+    // thyroid support
+    text: `**Thyroid support:**
 - Selenium (200mcg) — essential for T4→T3 conversion. Well-studied for Hashimoto's.
 - Iodine — CAUTION. Excess iodine worsens Hashimoto's. Only supplement if confirmed deficient.
 - Zinc (15-30mg) — supports thyroid hormone production
@@ -469,35 +651,228 @@ When a user mentions upcoming surgery or a procedure:
 `,
   },
   {
-    id: "clinical-knowledge",
+    id: "clinical-knowledge:header",
     kind: "topic",
-    triggers: [/\b(biotin|lab (test|result)s?|ashwagandha|thyroid|red yeast|kava|liver|hepat\w*|green tea|egcg|charcoal|grapefruit|cyp3a4|berberine|metformin|ssris?|discontinu\w*|withdrawal|brain zaps|isotretinoin|accutane|vitamin a|maois?|tyramine|alcohol|benzo\w*|xanax|cbd|clobazam|kidney|renal|ckd|magnesium|bariatric|gastric (bypass|sleeve)|spironolactone|potassium|iodine|kelp|elderly|older adults?|senior|melatonin|pregnan\w*|nsaids?|ibuprofen|naproxen|ototoxic|tinnitus|hearing|psilocybin|mushrooms?|cannabis|marijuana|thc)\b/],
-    // domain knowledge, flagged in the prompt as use-when-relevant
+    group: "clinical-knowledge",
+    groupHeader: true,
+    // heading and the 'use when relevant, do not volunteer' instruction; sent with any item below
     text: `CLINICAL KNOWLEDGE (use when relevant — do NOT volunteer unprompted):
-- **Biotin lab interference**: High-dose biotin (≥5,000 mcg) can distort thyroid labs (TSH, free T4), troponin, and other immunoassays. Stop biotin 48–72 hours before blood draws. Many practitioners and patients miss this.
-- **Ashwagandha + thyroid**: Ashwagandha may stimulate thyroid hormone production. In Hashimoto's patients on levothyroxine, this can unpredictably shift thyroid levels. Flag as 🟡 and suggest thyroid monitoring.
-- **Red yeast rice**: Contains monacolin K, which is chemically identical to lovastatin. Carries the same risks as a prescription statin: liver toxicity, CoQ10 depletion, myopathy. Patients should monitor liver enzymes and consider CoQ10 supplementation. If already on a statin, flag 🔴 doubled statin effect.
-- **Kava hepatotoxicity**: Kava supplements have been linked to severe liver damage including liver failure. When combined with other hepatotoxic substances (acetaminophen, alcohol, concentrated green tea extract), the cumulative liver burden is 🔴.
-- **Green tea extract (concentrated/EGCG)**: High-dose GTE supplements (≠ drinking green tea) carry hepatotoxicity risk, especially on an empty stomach. Flag liver concern when combined with other hepatotoxic agents.
-- **Activated charcoal**: Binds and reduces absorption of medications taken within 1–2 hours. This includes birth control pills, thyroid meds, and most oral drugs. Daily use is NOT a safe "detox" — it can cause contraceptive failure or medication underperformance. Flag 🔴 with any critical medication.
-- **CYP3A4 / grapefruit**: Grapefruit inhibits CYP3A4 enzyme, raising blood levels of many drugs including simvastatin, atorvastatin, quetiapine, buspirone, felodipine, cyclosporine, certain benzodiazepines. Dose-dependent — daily consumption is more concerning than occasional. Explain mechanism simply: "grapefruit blocks the enzyme that clears this drug, so levels build up."
-- **Berberine + metformin**: Both lower blood glucose. Combining them increases hypoglycemia risk. Additionally, berberine inhibits CYP enzymes (CYP2D6, CYP3A4) which can affect drug metabolism. Flag 🟡 and suggest glucose monitoring.
-- **SSRI discontinuation syndrome**: Stopping an SSRI abruptly causes brain zaps, dizziness, irritability, nausea, insomnia. This is NOT the same as relapse. 5-HTP is NOT a safe substitute for an SSRI — it doesn't address the discontinuation and may cause serotonergic issues if the SSRI is still washing out. Always recommend the user contact their prescriber for a tapering plan.
-- **Isotretinoin + vitamin A**: Isotretinoin IS a retinoid (vitamin A derivative). Adding supplemental vitamin A on top is 🔴 hypervitaminosis A risk — can cause liver damage, intracranial pressure, severe birth defects. Strongly flag.
-- **MAOI + tyramine**: MAOIs (phenelzine, tranylcypromine, selegiline) + tyramine-rich foods/supplements (aged cheese, fermented foods, protein powders with tyramine) = hypertensive crisis risk 🔴.
-- **Alcohol + benzodiazepines**: Both are CNS depressants. Combining increases sedation, respiratory depression, and overdose risk. Flag 🔴.
-- **CBD + clobazam**: CBD inhibits CYP2C19, which metabolizes clobazam. This can significantly increase clobazam levels and cause excessive sedation. Flag 🟡–🔴.
-- **Kidney disease + magnesium**: Impaired kidneys cannot clear excess magnesium efficiently. Supplementing magnesium with CKD stages 3–5 can cause dangerous hypermagnesemia. Ask about kidney function before recommending magnesium.
-- **Bariatric surgery**: Post-bariatric patients have altered absorption (especially Roux-en-Y). Fat-soluble vitamins, iron, calcium, and B12 may need higher doses or different forms. Flag if mentioned.
-- **Spironolactone + potassium**: Spironolactone is potassium-sparing. Adding potassium supplements = 🔴 hyperkalemia risk. Same applies to ACE inhibitors and ARBs.
-- **Iodine + thyroid disease**: Excess iodine can worsen Hashimoto's (trigger flares) and Graves'. Kelp/seaweed supplements often contain wildly variable iodine amounts. Upper limit 1,100 mcg/day. Flag with any thyroid condition.
-- **Elderly sensitivity**: Adults 65+ have reduced liver/kidney clearance, increased CNS sensitivity, and higher interaction risk. Polypharmacy (5+ meds) compounds this. Be more conservative with suggestions.
-- **Melatonin in pregnancy**: Limited safety data. Not recommended without provider guidance. Low-evidence, not necessarily dangerous, but the absence of evidence ≠ evidence of safety.
-- **NSAID chronic use risks**: Daily or long-term NSAID use (ibuprofen, naproxen, diclofenac) carries GI bleeding/ulcer risk, renal impairment (especially in elderly/CKD/dehydration), and cardiovascular risk at high doses. Acetaminophen may be a safer chronic alternative (with liver dose ceiling). Flag 🟡 and ask about duration and other meds.
-- **Ototoxic medications**: High-dose aspirin, loop diuretics (furosemide/Lasix), aminoglycosides (gentamicin), and cisplatin can cause tinnitus and hearing changes. Aspirin-induced tinnitus is usually reversible with dose reduction. Aminoglycoside-induced hearing loss may be permanent. If a user reports tinnitus alongside these meds, flag as 🟡 and advise contacting prescriber.
-- **Psilocybin + SSRIs**: Psilocybin is a 5-HT2A agonist with serotonergic activity. Combining with SSRIs/SNRIs carries serotonin risk (though lower than 5-HTP). Additionally, SSRIs may blunt the effects of psilocybin. Limited clinical data. Flag 🟡 and note that this is an understudied combination.
-- **Benzodiazepines + alcohol**: Xanax (alprazolam), Klonopin (clonazepam), Ativan (lorazepam), Valium (diazepam) + alcohol = 🔴 additive CNS depression. Risk of dangerous sedation, respiratory depression. Even small amounts of alcohol can be potentiated. Clear, non-judgmental language.
-- **Cannabis + SSRIs**: Limited data, generally considered low-moderate risk. Cannabis may increase or decrease SSRI side effects unpredictably. Some evidence of additive sedation, mood effects. Flag 🟡.
+`,
+  },
+  {
+    id: "clinical-knowledge:biotin-lab-interference",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(biotin|lab (test|result)s?|blood (test|work)|tsh)\b/],
+    // biotin lab interference
+    text: `- **Biotin lab interference**: High-dose biotin (≥5,000 mcg) can distort thyroid labs (TSH, free T4), troponin, and other immunoassays. Stop biotin 48–72 hours before blood draws. Many practitioners and patients miss this.
+`,
+  },
+  {
+    id: "clinical-knowledge:ashwagandha-thyroid",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(ashwagandha|thyroid|hashimoto\w*|graves|hypothyroid\w*|hyperthyroid\w*|levothyroxine|synthroid)\b/],
+    // ashwagandha thyroid
+    text: `- **Ashwagandha + thyroid**: Ashwagandha may stimulate thyroid hormone production. In Hashimoto's patients on levothyroxine, this can unpredictably shift thyroid levels. Flag as 🟡 and suggest thyroid monitoring.
+`,
+  },
+  {
+    id: "clinical-knowledge:red-yeast-rice",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(red yeast|monacolin|lovastatin|statins?)\b/],
+    // red yeast rice
+    text: `- **Red yeast rice**: Contains monacolin K, which is chemically identical to lovastatin. Carries the same risks as a prescription statin: liver toxicity, CoQ10 depletion, myopathy. Patients should monitor liver enzymes and consider CoQ10 supplementation. If already on a statin, flag 🔴 doubled statin effect.
+`,
+  },
+  {
+    id: "clinical-knowledge:kava-hepatotoxicity",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(kava|liver|hepat\w*)\b/],
+    // kava hepatotoxicity
+    text: `- **Kava hepatotoxicity**: Kava supplements have been linked to severe liver damage including liver failure. When combined with other hepatotoxic substances (acetaminophen, alcohol, concentrated green tea extract), the cumulative liver burden is 🔴.
+`,
+  },
+  {
+    id: "clinical-knowledge:green-tea-extract",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(green tea|egcg|gte)\b/],
+    // green tea extract
+    text: `- **Green tea extract (concentrated/EGCG)**: High-dose GTE supplements (≠ drinking green tea) carry hepatotoxicity risk, especially on an empty stomach. Flag liver concern when combined with other hepatotoxic agents.
+`,
+  },
+  {
+    id: "clinical-knowledge:activated-charcoal",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(charcoal|detox|cleanse)\b/],
+    // activated charcoal
+    text: `- **Activated charcoal**: Binds and reduces absorption of medications taken within 1–2 hours. This includes birth control pills, thyroid meds, and most oral drugs. Daily use is NOT a safe "detox" — it can cause contraceptive failure or medication underperformance. Flag 🔴 with any critical medication.
+`,
+  },
+  {
+    id: "clinical-knowledge:cyp3a4-grapefruit",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(grapefruit|cyp ?3a4|seville orange|pomelo)\b/],
+    // cyp3a4 grapefruit
+    text: `- **CYP3A4 / grapefruit**: Grapefruit inhibits CYP3A4 enzyme, raising blood levels of many drugs including simvastatin, atorvastatin, quetiapine, buspirone, felodipine, cyclosporine, certain benzodiazepines. Dose-dependent — daily consumption is more concerning than occasional. Explain mechanism simply: "grapefruit blocks the enzyme that clears this drug, so levels build up."
+`,
+  },
+  {
+    id: "clinical-knowledge:berberine-metformin",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(berberine|metformin|blood sugar|glucose|hypoglyc\w*)\b/],
+    // berberine metformin
+    text: `- **Berberine + metformin**: Both lower blood glucose. Combining them increases hypoglycemia risk. Additionally, berberine inhibits CYP enzymes (CYP2D6, CYP3A4) which can affect drug metabolism. Flag 🟡 and suggest glucose monitoring.
+`,
+  },
+  {
+    id: "clinical-knowledge:ssri-discontinuation",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(ssris?|snris?|antidepressants?|sertraline|zoloft|fluoxetine|prozac|escitalopram|lexapro|citalopram|celexa|paroxetine|paxil|venlafaxine|effexor|duloxetine|cymbalta|discontinu\w*|withdrawal|brain zaps|5 htp|5 hydroxytryptophan|st john\w*)\b/],
+    // ssri discontinuation
+    text: `- **SSRI discontinuation syndrome**: Stopping an SSRI abruptly causes brain zaps, dizziness, irritability, nausea, insomnia. This is NOT the same as relapse. 5-HTP is NOT a safe substitute for an SSRI — it doesn't address the discontinuation and may cause serotonergic issues if the SSRI is still washing out. Always recommend the user contact their prescriber for a tapering plan.
+`,
+  },
+  {
+    id: "clinical-knowledge:isotretinoin-vitamin-a",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(isotretinoin|accutane|roaccutane|retinoid\w*|vitamin a|retinol|acne)\b/],
+    // isotretinoin vitamin a
+    text: `- **Isotretinoin + vitamin A**: Isotretinoin IS a retinoid (vitamin A derivative). Adding supplemental vitamin A on top is 🔴 hypervitaminosis A risk — can cause liver damage, intracranial pressure, severe birth defects. Strongly flag.
+`,
+  },
+  {
+    id: "clinical-knowledge:maoi-tyramine",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(maois?|phenelzine|tranylcypromine|selegiline|nardil|parnate|tyramine|aged cheese)\b/],
+    // maoi tyramine
+    text: `- **MAOI + tyramine**: MAOIs (phenelzine, tranylcypromine, selegiline) + tyramine-rich foods/supplements (aged cheese, fermented foods, protein powders with tyramine) = hypertensive crisis risk 🔴.
+`,
+  },
+  {
+    id: "clinical-knowledge:alcohol-benzodiazepines",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(alcohol|wine|beer|liquor|benzo\w*|xanax|alprazolam|klonopin|clonazepam|ativan|lorazepam|valium|diazepam|opioids?)\b/],
+    // alcohol benzodiazepines
+    text: `- **Alcohol + benzodiazepines**: Both are CNS depressants. Combining increases sedation, respiratory depression, and overdose risk. Flag 🔴.
+`,
+  },
+  {
+    id: "clinical-knowledge:cbd-clobazam",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(cbd|cannabidiol|clobazam|onfi|epidiolex|seizure\w*)\b/],
+    // cbd clobazam
+    text: `- **CBD + clobazam**: CBD inhibits CYP2C19, which metabolizes clobazam. This can significantly increase clobazam levels and cause excessive sedation. Flag 🟡–🔴.
+`,
+  },
+  {
+    id: "clinical-knowledge:kidney-disease-magnesium",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(kidney|renal|ckd|dialysis|gfr|creatinine|magnesium)\b/],
+    // kidney disease magnesium
+    text: `- **Kidney disease + magnesium**: Impaired kidneys cannot clear excess magnesium efficiently. Supplementing magnesium with CKD stages 3–5 can cause dangerous hypermagnesemia. Ask about kidney function before recommending magnesium.
+`,
+  },
+  {
+    id: "clinical-knowledge:bariatric-surgery",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(bariatric|gastric (bypass|sleeve|band)|roux|sleeve gastrectomy|weight loss surgery)\b/],
+    // bariatric surgery
+    text: `- **Bariatric surgery**: Post-bariatric patients have altered absorption (especially Roux-en-Y). Fat-soluble vitamins, iron, calcium, and B12 may need higher doses or different forms. Flag if mentioned.
+`,
+  },
+  {
+    id: "clinical-knowledge:spironolactone-potassium",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(spironolactone|aldactone|potassium|ace inhibitors?|arbs?|lisinopril|losartan|hyperkal\w*)\b/],
+    // spironolactone potassium
+    text: `- **Spironolactone + potassium**: Spironolactone is potassium-sparing. Adding potassium supplements = 🔴 hyperkalemia risk. Same applies to ACE inhibitors and ARBs.
+`,
+  },
+  {
+    id: "clinical-knowledge:iodine-thyroid-disease",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(iodine|kelp|seaweed|thyroid|hashimoto\w*|graves)\b/],
+    // iodine thyroid disease
+    text: `- **Iodine + thyroid disease**: Excess iodine can worsen Hashimoto's (trigger flares) and Graves'. Kelp/seaweed supplements often contain wildly variable iodine amounts. Upper limit 1,100 mcg/day. Flag with any thyroid condition.
+`,
+  },
+  {
+    id: "clinical-knowledge:elderly-sensitivity",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(elderly|older adults?|seniors?|aging)\b/],
+    // elderly sensitivity
+    text: `- **Elderly sensitivity**: Adults 65+ have reduced liver/kidney clearance, increased CNS sensitivity, and higher interaction risk. Polypharmacy (5+ meds) compounds this. Be more conservative with suggestions.
+`,
+  },
+  {
+    id: "clinical-knowledge:melatonin-in-pregnancy",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(melatonin|pregnan\w*|breastfeed\w*|nursing|trimester)\b/],
+    // melatonin in pregnancy
+    text: `- **Melatonin in pregnancy**: Limited safety data. Not recommended without provider guidance. Low-evidence, not necessarily dangerous, but the absence of evidence ≠ evidence of safety.
+`,
+  },
+  {
+    id: "clinical-knowledge:nsaid-chronic-use",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(nsaids?|ibuprofen|advil|motrin|naproxen|aleve|diclofenac|aspirin|celecoxib|meloxicam|pain killers?)\b/],
+    // nsaid chronic use
+    text: `- **NSAID chronic use risks**: Daily or long-term NSAID use (ibuprofen, naproxen, diclofenac) carries GI bleeding/ulcer risk, renal impairment (especially in elderly/CKD/dehydration), and cardiovascular risk at high doses. Acetaminophen may be a safer chronic alternative (with liver dose ceiling). Flag 🟡 and ask about duration and other meds.
+`,
+  },
+  {
+    id: "clinical-knowledge:ototoxic-medications",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(ototoxic|tinnitus|hearing|ringing in (my )?ears?|aspirin|furosemide|lasix|loop diuretics?|aminoglycosides?|gentamicin|cisplatin)\b/],
+    // ototoxic medications
+    text: `- **Ototoxic medications**: High-dose aspirin, loop diuretics (furosemide/Lasix), aminoglycosides (gentamicin), and cisplatin can cause tinnitus and hearing changes. Aspirin-induced tinnitus is usually reversible with dose reduction. Aminoglycoside-induced hearing loss may be permanent. If a user reports tinnitus alongside these meds, flag as 🟡 and advise contacting prescriber.
+`,
+  },
+  {
+    id: "clinical-knowledge:psilocybin-ssris",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(psilocybin|mushrooms?|psychedelics?|lsd|microdos\w*|ssris?|sertraline|zoloft|fluoxetine|prozac|escitalopram|lexapro|citalopram)\b/],
+    // psilocybin ssris
+    text: `- **Psilocybin + SSRIs**: Psilocybin is a 5-HT2A agonist with serotonergic activity. Combining with SSRIs/SNRIs carries serotonin risk (though lower than 5-HTP). Additionally, SSRIs may blunt the effects of psilocybin. Limited clinical data. Flag 🟡 and note that this is an understudied combination.
+`,
+  },
+  {
+    id: "clinical-knowledge:benzodiazepines-alcohol",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(alcohol|wine|beer|benzo\w*|xanax|alprazolam|klonopin|clonazepam|ativan|lorazepam|valium|diazepam)\b/],
+    // benzodiazepines alcohol
+    text: `- **Benzodiazepines + alcohol**: Xanax (alprazolam), Klonopin (clonazepam), Ativan (lorazepam), Valium (diazepam) + alcohol = 🔴 additive CNS depression. Risk of dangerous sedation, respiratory depression. Even small amounts of alcohol can be potentiated. Clear, non-judgmental language.
+`,
+  },
+  {
+    id: "clinical-knowledge:cannabis-ssris",
+    kind: "topic",
+    group: "clinical-knowledge",
+    triggers: [/\b(cannabis|marijuana|weed|thc|edibles?|ssris?|sertraline|zoloft|fluoxetine|prozac|escitalopram|lexapro|citalopram)\b/],
+    // cannabis ssris
+    text: `- **Cannabis + SSRIs**: Limited data, generally considered low-moderate risk. Cannabis may increase or decrease SSRI side effects unpredictably. Some evidence of additive sedation, mood effects. Flag 🟡.
 
 `,
   },

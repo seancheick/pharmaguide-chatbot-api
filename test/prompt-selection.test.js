@@ -57,7 +57,9 @@ async function ask(message) {
 }
 const systemOf = (messages) => messages.find((m) => m.role === "system").content;
 const selectedFor = (message, history = []) => selectSections({ message, history, entities: extractEntities(message, normalizeText(message)) });
-const topicIds = (message, history) => selectedFor(message, history).filter((s) => s.kind === "topic").map((s) => s.id);
+const itemIds = (message, history) => selectedFor(message, history).filter((s) => s.kind === "topic").map((s) => s.id);
+// A topic is a section or, for the large ones, a group of items: probes are written per topic.
+const topicIds = (message, history) => [...new Set(selectedFor(message, history).filter((s) => s.kind === "topic").map((s) => s.group || s.id))];
 
 // ── modes ──────────────────────────────────────────────────────────────────
 test("the default mode is full: every provider gets the whole prompt, exactly as before", async () => {
@@ -181,23 +183,116 @@ const PROBES = {
 };
 
 test("each topic is selected for questions about its own subject (hand-written probes, every topic covered)", () => {
-  const topics = SECTIONS.filter((s) => s.kind === "topic").map((s) => s.id);
-  assert.deepEqual(Object.keys(PROBES).sort(), [...topics].sort(), "a topic section has no probe: add one");
+  const topics = [...new Set(SECTIONS.filter((s) => s.kind === "topic").map((s) => s.group || s.id))];
+  assert.deepEqual(Object.keys(PROBES).sort(), [...topics].sort(), "a topic has no probe: add one");
   for (const [id, questions] of Object.entries(PROBES)) {
     for (const q of questions) assert.ok(topicIds(q).includes(id), `${id} was not selected for: ${q}`);
   }
 });
 
-test("each name in a section's own bold headings selects that section (recall from the prompt's own vocabulary)", () => {
+test("each name in a section's own bold headings selects that section; each item of a split section is selected by its own heading", () => {
   const SKIP = /^(key message|what it does|dosing|forms|timing|water|women|teenagers|vegetarians\/vegans|key context|tier \d.*|if on levothyroxine.*)$/i;
+  const firstBold = (text) => (text.match(/\*\*([^*\n]{2,60})\*\*/) || [])[1];
+  const clean = (t) => t.replace(/[:()]+$/, "").trim();
   for (const id of ["clinical-knowledge", "supplement-form-guide", "nutrient-depletion", "seasonal-allergy", "food-drug-interactions", "peptides", "vaginal-health"]) {
+    const items = SECTIONS.filter((s) => s.group === id && !s.groupHeader);
+    if (items.length) {
+      assert.ok(items.length >= 9, `${id}: expected a header plus several items`);
+      for (const item of items) {
+        const title = clean(firstBold(item.text) || "");
+        assert.ok(title, `${item.id} has no bold heading`);
+        assert.ok(itemIds(title).includes(item.id), `${item.id} was not selected for its own heading: "${title}"`);
+      }
+      continue;
+    }
     const section = SECTIONS.find((s) => s.id === id);
     // "Vitamin C" and "NAC" are headings inside the allergy section, but a question about them alone is not an allergy question.
     const generic = id === "seasonal-allergy" ? /^(vitamin c|nac)$/i : /(?!)/;
-    const titles = [...section.text.matchAll(/\*\*([^*\n]{2,60})\*\*/g)].map((m) => m[1].replace(/[:()]+$/, "").trim()).filter((t) => t && !SKIP.test(t) && !generic.test(t));
+    const titles = [...section.text.matchAll(/\*\*([^*\n]{2,60})\*\*/g)].map((m) => clean(m[1])).filter((t) => t && !SKIP.test(t) && !generic.test(t));
     assert.ok(titles.length >= 4, `${id}: expected several headings, found ${titles.length}`);
     for (const t of titles) assert.ok(topicIds(t).includes(id), `${id} was not selected for its own heading: "${t}"`);
   }
+});
+
+// ── split sections: only the items a question needs ────────────────────────
+// One plain question per item: the heading test above can pass through a neighbouring word, so each item
+// also has to be reachable by the way a person would actually ask about it.
+const ITEM_PROBES = {
+  "clinical-knowledge:biotin-lab-interference": "does biotin affect my results",
+  "clinical-knowledge:ashwagandha-thyroid": "is ashwagandha safe for me",
+  "clinical-knowledge:red-yeast-rice": "can I take red yeast rice",
+  "clinical-knowledge:kava-hepatotoxicity": "is kava safe",
+  "clinical-knowledge:green-tea-extract": "green tea extract for weight loss",
+  "clinical-knowledge:activated-charcoal": "should I take activated charcoal",
+  "clinical-knowledge:cyp3a4-grapefruit": "can I eat grapefruit with my meds",
+  "clinical-knowledge:berberine-metformin": "can I take berberine",
+  "clinical-knowledge:ssri-discontinuation": "I want to stop my zoloft",
+  "clinical-knowledge:isotretinoin-vitamin-a": "accutane and supplements",
+  "clinical-knowledge:maoi-tyramine": "I am on an maoi, what should I avoid",
+  "clinical-knowledge:alcohol-benzodiazepines": "xanax and a glass of wine",
+  "clinical-knowledge:cbd-clobazam": "is cbd oil okay with my seizure meds",
+  "clinical-knowledge:kidney-disease-magnesium": "I have kidney disease, which supplements are safe",
+  "clinical-knowledge:bariatric-surgery": "I had a gastric bypass, what vitamins do I need",
+  "clinical-knowledge:spironolactone-potassium": "I take spironolactone, can I take potassium",
+  "clinical-knowledge:iodine-thyroid-disease": "is kelp okay for my thyroid",
+  "clinical-knowledge:elderly-sensitivity": "supplements for elderly people",
+  "clinical-knowledge:melatonin-in-pregnancy": "can I take melatonin while pregnant",
+  "clinical-knowledge:nsaid-chronic-use": "I take ibuprofen every day",
+  "clinical-knowledge:ototoxic-medications": "ringing in my ears after aspirin",
+  "clinical-knowledge:psilocybin-ssris": "microdosing mushrooms while on an ssri",
+  "clinical-knowledge:benzodiazepines-alcohol": "lorazepam and beer",
+  "clinical-knowledge:cannabis-ssris": "weed with my antidepressant",
+  "supplement-form-guide:magnesium": "which magnesium is best", "supplement-form-guide:iron": "which iron is gentlest",
+  "supplement-form-guide:zinc": "best zinc to take", "supplement-form-guide:b12": "methylcobalamin or cyanocobalamin",
+  "supplement-form-guide:omega-3": "is krill oil better than fish oil", "supplement-form-guide:turmeric-curcumin": "does turmeric need piperine",
+  "supplement-form-guide:coq10": "ubiquinol or ubiquinone", "supplement-form-guide:vitamin-c": "is liposomal vitamin c worth it", "supplement-form-guide:calcium": "calcium citrate or carbonate",
+  "hormone-support:testosterone": "does tongkat ali raise testosterone", "hormone-support:estrogen-womens-balance": "does black cohosh help hot flashes",
+  "hormone-support:cortisol-stress-adrenal": "does rhodiola lower cortisol", "hormone-support:thyroid-support": "is selenium good for hashimoto's",
+  "nutrient-depletion:metformin": "does metformin lower b12", "nutrient-depletion:ppis": "what does omeprazole use up", "nutrient-depletion:statins": "do statins cause low coq10",
+  "nutrient-depletion:diuretics": "water pills and potassium", "nutrient-depletion:ssris": "can my zoloft lower my sodium", "nutrient-depletion:birth-control-pills": "supplements for women on the pill",
+  "nutrient-depletion:corticosteroids": "I'm on prednisone, what do I need", "nutrient-depletion:ace-inhibitors": "lisinopril and potassium supplements", "nutrient-depletion:antibiotics": "probiotics after amoxicillin",
+};
+
+test("every item of every split section is reachable by a plain question about it", () => {
+  const items = SECTIONS.filter((s) => s.group && !s.groupHeader).map((s) => s.id);
+  assert.deepEqual(Object.keys(ITEM_PROBES).sort(), [...items].sort(), "an item has no probe (or a probe names a missing item)");
+  for (const [id, question] of Object.entries(ITEM_PROBES)) assert.ok(itemIds(question).includes(id), `${id} was not selected for: ${question}`);
+});
+
+
+test("a question about one supplement gets that block of the form guide, not the whole guide", () => {
+  const ids = itemIds("which form of magnesium is best");
+  assert.ok(ids.includes("supplement-form-guide:magnesium"));
+  for (const other of ["iron", "zinc", "b12", "omega-3", "turmeric-curcumin", "coq10", "vitamin-c", "calcium"]) {
+    assert.ok(!ids.includes(`supplement-form-guide:${other}`), `the ${other} block should not be sent`);
+  }
+});
+
+test("a group's header comes with any selected item of its group, and is never sent alone", () => {
+  const groups = [...new Set(SECTIONS.filter((s) => s.group).map((s) => s.group))];
+  assert.deepEqual(groups.sort(), ["clinical-knowledge", "hormone-support", "nutrient-depletion", "supplement-form-guide"]);
+  for (const message of [...QUESTIONS, "which form of magnesium is best", "does metformin deplete b12", "kava and the liver", "testosterone and zinc"]) {
+    const ids = selectedFor(message).map((s) => s.id);
+    for (const g of groups) {
+      const hasHeader = ids.includes(`${g}:header`);
+      const hasItem = ids.some((id) => id.startsWith(`${g}:`) && id !== `${g}:header`);
+      assert.equal(hasHeader, hasItem, `${g}: header ${hasHeader ? "sent without an item" : "missing for a selected item"} for: ${message.slice(0, 40)}`);
+    }
+  }
+});
+
+test("detected populations select the elderly and pregnancy items even when the words are not in the question", () => {
+  const forPopulation = (population) => selectSections({ message: "is this okay for my dad", entities: { populations: [population] } }).map((s) => s.id);
+  assert.ok(forPopulation("elderly").includes("clinical-knowledge:elderly-sensitivity"));
+  assert.ok(!forPopulation("elderly").includes("clinical-knowledge:melatonin-in-pregnancy"));
+  assert.ok(forPopulation("pregnancy").includes("clinical-knowledge:melatonin-in-pregnancy"));
+});
+
+test("a generic 'deplete' or 'hormone' question gets every item of that guide, as before the split", () => {
+  const depletion = itemIds("what does my medication deplete").filter((id) => id.startsWith("nutrient-depletion:") && !id.endsWith(":header"));
+  assert.equal(depletion.length, 9);
+  const hormones = itemIds("tell me about hormones and supplements").filter((id) => id.startsWith("hormone-support:") && !id.endsWith(":header"));
+  assert.equal(hormones.length, 4);
 });
 
 test("a question in an earlier turn keeps its topic for a short follow-up", () => {
@@ -207,10 +302,10 @@ test("a question in an earlier turn keeps its topic for a short follow-up", () =
 });
 
 // ── what it buys ───────────────────────────────────────────────────────────
-test("on realistic questions the slim prompt is about a third of the full one", () => {
+test("on realistic questions the slim prompt is about a quarter of the full one", () => {
   const real = QUESTIONS.filter((q) => q && q.length < 200);
   const sizes = real.map((message) => buildSystemPrompt({ message, entities: extractEntities(message, normalizeText(message)), mode: "selective" }).length);
   const average = sizes.reduce((a, b) => a + b, 0) / sizes.length;
-  assert.ok(average < SYSTEM_PROMPT.length * 0.4, `average slim prompt is ${Math.round(average / SYSTEM_PROMPT.length * 100)}% of the full prompt`);
-  assert.ok(Math.max(...sizes) < SYSTEM_PROMPT.length * 0.7, "even the largest slim prompt (a six-item stack review) stays well under the full prompt");
+  assert.ok(average < SYSTEM_PROMPT.length * 0.3, `average slim prompt is ${Math.round(average / SYSTEM_PROMPT.length * 100)}% of the full prompt`);
+  assert.ok(Math.max(...sizes) < SYSTEM_PROMPT.length * 0.5, "even the largest slim prompt (a six-item stack review) stays under half of the full prompt");
 });
