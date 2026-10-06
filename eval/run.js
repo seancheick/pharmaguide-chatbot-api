@@ -133,7 +133,7 @@ function report(results, meta) {
   const limit = Number(option("--limit", "0")) || dependent.length;
   const run = dependent.slice(0, limit);
   const calls = run.length * models.length;
-  const promptTokens = process.env.PG_PROMPT_MODE === "selective" ? 3400 : 11000; // measured: the slim prompt averages about 3.4K tokens
+  const promptTokens = process.env.PG_PROMPT_MODE === "selective" ? 2500 : 11000; // measured: the slim prompt averages about 2.5K tokens
   const estimate = models.reduce((sum, m) => sum + run.length * ((promptTokens * m.price.in + 400 * m.price.out) / 1e6), 0);
 
   console.log(`${run.length} model-dependent cases (${gated.length} gate-answered, skipped) x ${models.length} models = ${calls} calls`);
