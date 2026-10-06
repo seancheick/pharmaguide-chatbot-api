@@ -58,7 +58,7 @@ A production decision-and-explanation system for high-stakes supplement–medica
 | Safety-policy domains | 21 |
 | Post-response validator rules | 8 |
 | Pinned production canaries (replayable live) | 9 (8) |
-| Test suites | 24 |
+| Test suites | 25 |
 <!-- metrics:end -->
 
 *That table is generated from the code by `scripts/readme_metrics.js`; `npm test` fails if it drifts.*
