@@ -360,19 +360,24 @@ function mentionsStandaloneFatSoluble(text) {
   return /\b(vitamin\s*d|vit\s*d|d3|vitamin\s*a|retinol|vitamin\s*e|vitamin\s*k|50\s*0{3}\s*(iu|ui)|iron\s*supplement|extra\s*iron|ferrous)\b/.test(t);
 }
 
+// Substances the liver-toxicity gate counts. One list: the gate's reply names what it finds here.
+const HEPATOTOXINS = [
+  { id: "kava", re: /\b(kava)\b/ },
+  { id: "green_tea_extract", re: /\b(green\s*tea\s*extract|gte|egcg)\b/ },
+  { id: "acetaminophen", re: /\b(acetaminophen|tylenol|paracetamol)\b/ },
+  { id: "alcohol", re: /\b(alcohol|drink(s|ing)?\s*(socially|alcohol|beer|wine|heavily|occasionally|daily|weekly|nightly)|beers?|wines?|cocktails?|liquor|bourbon|whiskey|vodka)\b/ },
+  { id: "niacin", re: /\b(niacin|nicotinic\s*acid)\b/ },
+];
+
+/** Ids of the liver-stressing substances named in the text, in HEPATOTOXINS order. */
+function hepatotoxinsIn(text) {
+  const t = normalizeText(text);
+  return HEPATOTOXINS.filter((h) => h.re.test(t)).map((h) => h.id);
+}
+
 function detectsLiverToxicityStack(text) {
   const t = normalizeText(text);
-  const hepatotoxins = [
-    /\b(kava)\b/,
-    /\b(green\s*tea\s*extract|gte|egcg)\b/,
-    /\b(acetaminophen|tylenol|paracetamol)\b/,
-    /\b(alcohol|drink(s|ing)?\s*(socially|alcohol|beer|wine|heavily|occasionally|daily|weekly|nightly)|beers?|wines?|cocktails?|liquor|bourbon|whiskey|vodka)\b/,
-    /\b(niacin|nicotinic\s*acid)\b/,
-  ];
-  let count = 0;
-  for (const p of hepatotoxins) {
-    if (p.test(t)) count++;
-  }
+  const count = hepatotoxinsIn(text).length;
   if (count >= 2) return true;
   if (count >= 1 && /\b(liver\s*(damage|failure|injur\w*|toxicit\w*|problems?|harm|issues?)|hepatotoxic\w*|hepatitis)\b/.test(t)) return true;
   return false;
@@ -410,7 +415,7 @@ function detectsPotassiumACEi(text) {
 
 function detectsIodineThyroid(text) {
   const t = normalizeText(text);
-  const iodine = /\b(iodine|iodide|kelp\s*supplements?|sea\s*kelp|bladderwrack)\b/.test(t);
+  const iodine = /\b(iodine|iodide|kelp(?:\s*supplements?)?|sea\s*kelp|bladderwrack)\b/.test(t);
   const thyroid = /\b(thyroid(ism)?|hashimoto.?s?|graves|hypothyroid(ism)?|hyperthyroid(ism)?|levothyroxine|synthroid|armour thyroid|tirosint)\b/.test(t);
   return iodine && thyroid;
 }
@@ -666,6 +671,7 @@ function detectWellnessGoal(text) {
 }
 
 module.exports = {
+  hepatotoxinsIn,
   isEmergency,
   isGreeting,
   isThanks,
