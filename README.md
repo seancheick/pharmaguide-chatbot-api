@@ -58,7 +58,7 @@ A production decision-and-explanation system for high-stakes supplement–medica
 | Safety-policy domains | 21 |
 | Post-response validator rules | 8 |
 | Pinned production canaries (replayable live) | 9 (8) |
-| Test suites | 27 |
+| Test suites | 28 |
 <!-- metrics:end -->
 
 *That table is generated from the code by `scripts/readme_metrics.js`; `npm test` fails if it drifts.*
@@ -335,7 +335,7 @@ This service currently carries its own bounded knowledge layer. The planned arch
 |---|---|
 | Done | Deterministic routing, validator, multi-provider failover with soft-failure handling, privacy hardening, CI, production canaries and smoke workflow, generated README metrics, an enforced release gate (CI and deploy) with a 30-day claim-expiry warning, ruleset and knowledge versions reported by `/api/health` and an `X-PG-Ruleset` response header, a model-evaluation harness (`eval/`) |
 | Planned | Measured model selection: run the evaluation across the candidate models and choose on the results |
-| In progress | Dynamic clinical context assembly: a small invariant policy prompt plus retrieved context, instead of a large always-on prompt. Step 1 is done: the prompt is stored as core (always-on rules) and topic (domain guidance) sections, pinned byte-identical to the production prompt |
+| In progress | Dynamic clinical context assembly: a small invariant policy prompt plus retrieved context, instead of a large always-on prompt. Done: the prompt is stored as core (always-on rules) and topic (domain guidance) sections, pinned byte-identical to the production prompt, and topic sections can be selected per question behind `PG_PROMPT_MODE` (off by default; about a third of the tokens on realistic questions). Not done: the measured comparison against the full prompt, which decides whether it becomes the default |
 | Planned | Consume the pipeline's versioned clinical export; retire overlapping facts from this repository |
 
 See [`ROADMAP.md`](./ROADMAP.md) for the longer plan.
@@ -415,6 +415,7 @@ Runtime: Node.js ≥ 18 on Vercel serverless functions (no build step). Dependen
 | `RATE_LIMIT_SALT` (optional) | Key for the one-way hash of visitor addresses; falls back to `ANALYTICS_SALT`, then the Upstash token |
 | `PG_PROXY_SECRET` | Shared secret the website proxy sends as `x-pg-proxy-secret` (with the visitor address as `x-pg-client-ip`) |
 | `PG_REQUIRE_PROXY_SECRET` | `true` rejects every caller without the secret (401). Set only after the proxy sends it. Ignored, with a logged error, if `PG_PROXY_SECRET` is missing |
+| `PG_PROMPT_MODE` | `full` (default): the whole system prompt for every provider. `selective`: the always-on rules plus only the topic sections a question touches, for every provider. `fallback`: full prompt for Gemini, the slim one only for the Groq fallback (whose free-tier token limit the full prompt exceeds). An unknown value means `full` |
 | `ANALYTICS_ENABLED`, `ANALYTICS_SALT` | Optional PHI-free analytics |
 
 Useful commands:

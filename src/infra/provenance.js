@@ -12,6 +12,7 @@ const { getPolicyVersion } = require("../config/safetyPolicy");
 const { APPROVED_CLAIMS } = require("../config/approvedClaims");
 const knowledgeBase = require("../config/knowledgeBase");
 const gateDefinitions = require("../gates/gates.json");
+const { promptMode } = require("../core/promptAssembly");
 
 const sha = (value) => crypto.createHash("sha256").update(value).digest("hex").slice(0, 12);
 
@@ -21,6 +22,7 @@ const provenance = Object.freeze({
   policy_version: getPolicyVersion(),
   gates_version: gateDefinitions._version,
   system_prompt_hash: systemPromptHash,
+  prompt_mode: promptMode(),
   knowledge: { entries: knowledgeEntries.length, hash: sha(JSON.stringify(knowledgeEntries)) },
   claims: { count: Object.keys(APPROVED_CLAIMS).length, hash: sha(JSON.stringify(APPROVED_CLAIMS)) },
   commit: (process.env.VERCEL_GIT_COMMIT_SHA || "").slice(0, 7) || null,
@@ -39,6 +41,7 @@ function rulesetTag() {
     `prompt=${p.system_prompt_hash}`,
     `kb=${p.knowledge.hash}`,
     `claims=${p.claims.hash}`,
+    `mode=${p.prompt_mode}`,
     ...(p.commit ? [`commit=${p.commit}`] : []),
   ].join("; ");
 }

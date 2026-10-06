@@ -11,6 +11,7 @@
 const { setCors } = require("../src/config/cors");
 const { SYSTEM_PROMPT } = require("../src/config/systemPrompt");
 const { rulesetTag, systemPromptHash } = require("../src/infra/provenance");
+const { promptMode, buildSystemPrompt, promptHash } = require("../src/core/promptAssembly");
 const { normalizeText } = require("../src/core/normalize");
 const { sanitizeHistory, getConversationContext, extractConversationState, mergeStateIntoEntities } = require("../src/core/history");
 const { extractEntities, extractKnownItems } = require("../src/core/entities");
@@ -278,8 +279,12 @@ module.exports = async function handler(req, res) {
     let complexityHint = scoreComplexity(message, entities, 0, convoContext);
     if (hasWellnessIntent) complexityHint = Math.min(5, complexityHint + 1);
 
+    // PG_PROMPT_MODE (default "full"): which sections of the system prompt this question needs.
+    const mode = promptMode();
+    const slimPrompt = mode === "full" ? null : buildSystemPrompt({ message, history: safeHistory, entities, mode: "selective" });
+
     const { messages, kbHits } = buildAugmentedMessages(
-      SYSTEM_PROMPT,
+      mode === "selective" ? slimPrompt : SYSTEM_PROMPT,
       safeHistory,
       message,
       entities,
@@ -312,7 +317,7 @@ module.exports = async function handler(req, res) {
     }
 
     // ── Cache check ──
-    const cacheKey = buildCacheKey(message, systemPromptHash, "multi-provider");
+    const cacheKey = buildCacheKey(message, mode === "selective" ? promptHash(slimPrompt) : systemPromptHash, "multi-provider");
     // Read the cache only for requests that would also be allowed to WRITE it: the
     // entry is keyed on the message alone, so a pregnant user's follow-up must never be
     // answered with a stranger's generic reply to the same words.
@@ -340,7 +345,7 @@ module.exports = async function handler(req, res) {
       console.log(`[TOKEN EST] ~${estTokens} input tokens | history: ${safeHistory.length} msgs | KB hits: ${kbHits} | complexity: ${complexity}`);
     }
 
-    const llmResult = await callWithFallback(finalMessages, { complexity, entities, kbHits });
+    const llmResult = await callWithFallback(finalMessages, { complexity, entities, kbHits, ...(mode === "fallback" ? { slimSystemPrompt: slimPrompt } : {}) });
 
     if (llmResult.degraded) {
       recordAnalytics({
@@ -437,7 +442,9 @@ module.exports = async function handler(req, res) {
     }
 
     // ── Cache store (only if safe and cacheable) ──
-    if (isCacheable(message, entities, hasConversation, llmValidation, "llm", scores)) {
+    // An answer written from the slim fallback prompt is not stored under the full prompt's key.
+    const slimServed = mode === "fallback" && llmResult.provider === "groq";
+    if (!slimServed && isCacheable(message, entities, hasConversation, llmValidation, "llm", scores)) {
       setCachedResponse(cacheKey, reply);
     }
 
