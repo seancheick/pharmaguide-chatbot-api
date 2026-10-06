@@ -4,9 +4,21 @@
  */
 
 const { BRAND_TO_GENERIC } = require("./unknownResolver");
+const { GROUPS } = require("../config/drugGroups");
 
-// ── Med class lookup ──
-const MED_CLASS_MAP = {
+// Classes the gates also use come from their one owner (src/config/drugGroups.js), so a drug cannot be
+// an anticoagulant here and an antiplatelet there (clopidogrel and aspirin were "anticoagulant" here).
+// Only plain names are classes' keys; regex fragments such as "nsaids?" are class words, not drugs.
+const GROUP_CLASS = {
+  NSAIDS: "NSAID", ASPIRIN: "antiplatelet", ANTICOAGULANTS: "anticoagulant", ANTIPLATELETS: "antiplatelet",
+  ACE_INHIBITORS: "ACEi_ARB", ARBS: "ACEi_ARB", POTASSIUM_SPARING: "MRA", STATINS: "statin", BENZODIAZEPINES: "benzodiazepine",
+};
+const FROM_GROUPS = Object.fromEntries(
+  Object.entries(GROUP_CLASS).flatMap(([group, cls]) => GROUPS[group].filter((t) => /^[a-z][a-z ]*$/.test(t)).map((name) => [name, cls]))
+);
+
+// ── Med class lookup: the classes drugGroups does not cover, then the group-derived ones ──
+const LOCAL_MED_CLASS_MAP = {
   // SSRI
   sertraline: "SSRI", zoloft: "SSRI", fluoxetine: "SSRI", prozac: "SSRI",
   escitalopram: "SSRI", lexapro: "SSRI", citalopram: "SSRI", celexa: "SSRI",
@@ -29,22 +41,8 @@ const MED_CLASS_MAP = {
   // Stimulant
   adderall: "stimulant", ritalin: "stimulant", concerta: "stimulant",
   vyvanse: "stimulant", modafinil: "stimulant", methylphenidate: "stimulant",
-  // Statin
-  atorvastatin: "statin", lipitor: "statin", simvastatin: "statin",
-  rosuvastatin: "statin", pravastatin: "statin",
-  // Anticoagulant
-  warfarin: "anticoagulant", coumadin: "anticoagulant",
-  eliquis: "anticoagulant", xarelto: "anticoagulant",
-  aspirin: "anticoagulant", clopidogrel: "anticoagulant",
-  dabigatran: "anticoagulant", pradaxa: "anticoagulant",
-  edoxaban: "anticoagulant",
-  // ACEi/ARB
-  lisinopril: "ACEi_ARB", losartan: "ACEi_ARB",
-  valsartan: "ACEi_ARB", olmesartan: "ACEi_ARB", telmisartan: "ACEi_ARB",
   // CCB
   amlodipine: "CCB", norvasc: "CCB",
-  // MRA
-  spironolactone: "MRA",
   // Beta blocker
   metoprolol: "beta_blocker", propranolol: "beta_blocker",
   // Thyroid
@@ -61,12 +59,6 @@ const MED_CLASS_MAP = {
   pregabalin: "anticonvulsant", lyrica: "anticonvulsant",
   // Corticosteroid
   prednisone: "corticosteroid", prednisolone: "corticosteroid",
-  // Benzodiazepine
-  alprazolam: "benzodiazepine", xanax: "benzodiazepine",
-  clonazepam: "benzodiazepine", klonopin: "benzodiazepine",
-  lorazepam: "benzodiazepine", ativan: "benzodiazepine",
-  diazepam: "benzodiazepine", valium: "benzodiazepine",
-  temazepam: "benzodiazepine", midazolam: "benzodiazepine",
   // Diuretic
   furosemide: "diuretic", lasix: "diuretic",
   hydrochlorothiazide: "diuretic", hctz: "diuretic",
@@ -77,9 +69,6 @@ const MED_CLASS_MAP = {
   metronidazole: "antibiotic", fluconazole: "antifungal",
   // Analgesic
   tramadol: "opioid_analgesic",
-  // NSAID
-  ibuprofen: "NSAID", naproxen: "NSAID", diclofenac: "NSAID",
-  celecoxib: "NSAID", meloxicam: "NSAID", indomethacin: "NSAID",
   // Acetaminophen
   acetaminophen: "acetaminophen", tylenol: "acetaminophen",
   // Hormonal
@@ -95,6 +84,7 @@ const MED_CLASS_MAP = {
   hydroxyzine: "antihistamine_sedating",
   desloratadine: "antihistamine", clarinex: "antihistamine",
 };
+const MED_CLASS_MAP = { ...LOCAL_MED_CLASS_MAP, ...FROM_GROUPS };
 
 // ── Supp class lookup ──
 const SUPP_CLASS_MAP = {

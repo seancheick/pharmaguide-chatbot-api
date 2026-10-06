@@ -26,11 +26,11 @@ function scoreRisks(entities, normalizedText, convoContext) {
   let bleeding_risk = 0;
   if (detection.mentionsAnticoagulantRiskSupplement(ctx)) {
     bleeding_risk = 1;
-    if (detection.mentionsBloodThinner(ctx) || medClasses.has("anticoagulant")) bleeding_risk = 2;
+    if (detection.mentionsBloodThinner(ctx) || medClasses.has("anticoagulant") || medClasses.has("antiplatelet")) bleeding_risk = 2;
     if (bleeding_risk >= 2 && /\bnattokinase\b/.test(normalizeText(ctx))) bleeding_risk = 3;
   }
   // Ginkgo with anticoagulants (via classifier)
-  if (suppClasses.has("other_supp") && /\bginkgo\b/.test(normalizeText(ctx)) && medClasses.has("anticoagulant")) {
+  if (suppClasses.has("other_supp") && /\bginkgo\b/.test(normalizeText(ctx)) && (medClasses.has("anticoagulant") || medClasses.has("antiplatelet"))) {
     bleeding_risk = Math.max(bleeding_risk, 2);
   }
 
