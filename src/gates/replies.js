@@ -289,29 +289,43 @@ function supplementStackingReply() {
   ].join("\n");
 }
 
+// The gate also fires for one substance plus a liver concern ("I take kava, could that cause liver
+// injury?"), so the wording follows what was named. The FDA 2002 advisory is about kava: it is cited
+// on the kava line, not on every combination.
+const LIVER_LINES = {
+  kava: "• **Kava** has been linked to severe liver damage including liver failure in rare cases. *(FDA Safety Communication, 2002)*",
+  green_tea_extract: "• **Concentrated green tea extract** (not the same as drinking green tea) carries hepatotoxicity risk, especially on an empty stomach.",
+  acetaminophen: "• **Acetaminophen (Tylenol)** is the #1 cause of acute liver failure when overused. Daily use + other liver stressors compounds this.",
+  alcohol: "• **Alcohol** adds to liver burden and reduces the liver's ability to process other substances safely.",
+  niacin: "• **High-dose niacin** can cause liver enzyme elevation.",
+};
+
 function liverToxicityReply(text) {
-  const t = normalizeText(text);
-  const hasKava = /\bkava\b/.test(t);
-  const hasGTE = /\b(green\s*tea\s*extract|gte|egcg)\b/.test(t);
-  const hasAcetaminophen = /\b(acetaminophen|tylenol|paracetamol)\b/.test(t);
-  const hasAlcohol = /\b(alcohol|drink(s|ing)?\s*(socially|alcohol|beer|wine|heavily|occasionally|daily|weekly|nightly)|beer|wine|cocktail)\b/.test(t);
+  const found = detection.hepatotoxinsIn(text);
+  const several = found.length >= 2;
 
   const lines = [
-    "**🔴 You're combining multiple substances that can stress the liver.** *(FDA Safety Communication, 2002)* Each one on its own may be manageable, but together the cumulative burden increases the risk of liver damage.",
+    several
+      ? "**🔴 You're combining multiple substances that can stress the liver.** Each one on its own may be manageable, but together the cumulative burden increases the risk of liver damage."
+      : "**🔴 This can stress the liver.**",
+    "",
+    ...found.map((id) => LIVER_LINES[id]),
     "",
   ];
 
-  if (hasKava) lines.push("• **Kava** has been linked to severe liver damage including liver failure in rare cases.");
-  if (hasGTE) lines.push("• **Concentrated green tea extract** (not the same as drinking green tea) carries hepatotoxicity risk, especially on an empty stomach.");
-  if (hasAcetaminophen) lines.push("• **Acetaminophen (Tylenol)** is the #1 cause of acute liver failure when overused. Daily use + other liver stressors compounds this.");
-  if (hasAlcohol) lines.push("• **Alcohol** adds to liver burden and reduces the liver's ability to process other substances safely.");
-
-  lines.push(
-    "",
-    "• **Do not combine these without your provider's awareness.** If you're taking Tylenol daily, your prescriber should know about any other hepatotoxic supplements.",
-    "",
-    "**How often do you take each of these**, and for how long have you been on this combo?"
-  );
+  if (several) {
+    lines.push(
+      "• **Do not combine these without your provider's awareness.** If you're taking Tylenol daily, your prescriber should know about any other hepatotoxic supplements.",
+      "",
+      "**How often do you take each of these**, and for how long have you been on this combo?"
+    );
+  } else {
+    lines.push(
+      "• **Tell your provider** you take it, especially if you also use Tylenol, drink alcohol, or take other supplements that affect the liver.",
+      "",
+      "**How often do you take it**, and for how long?"
+    );
+  }
 
   return lines.join("\n");
 }

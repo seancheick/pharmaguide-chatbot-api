@@ -51,14 +51,14 @@ A production decision-and-explanation system for high-stakes supplement–medica
 |---|---:|
 | Deterministic response routes | 41 |
 | Declarative (data-driven) safety gates | 12 |
-| Detection functions | 59 |
+| Detection functions | 60 |
 | Clinical knowledge entries | 102 |
 | Curated source references | 31 |
 | Approved clinical claims (with review dates) | 21 |
 | Safety-policy domains | 21 |
 | Post-response validator rules | 8 |
 | Pinned production canaries (replayable live) | 10 (9) |
-| Test suites | 31 |
+| Test suites | 32 |
 <!-- metrics:end -->
 
 *That table is generated from the code by `scripts/readme_metrics.js`; `npm test` fails if it drifts.*
