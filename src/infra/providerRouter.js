@@ -11,6 +11,7 @@
  */
 
 const gemini = require("./geminiClient");
+const { recordLlmSuccess, recordLlmFailure } = require("./llmStatus");
 const groqClient = require("./groqClient");
 const { allowRequest: allowGroq, recordSuccess: groqSuccess, recordFailure: groqFailure } = require("./circuitBreaker");
 const { allowRequest: allowGemini, recordSuccess: geminiSuccess, recordFailure: geminiFailure } = require("./geminiCircuitBreaker");
@@ -136,16 +137,10 @@ async function callWithFallback(messages, opts = {}) {
       console.warn(`[PROVIDER] ${provider.name} skipped: chain time budget used up`);
       continue;
     }
+    let result;
     try {
-      const result = await provider.call(messages, { ...params, timeoutMs: Math.min(provider.timeoutMs, remaining), slimSystemPrompt: opts.slimSystemPrompt });
+      result = await provider.call(messages, { ...params, timeoutMs: Math.min(provider.timeoutMs, remaining), slimSystemPrompt: opts.slimSystemPrompt });
       provider.onSuccess();
-      return {
-        text: result.text,
-        provider: provider.name,
-        modelId: provider.modelId,
-        usage: result.usage || {},
-        degraded: false,
-      };
     } catch (err) {
       // A soft failure (answer cut off / blocked / empty) is not an outage:
       // try the next provider but do not push this one toward an open circuit.
@@ -158,12 +153,23 @@ async function callWithFallback(messages, opts = {}) {
       });
       // Always-on log so failures show in Vercel Functions tab.
       console.warn(`[PROVIDER] ${provider.name} failed: ${reason}`);
-      // Continue to next provider
+      continue; // next provider
     }
+    // Outside the try: the status write is bounded and never rejects, but an answer must never be
+    // discarded because of it. Awaited so the record is not lost when the function freezes after replying.
+    await recordLlmSuccess(provider.name);
+    return {
+      text: result.text,
+      provider: provider.name,
+      modelId: provider.modelId,
+      usage: result.usage || {},
+      degraded: false,
+    };
   }
 
   // All providers failed → degraded response
   console.warn(`[PROVIDER] all providers exhausted. attempts=${JSON.stringify(attempts)} skipped=${JSON.stringify(skipped)}`);
+  await recordLlmFailure(attempts, skipped);
   return {
     text: getDegradedResponse("llm_error"),
     provider: "degraded",

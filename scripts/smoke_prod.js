@@ -58,6 +58,22 @@ async function runCanary(canary) {
   return canary.check(results);
 }
 
+// What /api/health says about the AI path. With the proxy secret (the GitHub run has it) it also names the
+// provider and HTTP status of the last all-providers-failed event, e.g. "gemini 402", which is the cause
+// of a failing canary, not just the symptom.
+async function aiStatusLine() {
+  try {
+    const res = await fetch(`${BASE}/api/health`, { headers: HEADERS, signal: AbortSignal.timeout(10000) });
+    const j = await res.json();
+    if (!j.llm) return "AI status: not reported (this deployment predates the status record)";
+    const f = j.llm.last_failure;
+    const detail = f ? ` · last all-providers-failed ${f.at} [${(f.attempts || []).map((a) => `${a.provider} ${a.status === null ? "n/a" : a.status}`).join(", ") || "no attempt: circuits open"}]` : "";
+    return `AI status: ${j.llm.state} · last answer ${j.llm.last_success || "not recorded"}${detail}`;
+  } catch (e) {
+    return `AI status: unavailable (${e.message})`;
+  }
+}
+
 (async () => {
   const live = CANARIES.filter((c) => !c.inProcessOnly);
   console.log(`Smoke test against ${BASE} (${live.length} canaries; ${CANARIES.length - live.length} in-process-only skipped)`);
@@ -72,7 +88,8 @@ async function runCanary(canary) {
       console.log(`FAIL  ${canary.id}\n      - request error: ${e.message}`);
     }
   }
-  console.log(`\nServing: ${servingRuleset || "(no X-PG-Ruleset header: deployment predates it)"}`);
+  console.log(`\n${await aiStatusLine()}`);
+  console.log(`Serving: ${servingRuleset || "(no X-PG-Ruleset header: deployment predates it)"}`);
   console.log(failed === 0 ? "All canaries passed." : `${failed} canary(ies) FAILED.`);
   process.exit(failed === 0 ? 0 : 1);
 })();

@@ -58,7 +58,7 @@ A production decision-and-explanation system for high-stakes supplement–medica
 | Safety-policy domains | 21 |
 | Post-response validator rules | 8 |
 | Pinned production canaries (replayable live) | 9 (8) |
-| Test suites | 28 |
+| Test suites | 29 |
 <!-- metrics:end -->
 
 *That table is generated from the code by `scripts/readme_metrics.js`; `npm test` fails if it drifts.*
@@ -248,7 +248,7 @@ Every reproduced production defect becomes a permanent regression case, and the 
 
 ## Observability
 
-- `GET /api/health`: provider configuration, circuit-breaker state, the provider that would serve the next request, and a `ruleset` block (the versions and content hashes of the policy, gates, prompt, knowledge base and claims, plus the deployed commit).
+- `GET /api/health`: provider configuration, circuit-breaker state, the provider that would serve the next request, and a `ruleset` block (the versions and content hashes of the policy, gates, prompt, knowledge base and claims, plus the deployed commit). It also reports whether the AI path is *actually answering* (`llm.state`: `ok`, `failing` or `unknown`, with the last answer time), recorded by the provider chain in the shared store; a caller holding the proxy secret additionally sees which provider failed and with what HTTP status (for example a depleted prepaid balance), so billing detail is not public. The smoke test prints the same line.
 - `GET /api/gaps`: coverage-gap telemetry from real traffic (keyword clusters only, 30-day retention, never raw messages).
 - Structured log lines for provider failover (`[PROVIDER]`), validator decisions (`[VALIDATOR]`) and degraded modes.
 - Optional PHI-free analytics: route distribution, validator rejections, degraded and cache rates, latency buckets, retry and repeat rates, medication and supplement classes.
