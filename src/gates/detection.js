@@ -195,6 +195,10 @@ function intentScore(text) {
   if (/\b(what\s+(helps?|works?|is good|is better)(\s+(for|with))?|natural\s+(treatment|remed(y|ies)|cure|alternative|option|way)|home\s*remed|best\s+(for|thing for|supplement|vitamin)|how\s+to\s+(treat|prevent|cure|heal|fix|manage|relieve|boost|improve|support|detox|cleanse|flush|recover)|supplement\s+for|probiotic\s+for|any(thing)?\s+(for|to help|that helps?|i can take|natural)|what\s+(can|should)\s+i\s+take(\s+for)?|what\s+to\s+(take|do)\s+for|good\s+for\s+(you|health|skin|hair|sleep|energy|immune|gut|brain|focus)|is .{1,30} (good|worth|legit|effective)|difference\s+between|vs\s|which\s+is\s+better|could\s+i\s+be\s+deficien|am\s+i\s+deficien|maybe\s+i.{0,5}deficien|i\s+might\s+be\s+deficien|what should i (avoid|worry|know)|anything i should (worry|know|avoid|take)|what do i need|do i need|should i (worry|be concerned|take)|i was prescribed|just got (back from|out of) (the )?(doctor|hospital|er|urgent)|pharmacist (said|told|recommended)|doctor (said|told|recommended|wants)|my (bloodwork|labs?|results?) (show|came back)|what should a .{1,20} (take|woman|man|year old)|i m (vegan|vegetarian|plant based|on keto|doing keto|doing intermittent|on a diet)|recovering from|i have (long )?covid|cheapest|generic vs|brand vs|whats the difference between)/.test(t)) score += 2;
   if (/\b(how about|what about|what if|and also|but what|can i also|should i also|instead of|rather than|you said|you mentioned|my results?|my levels?|my blood\s?work|my labs?|the results?|the levels?|i take|i took|i m on|i m taking|i started|i stopped|am i good|is that ok|is that bad|is this bad)\b/.test(t)) score += 1;
   if (t.split(/\s+/).length <= 5) score += 1;
+  // Describing a symptom is in scope even with no product named: "my heart is racing at 180 and I feel
+  // faint" used to get the off-topic reply (with example supplement questions), while "I feel dizzy and
+  // my left arm is tingling" reached the answer path. The answer path can point to care.
+  if (mentionsHeartSymptoms(text) || mentionsNonEmergencySymptom(text)) score += 2;
   return score;
 }
 
@@ -240,7 +244,7 @@ function mentionsBloodThinner(text) {
 
 function mentionsNonEmergencySymptom(text) {
   const t = normalizeText(text);
-  return /\b(palpitat(ion|ions|ing)?|dizz(y|iness)|light\s*head|faint\s*(ish|feeling)|rash|hives|swelling|severe\s*headache|numb(ness)?|tingling|muscle\s*cramp|twitch|blurr(y|ed)\s*vision|ring(ing)?\s*(in\s*)?(my\s*)?ears?|tinnitus|heart\s*feels?\s*(weird|strange|funny|off)|feel(s?|ing)\s*(weird|strange|off|funny|wrong)|brain\s*zaps?|shak(y|ing)|jitter(y|s|ing)?|nause(a|ous)|sick\s*(to|after))\b/.test(t);
+  return /\b(palpitat(ion|ions|ing)?|dizz(y|iness)|light\s*head\w*|faint\s*(ish|feeling)|rash(es)?|hives|swelling|severe\s*headaches?|numb(ness)?|tingling|muscle\s*cramps?|twitch\w*|blurr(y|ed)\s*vision|ring(ing)?\s*(in\s*)?(my\s*)?ears?|tinnitus|heart\s*feels?\s*(weird|strange|funny|off)|feel(s?|ing)\s*(weird|strange|off|funny|wrong)|brain\s*zaps?|shak(y|ing)|jitter(y|s|ing)?|nause(a|ous|ated)|sick\s*(to|after))\b/.test(t);
 }
 
 function mentionsSupplementOrDose(text) {
@@ -257,7 +261,7 @@ function mentionsHighDoseVitaminD(text) {
 
 function mentionsHeartSymptoms(text) {
   const t = normalizeText(text);
-  return /\b(heart\s*(\w+\s+)?(rate|beat|racing|fast|pound(ing)?|flutter(ing)?|palpitat(ion|ions|ing)?|skip(ped|ping|s)?|feels?\s*(weird|strange|funny|off))|heartbeat|palpitat(ion|ions|ing)?|tachycardi|arrhythmi|racing\s*heart|chest\s*(pound|tight)|fast\s*heart|rapid\s*heart|irregular\s*heart|pulse\s*(is\s*)?(high|fast|racing|rapid))\b/.test(t);
+  return /\b(heart\s*(\w+\s+)?(rate|beat\w*|racing|fast|pound(ing)?|flutter(ing)?|palpitat(ion|ions|ing)?|skip(ped|ping|s)?|feels?\s*(weird|strange|funny|off))|heartbeats?|palpitat(ion|ions|ing)?|tachycardi\w*|arrhythmi\w*|racing\s*heart|chest\s*(?:is\s+|feels?\s+)?(pound\w*|tight\w*)|fast\s*heart|rapid\s*heart|irregular\s*heart|pulse\s*(is\s*)?(high|fast|racing|rapid))\b/.test(t);
 }
 
 function mentionsDeficiency(text) {

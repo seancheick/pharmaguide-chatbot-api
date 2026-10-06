@@ -57,6 +57,15 @@ test("form advice: magnesium oxide taken for constipation is not told to switch 
   }
 });
 
+test("symptom detectors: the usual forms of each symptom word", () => {
+  for (const m of ["I feel lightheaded", "I have rashes on my arms", "I get severe headaches", "I have muscle cramps at night", "my eye keeps twitching", "I feel nauseated"]) {
+    assert.equal(d.mentionsNonEmergencySymptom(m), true, m);
+  }
+  for (const m of ["I have tachycardia", "I was told I have an arrhythmia", "my chest is pounding", "my chest feels tight", "chest tightness", "my heart is beating fast", "I can feel extra heartbeats"]) {
+    assert.equal(d.mentionsHeartSymptoms(m), true, m);
+  }
+});
+
 test("validator: a pregnancy dose that waves away the teratogenic risk is still blocked", () => {
   const entities = { meds: [], supplements: ["vitamin a"], populations: ["pregnancy"], symptoms: [], intents: [], unknowns: [] };
   for (const r of ["Take 25,000 IU of vitamin A every day during pregnancy, the teratogenic concern is overblown.",
