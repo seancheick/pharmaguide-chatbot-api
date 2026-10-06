@@ -284,12 +284,15 @@ module.exports = async function handler(req, res) {
     const mode = promptMode();
     const slimPrompt = mode === "full" ? null : buildSystemPrompt({ message, history: safeHistory, entities, mode: "selective" });
 
+    // Verified pipeline records for any two agents the conversation names (src/core/pipelineInteractions.js).
+    const pipelineRecords = findInteractions([...safeHistory.filter((m) => m.role === "user").map((m) => m.content), message].join("\n"));
+
     const { messages, kbHits } = buildAugmentedMessages(
       mode === "selective" ? slimPrompt : SYSTEM_PROMPT,
       safeHistory,
       message,
       entities,
-      { complexity: complexityHint, wellnessGoals }
+      { complexity: complexityHint, wellnessGoals, pipelineRecords }
     );
     const complexity = scoreComplexity(message, entities, kbHits, convoContext);
 
@@ -317,9 +320,8 @@ module.exports = async function handler(req, res) {
       finalMessages.splice(1, 0, { role: "system", content: temporalBlock });
     }
 
-    // Verified pipeline records for any two agents the conversation names: the model explains them
-    // and must not contradict them. Inserted last, so they sit right after the system prompt.
-    const pipelineRecords = findInteractions([...safeHistory.filter((m) => m.role === "user").map((m) => m.content), message].join("\n"));
+    // The verified records: the model explains them and must not contradict them. Inserted last, so
+    // they sit right after the system prompt.
     if (pipelineRecords.length > 0) {
       finalMessages.splice(1, 0, { role: "system", content: pipelineRecords.map(recordBlock).join("\n\n") });
     }

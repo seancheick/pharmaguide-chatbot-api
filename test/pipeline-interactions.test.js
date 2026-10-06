@@ -160,3 +160,26 @@ test("a record id the model writes as a citation is removed from the answer", as
     assert.match(r.reply, /Glucosamine may raise your INR\./);
   } finally { stubText = "Stubbed answer."; }
 });
+
+// ── overlapping knowledge-base wording is retired when the pipeline's record is supplied ───────────
+const { buildAugmentedMessages } = require("../src/core/kbLookup");
+const { extractEntities } = require("../src/core/entities");
+const { normalizeText } = require("../src/core/normalize");
+function kbInteractionLines(message) {
+  const entities = extractEntities(message, normalizeText(message));
+  const { messages } = buildAugmentedMessages("SYS", [], message, entities, { pipelineRecords: P.findInteractions(message) });
+  return messages.filter((m) => m.role === "system" && m.content !== "SYS").map((m) => m.content).join("\n").split("\n").filter((l) => l.startsWith("⚠"));
+}
+
+test("knowledge base: an item the supplied record covers is dropped from its line; the line keeps the rest", () => {
+  const lines = kbInteractionLines("can I take turmeric with warfarin?");
+  assert.ok(lines.some((l) => l.startsWith("⚠ fish oil/ginkgo:")), lines.join(" | "));
+  assert.ok(!lines.some((l) => /turmeric/i.test(l)), "turmeric is the pipeline's to describe here");
+  assert.ok(kbInteractionLines("I take zoloft and want to try 5-htp").some((l) => l.startsWith("⚠ St. John's Wort:")));
+  assert.ok(!kbInteractionLines("can I take magnesium with levothyroxine").some((l) => /levothyroxine \+ magnesium/i.test(l)));
+});
+
+test("knowledge base: pairs the question did not name keep their wording", () => {
+  const lines = kbInteractionLines("Is garlic safe with warfarin?");
+  assert.ok(lines.some((l) => l.startsWith("⚠ turmeric/fish oil/ginkgo:")), lines.join(" | "));
+});
