@@ -67,6 +67,16 @@ test("genuinely off-topic first messages are still deflected, and never reach th
   }
 });
 
+test("a symptom described with no product named reaches the answer path, which can point to care", async () => {
+  // These got the off-topic reply ("I'm built for supplements…" plus example questions), while
+  // "I feel dizzy and my left arm is tingling" reached the answer path: it depended on other words.
+  for (const message of ["my heart is racing at 180 and I feel faint", "my vision is blurry and I have a severe headache", "I have a rash all over my body", "I feel lightheaded when I stand up"]) {
+    const r = await route(message);
+    assert.notEqual(r.model, "system:off-topic", message);
+    assert.equal(r.reachedLlm, true, message);
+  }
+});
+
 test("scorer: class names in plural and abbreviated form, St. John's Wort, and 'safe together' phrasing each pass the gate on their own", () => {
   for (const text of ["SSRIs", "MAOIs", "anticoagulants", "NSAIDs", "oral contraceptives", "benzos", "St. John's Wort", "x and y are fine together", "is it safe to take them together", "taking these at the same time", "are okay together", "is it okay to mix erythromycin and ergotamine"]) {
     assert.ok(intentScore(text) >= 2, `${text} scored ${intentScore(text)}`);
