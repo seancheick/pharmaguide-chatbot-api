@@ -398,11 +398,35 @@ function detectsNiacinStatin(text) {
   return niacin && statin;
 }
 
+// Does a "safe with" question name something we recognise? The entity extractor owns the list of
+// known names. A hand list here used to stand in for it and missed 93 of its 148 supplements and
+// minerals (B12, garlic, GABA, SAM-e, DHEA...), so "Is garlic safe with warfarin?" was answered with
+// "Which medication(s) are you taking?". Also known: the thing asked about is a recognised medicine
+// ("Is Zoloft safe with Xanax?"). An unrecognised brand ("Is MegaBoost safe with Zoloft?") is not.
+function namesKnownProduct(t) {
+  const { ENTITY_PATTERNS, extractKnownItems } = require("../core/entities"); // lazy: entities.js loads this module
+  if (["supplements", "minerals"].some((k) => new RegExp(ENTITY_PATTERNS[k].source).test(t))) return true;
+  const subject = t.match(/\bis\s+(.{2,50}?)\s+(?:safe|ok|okay)\b/);
+  return !!subject && extractKnownItems(subject[1]).size > 0;
+}
+
+// "Is <product> safe with …?" about a product we cannot identify (t is normalised text). The words
+// left in the list are the ones the extractor does not cover (generic "vitamin", a few items, and the
+// UTI / yeast-infection topic words).
+function unknownProductQuestion(t) {
+  return /\b(safe with|safe to take with|is .{3,50} safe|ok with|okay with)\b/.test(t) && !/(vitamin|charcoal|niacin|chasteberry|yeast|vaginal|uti|infection)/.test(t) && !namesKnownProduct(t);
+}
+
+/** The clarifier fired because the question names a product we cannot identify (decides its wording). */
+function asksAboutUnknownProduct(text) {
+  return unknownProductQuestion(normalizeText(text));
+}
+
 function needsMedicationClarifier(text) {
   const t = normalizeText(text);
   if (t.length > 250) return false;
   const vaguemedRef = /\b(my meds?|my medication|my prescription|my antidepressant|my blood thinner|my statin|some antidepressant|an? antidepressant|an? adhd med|anxiety meds?|depression meds?|blood pressure meds?|heart meds?|thyroid meds?|sleep meds?|natural supplement|a supplement|a natural|natural stuff|something for (energy|sleep|anxiety|focus|mood|stress|pain)|a lot of meds|lots of (meds|medications|prescriptions|pills)|bunch of|don t know.{0,20}(med|pill|name)|yellow pill|blue pill|white pill|that pill|starts with|some pill)\b/.test(t);
-  const unknownBrandSafety = /\b(safe with|safe to take with|is .{3,50} safe|ok with|okay with)\b/.test(t) && !/(magnesium|iron|zinc|calcium|vitamin|ashwagandha|turmeric|fish oil|melatonin|creatine|biotin|rhodiola|ginseng|kava|berberine|nac|coq10|collagen|valerian|charcoal|ginkgo|echinacea|elderberry|niacin|red yeast rice|quercetin|resveratrol|omega|probiotics?|boric acid|cranberry|d.?mannose|vitex|chasteberry|saw palmetto|milk thistle|black cohosh|evening primrose|dim|myo.?inositol|l.?carnitine|l.?arginine|fenugreek|tribulus|tongkat ali|glucosamine|chondroitin|cbd|yeast|vaginal|uti|infection)/.test(t);
+  const unknownBrandSafety = unknownProductQuestion(t);
   if (!vaguemedRef && !unknownBrandSafety) return false;
   const highRiskSupplement = /\b(5.?htp|st\.? john.?s? wort|maoi|grapefruit|psilocybin|nattokinase)\b/.test(t);
   if (highRiskSupplement) return false;
@@ -651,6 +675,7 @@ module.exports = {
   detectsIodineThyroid,
   detectsNiacinStatin,
   needsMedicationClarifier,
+  asksAboutUnknownProduct,
   mentionsMineralSpacingTrigger,
   detectsNSAIDAnticoagulant,
   detectsTripleWhammy,

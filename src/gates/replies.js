@@ -436,7 +436,8 @@ function renalMagnesiumReply(convoContext) {
 function medicationClarifierReply(text) {
   const t = normalizeText(text);
   const vagueSupp = /\b(natural supplement|a supplement|a natural|natural\s*(stuff|for)|supplement\s*for|something for)\b/.test(t);
-  const unknownBrand = /\b(safe with|is .{3,30} safe|safe to take)\b/.test(t) && !/\b(sertraline|zoloft|prozac|lexapro|warfarin|metformin|levothyroxine|atorvastatin|lisinopril)\b/.test(t);
+  // Same test the gate used, so the question asked matches the reason the clarifier fired.
+  const unknownBrand = detection.asksAboutUnknownProduct(text);
   const caregiver = /\b(my (mom|dad|mother|father|parent|husband|wife|grandma|grandmother|grandfather)|don t know.{0,15}(med|pill|all)|a lot of meds)\b/.test(t);
 
   if (caregiver) {
