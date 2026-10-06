@@ -33,7 +33,7 @@ const HEDGE = /\b(?:limited|preliminary|mixed|inconsistent|inconclusive|uncertai
 const DOSE = /(\d[\d,]*(?:\.\d+)?)\s*(mg|mcg|µg|ug|iu|g|ml)\b/gi;
 const NEGATOR = /\b(?:not|never|no|without|unless|cannot|can't|isn't|aren't|don't|doesn't|won't|shouldn't|wouldn't|hardly)\b/i;
 
-const endsCleanly = (s) => /[.!?)"'*’]\s*$/.test(String(s || "").trim());
+const { endsCleanly } = require("../../test/canaries"); // one owner for "does this answer end cleanly?"
 
 /** True if the pattern matches somewhere that is not negated earlier in the same sentence. */
 function hasUnnegated(text, pattern) {

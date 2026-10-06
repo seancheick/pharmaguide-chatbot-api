@@ -17,7 +17,13 @@ function failures(pairs) {
   return pairs.filter(([ok]) => !ok).map(([, message]) => message);
 }
 
-const endsCleanly = (s) => /[.!?)"'*’]\s*$/.test(String(s || "").trim());
+// A complete answer ends in sentence punctuation, or on the flag/evidence label line the answer format asks
+// for ("🟡 Moderate evidence"). A reply cut off mid-sentence ends on neither. (A provider cut-off never reaches
+// the user as an answer; this guards against a partial reply being shown.)
+const endsCleanly = (s) => {
+  const text = String(s || "").trim();
+  return /[.!?)"'*’]$/.test(text) || /^(?:🟢|🟡|🔴)\s+[A-Za-z][A-Za-z ]*$/u.test(text.split("\n").pop().trim());
+};
 
 const CANARIES = [
   {
