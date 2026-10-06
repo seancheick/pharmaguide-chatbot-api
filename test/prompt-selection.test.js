@@ -165,7 +165,7 @@ const PROBES = {
   "vaginal-health": ["recurrent yeast infections", "does cranberry help with a UTI"],
   "iron-absorption": ["does coffee block iron", "my ferritin is low"],
   "nutrient-depletion": ["what does omeprazole deplete", "do statins lower coq10"],
-  "vertigo-dizziness": ["I get vertigo when I turn over in bed", "room spinning dizziness"],
+  "vertigo-dizziness": ["I get vertigo when I turn over in bed", "room spinning dizziness", "I have Ménière’s disease", "Meniere disease and supplements", "menière"],
   "hormone-support": ["how to raise testosterone naturally", "supplements for menopause"],
   "peptides": ["what is bpc-157", "is ipamorelin legal"],
   "longevity-protocols": ["is the bryan johnson stack worth it", "does nmn work for longevity"],

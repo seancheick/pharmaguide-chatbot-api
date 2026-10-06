@@ -296,7 +296,7 @@ When a user asks what nutrients their medication depletes, provide specific, act
   {
     id: "vertigo-dizziness",
     kind: "topic",
-    triggers: [/\b(vertigo|dizz\w*|room spinning|spinning|lightheaded|light headed|balance|meniere\w*|bppv|vestibular|meclizine|tinnitus)\b/],
+    triggers: [/\b(vertigo|dizz\w*|room spinning|spinning|lightheaded|light headed|balance|m[eé]ni[eè]re\w*|bppv|vestibular|meclizine|tinnitus)\b/],
     // domain guidance
     text: `VERTIGO & DIZZINESS GUIDANCE:
 When a user mentions vertigo, dizziness, or "room spinning":
