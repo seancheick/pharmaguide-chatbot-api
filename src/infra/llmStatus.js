@@ -6,8 +6,12 @@
  * shared Redis store, when an answer was last produced and when every provider last failed (provider and
  * HTTP status only, never error text), and /api/health reads it back.
  *
- * Never blocks or breaks a request: every write is fire-and-forget and swallows its own errors, and a
- * read has a timeout. Without Redis the state is "unknown".
+ * Never breaks a request and delays it by at most WRITE_TIMEOUT_MS: a write swallows its own errors and
+ * gives up waiting after that cap; a read has a timeout. Without Redis the state is "unknown".
+ *
+ * Every answer is recorded (one small Redis write). A per-server throttle would let one server's recent
+ * success hide another server's later failure, and vice versa. The caller awaits the write because a
+ * serverless function may be frozen once it has replied, and an unfinished write would be lost.
  */
 
 const redisClient = require("./redisClient");
@@ -15,32 +19,29 @@ const redisClient = require("./redisClient");
 const KEY_OK = "pg:llm:last_ok";
 const KEY_FAIL = "pg:llm:last_fail";
 const TTL_SECONDS = 7 * 24 * 3600;
-const OK_WRITE_INTERVAL_MS = 60 * 1000; // a busy instance writes "ok" about once a minute, not per answer
-
-let lastOutcome = null; // "ok" | "fail": this instance's last outcome
-let lastOkWrite = 0;
+const WRITE_TIMEOUT_MS = 250;
 
 function write(key, value) {
+  let timer;
   try {
     const redis = redisClient.getRedis();
     if (!redis) return Promise.resolve();
-    return Promise.resolve(redis.set(key, JSON.stringify(value), { ex: TTL_SECONDS })).catch(() => {});
+    const done = Promise.resolve(redis.set(key, JSON.stringify(value), { ex: TTL_SECONDS })).catch(() => {});
+    const capped = new Promise((resolve) => { timer = setTimeout(resolve, WRITE_TIMEOUT_MS); });
+    return Promise.race([done, capped]).finally(() => clearTimeout(timer));
   } catch {
+    clearTimeout(timer);
     return Promise.resolve(); // monitoring must never be able to break an answer, even by throwing synchronously
   }
 }
 
-/** An answer was produced. Written at most once a minute per instance, but at once after a failure. */
+/** An answer was produced. */
 function recordLlmSuccess(provider, now = Date.now()) {
-  if (lastOutcome === "ok" && now - lastOkWrite < OK_WRITE_INTERVAL_MS) return Promise.resolve();
-  lastOutcome = "ok";
-  lastOkWrite = now;
   return write(KEY_OK, { at: new Date(now).toISOString(), provider: String(provider || "").slice(0, 32) });
 }
 
 /** Every provider failed (or none was tried). Provider names and HTTP statuses only. */
 function recordLlmFailure(attempts = [], skipped = [], now = Date.now()) {
-  lastOutcome = "fail";
   return write(KEY_FAIL, {
     at: new Date(now).toISOString(),
     attempts: attempts.map((a) => ({ provider: String(a.provider || "").slice(0, 32), status: Number.isInteger(a.status) ? a.status : null })),
@@ -73,4 +74,4 @@ async function getLlmStatus({ timeoutMs = 1500 } = {}) {
   }
 }
 
-module.exports = { recordLlmSuccess, recordLlmFailure, getLlmStatus, KEY_OK, KEY_FAIL };
+module.exports = { recordLlmSuccess, recordLlmFailure, getLlmStatus, KEY_OK, KEY_FAIL, WRITE_TIMEOUT_MS };

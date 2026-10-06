@@ -23,19 +23,23 @@ const llmStatus = require("../src/infra/llmStatus");
 const healthHandler = require("../api/health");
 
 // An in-memory stand-in for Upstash: set with a TTL option, mget, and the JSON round trip the real client does.
-let store, writes, down;
+// `setDelayMs` makes a write slow; `hang` makes it never finish.
+let store, writes, down, setDelayMs, hang;
 const fakeRedis = {
-  async set(key, value, opts) { if (down) throw new Error("redis is down"); writes.push({ key, value, opts }); store.set(key, value); return "OK"; },
+  async set(key, value, opts) {
+    if (down) throw new Error("redis is down");
+    if (hang) return new Promise(() => {});
+    if (setDelayMs) await new Promise((r) => setTimeout(r, setDelayMs));
+    writes.push({ key, value, opts }); store.set(key, value); return "OK";
+  },
   async mget(...keys) { if (down) throw new Error("redis is down"); return keys.map((k) => (store.has(k) ? store.get(k) : null)); },
 };
 redisClient.getRedis = () => fakeRedis;
 
 beforeEach(() => {
-  store = new Map(); writes = []; down = false;
+  store = new Map(); writes = []; down = false; setDelayMs = 0; hang = false;
   require("../src/infra/geminiCircuitBreaker").reset();
   require("../src/infra/circuitBreaker").reset();
-  // a clean per-instance state: a failure first resets the "last outcome" memo
-  return llmStatus.recordLlmFailure([], [], 0).then(() => { store.clear(); writes = []; });
 });
 
 const failWith = (status) => Object.assign(new Error(`${status} upstream`), { status });
@@ -55,17 +59,38 @@ test("a failure stores provider and HTTP status only, never error text", async (
   assert.ok(writes[0].opts.ex > 0, "the record expires");
 });
 
-test("success is written at most once a minute per instance, but at once after a failure", async () => {
+test("a failure recorded by another server is cleared by this server's next answer, not up to a minute later", async () => {
   const t0 = Date.parse("2026-10-06T03:00:00Z");
   await llmStatus.recordLlmSuccess("gemini", t0);
-  await llmStatus.recordLlmSuccess("gemini", t0 + 10_000);
-  await llmStatus.recordLlmSuccess("gemini", t0 + 59_000);
-  assert.equal(writes.filter((w) => w.key === llmStatus.KEY_OK).length, 1, "throttled");
-  await llmStatus.recordLlmSuccess("gemini", t0 + 61_000);
-  assert.equal(writes.filter((w) => w.key === llmStatus.KEY_OK).length, 2, "written again after a minute");
-  await llmStatus.recordLlmFailure([{ provider: "gemini", status: 402 }], [], t0 + 62_000);
-  await llmStatus.recordLlmSuccess("gemini", t0 + 63_000); // recovery must show immediately, not up to a minute later
-  assert.equal(writes.filter((w) => w.key === llmStatus.KEY_OK).length, 3);
+  // Another server's failure lands in the shared store; this process never saw it.
+  store.set(llmStatus.KEY_FAIL, JSON.stringify({ at: new Date(t0 + 10_000).toISOString(), attempts: [{ provider: "gemini", status: 429 }], skipped: [] }));
+  assert.equal((await llmStatus.getLlmStatus()).state, "failing");
+  await llmStatus.recordLlmSuccess("gemini", t0 + 20_000);
+  assert.equal((await llmStatus.getLlmStatus()).state, "ok", "this server is answering, so the AI path is working");
+});
+
+test("the provider chain has the record stored by the time it returns an answer (no write left running)", async () => {
+  setDelayMs = 40; // slower than a tick, well under the cap
+  gemini.chatCompletion = async () => ({ text: "A fine answer.", usage: {} });
+  await router.callWithFallback([{ role: "user", content: "hi" }], { complexity: 2 });
+  assert.equal(JSON.parse(store.get(llmStatus.KEY_OK)).provider, "gemini");
+  gemini.chatCompletion = async () => { throw failWith(402); };
+  groqClient.groq.chat.completions.create = async () => { throw failWith(413); };
+  const warn = console.warn; console.warn = () => {};
+  try { await router.callWithFallback([{ role: "user", content: "hi" }], { complexity: 2 }); } finally { console.warn = warn; }
+  assert.ok(store.has(llmStatus.KEY_FAIL), "the all-providers-failed record is stored before the degraded reply goes out");
+});
+
+// Its own timeout: without the cap this test would hang instead of failing.
+test("a store that never answers delays an answer by the cap at most, and the answer still comes back", { timeout: 3000 }, async () => {
+  hang = true;
+  gemini.chatCompletion = async () => ({ text: "A fine answer.", usage: {} });
+  const started = Date.now();
+  const result = await router.callWithFallback([{ role: "user", content: "hi" }], { complexity: 2 });
+  const waited = Date.now() - started;
+  assert.equal(result.text, "A fine answer.");
+  assert.ok(llmStatus.WRITE_TIMEOUT_MS <= 500, "monitoring may hold an answer back by half a second at most");
+  assert.ok(waited >= llmStatus.WRITE_TIMEOUT_MS - 20 && waited < 1000, `waited ${waited} ms`);
 });
 
 test("a store that is down never makes recording throw", async () => {
@@ -79,7 +104,7 @@ test("a store that throws synchronously cannot break recording or the provider c
   redisClient.getRedis = () => ({ set() { throw new Error("sync failure"); }, mget() { throw new Error("sync failure"); } });
   try {
     await assert.doesNotReject(() => llmStatus.recordLlmFailure([{ provider: "gemini", status: 402 }]));
-    await assert.doesNotReject(() => llmStatus.recordLlmSuccess("gemini", Date.now() + 10 * 60 * 1000));
+    await assert.doesNotReject(() => llmStatus.recordLlmSuccess("gemini"));
     gemini.chatCompletion = async () => ({ text: "A fine answer.", usage: {} });
     const result = await router.callWithFallback([{ role: "user", content: "hi" }], { complexity: 2 });
     assert.equal(result.text, "A fine answer.", "the answer is returned even though the status write threw");
@@ -127,7 +152,6 @@ test("when every provider fails (Gemini 402, Groq 413) the chain records exactly
   let result;
   try { result = await router.callWithFallback([{ role: "user", content: "hi" }], { complexity: 2 }); } finally { console.warn = warn; }
   assert.equal(result.degraded, true);
-  await new Promise((r) => setImmediate(r)); // the write is fire-and-forget
   const status = await llmStatus.getLlmStatus();
   assert.equal(status.state, "failing");
   assert.deepEqual(status.last_failure.attempts.filter((a) => a.provider === "gemini" || a.provider === "groq").map((a) => [a.provider, a.status]), [["gemini", 402], ["groq", 413]]);
@@ -138,7 +162,6 @@ test("an answer from the fallback provider counts as the AI path working", async
   groqClient.groq.chat.completions.create = async () => ({ choices: [{ message: { content: "Answer from Groq." }, finish_reason: "stop" }], usage: {} });
   const warn = console.warn; console.warn = () => {};
   try { await router.callWithFallback([{ role: "user", content: "hi" }], { complexity: 2 }); } finally { console.warn = warn; }
-  await new Promise((r) => setImmediate(r));
   const status = await llmStatus.getLlmStatus();
   assert.equal(status.state, "ok");
   assert.equal(JSON.parse(store.get(llmStatus.KEY_OK)).provider, "groq");
