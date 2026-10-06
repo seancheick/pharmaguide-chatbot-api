@@ -38,3 +38,25 @@ test("the clarifier counts known items through the extractor", () => {
   assert.equal(d.needsMedicationClarifier("I take zoloft, xanax and lisinopril, is that ok with my meds?"), false, "three named items is specific enough");
   assert.equal(d.needsMedicationClarifier("can I take a supplement with my meds"), true);
 });
+
+// The classifier feeds riskScore (bleeding, statin, MAOI checks), so its classes for drugs the gates
+// also group come from drugGroups: clopidogrel and aspirin were "anticoagulant" here, apixaban,
+// heparin, piroxicam, fluvastatin and oxazepam had no class at all.
+const { classifyMed } = require("../src/core/entityClassifier");
+const { GROUPS } = require("../src/config/drugGroups");
+
+test("the classifier takes every gate-group drug's class from drugGroups", () => {
+  const CLASS = { NSAIDS: "NSAID", ANTICOAGULANTS: "anticoagulant", ANTIPLATELETS: "antiplatelet", STATINS: "statin", BENZODIAZEPINES: "benzodiazepine", POTASSIUM_SPARING: "MRA" };
+  for (const [group, cls] of Object.entries(CLASS)) {
+    for (const name of GROUPS[group].filter((t) => /^[a-z][a-z ]*$/.test(t))) assert.equal(classifyMed(name), cls, `${name} (${group})`);
+  }
+  assert.equal(classifyMed("clopidogrel"), "antiplatelet");
+  assert.equal(classifyMed("apixaban"), "anticoagulant");
+});
+
+test("product names moved from side lists into the extractor are answered, not met with 'unknown product'", () => {
+  for (const n of ["kelp", "retinol", "nettle", "rapamycin", "nattokinase", "niacin"]) {
+    assert.ok(extractKnownItems(`I take ${n}`).size > 0, n);
+    assert.equal(d.needsMedicationClarifier(`is ${n} safe?`), false, n);
+  }
+});
