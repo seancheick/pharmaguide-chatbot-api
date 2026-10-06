@@ -58,7 +58,7 @@ A production decision-and-explanation system for high-stakes supplement–medica
 | Safety-policy domains | 21 |
 | Post-response validator rules | 8 |
 | Pinned production canaries (replayable live) | 9 (8) |
-| Test suites | 25 |
+| Test suites | 26 |
 <!-- metrics:end -->
 
 *That table is generated from the code by `scripts/readme_metrics.js`; `npm test` fails if it drifts.*
@@ -335,7 +335,7 @@ This service currently carries its own bounded knowledge layer. The planned arch
 |---|---|
 | Done | Deterministic routing, validator, multi-provider failover with soft-failure handling, privacy hardening, CI, production canaries and smoke workflow, generated README metrics, an enforced release gate (CI and deploy) with a 30-day claim-expiry warning, ruleset and knowledge versions reported by `/api/health` and an `X-PG-Ruleset` response header, a model-evaluation harness (`eval/`) |
 | Planned | Measured model selection: run the evaluation across the candidate models and choose on the results |
-| Planned | Dynamic clinical context assembly: a small invariant policy prompt plus retrieved context, instead of a large always-on prompt |
+| In progress | Dynamic clinical context assembly: a small invariant policy prompt plus retrieved context, instead of a large always-on prompt. Step 1 is done: the prompt is stored as core (always-on rules) and topic (domain guidance) sections, pinned byte-identical to the production prompt |
 | Planned | Consume the pipeline's versioned clinical export; retire overlapping facts from this repository |
 
 See [`ROADMAP.md`](./ROADMAP.md) for the longer plan.
