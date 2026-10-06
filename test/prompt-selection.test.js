@@ -124,6 +124,14 @@ test("selective mode keys the cache on the slim prompt, so a full-mode answer is
   assert.equal(geminiSaw.length, callsAfterFull + 1, "a different prompt, so a different cache key");
 });
 
+test("selective mode still serves a repeated question from the cache", async () => {
+  process.env.PG_PROMPT_MODE = "selective";
+  await ask("What is BPC-157?");
+  const second = await ask("What is BPC-157?");
+  assert.equal(geminiSaw.length, 1, "answered once");
+  assert.equal(second.model, "cache");
+});
+
 // ── the rules never go missing ─────────────────────────────────────────────
 const QUESTIONS = [
   "What does magnesium glycinate do for sleep?", "Is turmeric good for joint pain?", "Can I take creatine with my kidney condition?",

@@ -79,6 +79,9 @@ const SECRET_ENV = [
   "UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN",
   "PG_PROXY_SECRET", "PG_REQUIRE_PROXY_SECRET",
   "ANALYTICS_ENABLED", "ANALYTICS_SALT", "RATE_LIMIT_SALT",
+  // Behaviour switches: tests that need a mode set it themselves. PG_PROMPT_MODE=selective in the
+  // Vercel build made the golden cache trace (seeded under the full prompt's hash) fail the build.
+  "PG_PROMPT_MODE",
 ];
 const testEnv = { ...process.env };
 for (const name of SECRET_ENV) delete testEnv[name];
