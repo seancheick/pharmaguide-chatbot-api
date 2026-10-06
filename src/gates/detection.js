@@ -1,4 +1,18 @@
 const { normalizeText } = require("../core/normalize");
+const { drugsRe } = require("../config/drugGroups");
+
+// Drug classes the gates test, from their one owner (src/config/drugGroups.js). Each gate names the
+// groups it means; a deliberate difference (no aspirin for lithium) stays visible at the gate.
+const NSAID = drugsRe("NSAIDS");
+const NSAID_OR_ASPIRIN = drugsRe("NSAIDS", "ASPIRIN");
+const ANTITHROMBOTIC = drugsRe("ANTICOAGULANTS", "ANTIPLATELETS");
+const BLOOD_THINNER = drugsRe("ANTICOAGULANTS", "ANTIPLATELETS", "ASPIRIN");
+const RAAS = drugsRe("ACE_INHIBITORS", "ARBS");
+const POTASSIUM_RAISING = drugsRe("ACE_INHIBITORS", "ARBS", "POTASSIUM_SPARING");
+const STATIN = drugsRe("STATINS");
+const STATIN_OR_RED_YEAST_RICE = drugsRe("STATINS", "RED_YEAST_RICE");
+const CYP3A4_STATIN = drugsRe("CYP3A4_STATINS");
+const BENZODIAZEPINE = drugsRe("BENZODIAZEPINES");
 
 // ── Emergency phrasing beyond the core list below ──
 // All matched on normalizeText() output: apostrophes become spaces
@@ -239,7 +253,7 @@ function mentionsAnticoagulantRiskSupplement(text) {
 
 function mentionsBloodThinner(text) {
   const t = normalizeText(text);
-  return /\b(blood thinner|anticoagulant|warfarin|coumadin|apixaban|eliquis|rivaroxaban|xarelto|dabigatran|pradaxa|heparin|enoxaparin|lovenox|clopidogrel|plavix|edoxaban|ticagrelor|prasugrel|fondaparinux|blood clot med|aspirin)\b/.test(t);
+  return BLOOD_THINNER.test(t);
 }
 
 function mentionsNonEmergencySymptom(text) {
@@ -408,7 +422,7 @@ function detectsCharcoalMed(text) {
 function detectsGrapefruitInteraction(text) {
   const t = normalizeText(text);
   const grapefruit = /\b(grapefruit|grapefruit juice)\b/.test(t);
-  const cyp3a4Substrates = /\b(simvastatin|zocor|atorvastatin|lipitor|lovastatin|quetiapine|seroquel|buspirone|felodipine|cyclosporine|tacrolimus|midazolam|triazolam|nifedipine|carbamazepine|ergotamine|fentanyl)\b/.test(t);
+  const cyp3a4Substrates = CYP3A4_STATIN.test(t) || /\b(quetiapine|seroquel|buspirone|felodipine|cyclosporine|tacrolimus|midazolam|triazolam|nifedipine|carbamazepine|ergotamine|fentanyl)\b/.test(t);
   const vagueStatinOrMed = /\b(statin|cholesterol\s*meds?|my\s*(med|medication|prescription))\b/.test(t);
   return grapefruit && (cyp3a4Substrates || vagueStatinOrMed);
 }
@@ -424,7 +438,7 @@ function detectsSSRIDiscontinuation(text) {
 function detectsPotassiumACEi(text) {
   const t = normalizeText(text);
   const potassium = /\b(potassium\s*(supplements?|citrate|chloride|gluconate)|extra potassium)\b/.test(t);
-  const acei = /\b(lisinopril|enalapril|ramipril|benazepril|ace inhibitor|acei|losartan|valsartan|irbesartan|olmesartan|telmisartan|arb|spironolactone|aldactone|eplerenone)\b/.test(t);
+  const acei = POTASSIUM_RAISING.test(t);
   return potassium && acei;
 }
 
@@ -439,7 +453,7 @@ function detectsNiacinStatin(text) {
   const t = normalizeText(text);
   const niacin = /\b(niacin|nicotinic acid|vitamin b3)\b/.test(t);
   if (/\bniacinamide\b/.test(t) && !/\bniacin\b/.test(t)) return false;
-  const statin = /\b(statin|atorvastatin|lipitor|rosuvastatin|crestor|simvastatin|zocor|pravastatin|lovastatin|fluvastatin|pitavastatin|red yeast rice)\b/.test(t);
+  const statin = STATIN_OR_RED_YEAST_RICE.test(t);
   return niacin && statin;
 }
 
@@ -492,16 +506,16 @@ function mentionsMineralSpacingTrigger(text) {
 
 function detectsNSAIDAnticoagulant(text) {
   const t = normalizeText(text);
-  const nsaid = /\b(ibuprofen|advil|motrin|naproxen|aleve|diclofenac|celecoxib|celebrex|meloxicam|indomethacin|ketorolac|piroxicam|aspirin|nsaid)\b/.test(t);
-  const anticoag = /\b(warfarin|coumadin|eliquis|apixaban|xarelto|rivaroxaban|pradaxa|dabigatran|edoxaban|ticagrelor|prasugrel|heparin|enoxaparin|lovenox|blood thinner|anticoagulant)\b/.test(t);
+  const nsaid = NSAID_OR_ASPIRIN.test(t);
+  const anticoag = ANTITHROMBOTIC.test(t);
   return nsaid && anticoag;
 }
 
 function detectsTripleWhammy(text) {
   // Triple whammy: NSAID + ACEi/ARB + diuretic → acute kidney injury risk
   const t = normalizeText(text);
-  const nsaid = /\b(ibuprofen|advil|motrin|naproxen|aleve|diclofenac|celecoxib|celebrex|meloxicam|nsaid)\b/.test(t);
-  const raas = /\b(lisinopril|enalapril|ramipril|benazepril|losartan|valsartan|irbesartan|olmesartan|telmisartan|ace inhibitor|acei|arb)\b/.test(t);
+  const nsaid = NSAID.test(t);
+  const raas = RAAS.test(t);
   const diuretic = /\b(hydrochlorothiazide|hctz|furosemide|lasix|spironolactone|chlorthalidone|diuretic|water pill)\b/.test(t);
   return nsaid && raas && diuretic;
 }
@@ -509,7 +523,7 @@ function detectsTripleWhammy(text) {
 function detectsLithiumNSAID(text) {
   const t = normalizeText(text);
   const lithium = /\b(lithium|lithobid|eskalith)\b/.test(t);
-  const nsaid = /\b(ibuprofen|advil|motrin|naproxen|aleve|diclofenac|celecoxib|celebrex|meloxicam|indomethacin|ketorolac|nsaid)\b/.test(t);
+  const nsaid = NSAID.test(t); // aspirin deliberately excluded: it barely changes lithium levels
   return lithium && nsaid;
 }
 
@@ -541,7 +555,7 @@ function detectsMedInducedTinnitus(text) {
 
 function detectsChronicNSAIDUse(text) {
   const t = normalizeText(text);
-  const nsaid = /\b(ibuprofen|advil|motrin|naproxen|aleve|diclofenac|celecoxib|celebrex|meloxicam|indomethacin|ketorolac|nsaid)\b/;
+  const nsaid = NSAID;
   if (!nsaid.test(t)) return false;
   const chronicPattern = /\b(daily|every\s*day|every\s*other\s*day|chronic|long\s*term|long.?term|weeks|months|years|regularly|ongoing|constant|all the time|for a while|nonstop|since\s+\w+|times?\s*a\s*week|a lot)\b/;
   return chronicPattern.test(t);
@@ -589,7 +603,7 @@ function detectsPPINutrientDepletion(text) {
 // Statin + fibrate (gemfibrozil), or statin + high-dose niacin, or statin + grapefruit
 function detectsStatinMyopathyRisk(text) {
   const t = normalizeText(text);
-  const statin = /\b(atorvastatin|lipitor|simvastatin|zocor|rosuvastatin|crestor|pravastatin|lovastatin|pitavastatin|statin)\b/.test(t);
+  const statin = STATIN.test(t);
   if (!statin) return false;
   const riskFactor = /\b(gemfibrozil|lopid|fenofibrate|tricor|red yeast rice|niacin|grapefruit|muscle\s*(pain|ache|cramp|weakness)|rhabdomyolysis|myopathy|coq10)\b/.test(t);
   return riskFactor;
@@ -598,7 +612,7 @@ function detectsStatinMyopathyRisk(text) {
 // ── Benzodiazepine + alcohol (CNS depression) ──
 function detectsBenzoAlcohol(text) {
   const t = normalizeText(text);
-  const benzo = /\b(alprazolam|xanax|clonazepam|klonopin|lorazepam|ativan|diazepam|valium|temazepam|restoril|benzodiazepine|benzo)\b/.test(t);
+  const benzo = BENZODIAZEPINE.test(t);
   const alcohol = ALCOHOL.test(t);
   return benzo && alcohol;
 }
@@ -607,7 +621,7 @@ function detectsBenzoAlcohol(text) {
 function detectsGinkgoBleeding(text) {
   const t = normalizeText(text);
   const ginkgo = /\b(ginkgo|ginkgo\s*biloba|ginko)\b/.test(t);
-  const bleedRisk = /\b(warfarin|coumadin|eliquis|apixaban|xarelto|rivaroxaban|pradaxa|dabigatran|aspirin|clopidogrel|plavix|blood\s*thinner|anticoagulant)\b/.test(t);
+  const bleedRisk = BLOOD_THINNER.test(t);
   return ginkgo && bleedRisk;
 }
 
