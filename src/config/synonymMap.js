@@ -166,7 +166,14 @@ const SYNONYM_MAP = [
   [/\btums\b/g, "calcium carbonate antacid"],
   [/\bpepto\s*(bismol)?\b/g, "bismuth subsalicylate"],
   [/\bambien\b/g, "zolpidem"],
-  [/\bsam[\s-]?e\b/g, "sam-e"],
+  // SAM-e. Only spellings that cannot be the ordinary word "same": "SAM-e" and "sam e" (punctuation is
+  // already a space here), the capitalised "SAMe" (marked in normalizeText), the full name, and
+  // lowercase "same" only next to a dose (and not after "the/my/that ...", nor before "as/every/dose ...") or as the object of "take/add/start ... same with/and".
+  [/\bsam\s+e\b/g, "sam-e"],
+  [/\bs\s?adenosyl\s?(?:l\s?)?methionine\b/g, "sam-e"],
+  [/(?<!\b(?:the|a|an|my|your|his|her|their|our|that|this|these|those)\s)\bsame(\s+\d{2,4}\s?(?:mg|mcg)\b)/g, "sam-e$1"],
+  [/\b(\d{2,4}\s?(?:mg|mcg)\s+(?:of\s+)?)same\b(?!\s+(?:as|every|each|time|day|dose|way|thing|again))/g, "$1sam-e"],
+  [/\b((?:take|taking|took|add|adding|start|starting|started|try|trying|use|using|mix|mixing)\s+)same(?=\s+(?:with|and|plus|or|together)\b|$)/g, "$1sam-e"],
   [/\bgas[\s-]?x\b/g, "simethicone"],
   [/\bmylicon\b/g, "simethicone"],
   [/\bdiflucan\b/g, "fluconazole"],
