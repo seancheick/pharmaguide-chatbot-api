@@ -318,7 +318,7 @@ function liverToxicityReply(text) {
 
 function charcoalMedReply(text) {
   const t = normalizeText(text);
-  const hasBirthControl = /\b(birth control|contracepti)\b/.test(t);
+  const hasBirthControl = /\b(birth control|contracepti\w*)\b/.test(t);
 
   const lines = [
     "**🔴 Activated charcoal binds to medications in your gut and reduces their absorption.** Taking it daily as a \"detox\" can make your medications less effective or even ineffective.",

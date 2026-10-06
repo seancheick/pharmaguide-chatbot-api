@@ -66,7 +66,7 @@ function extractEntities(text, convoContext) {
   if (/\b(interact|can i take|safe to take|safe with|together with|combine|mix with)\b/.test(nt)) intents.push("interaction_check");
   if (/\b(dose|dosage|how much|how many|milligram|mg|iu|mcg)\b/.test(nt)) intents.push("dosing");
   if (/\b(timing|when should|morning|evening|empty stomach|with food|before bed|same time|separate|space)\b/.test(nt)) intents.push("timing");
-  if (/\b(stopped|quit|came off|went off|discontinu|weaning off|tapered off|ran out|want to stop|getting off|going off)\b/.test(nt)) intents.push("discontinuation");
+  if (/\b(stopped|quit|came off|went off|discontinu\w*|weaning off|tapered off|ran out|want to stop|getting off|going off)\b/.test(nt)) intents.push("discontinuation");
 
   const unknowns = [];
   if (detection.needsMedicationClarifier(text)) unknowns.push("unidentified_item");
