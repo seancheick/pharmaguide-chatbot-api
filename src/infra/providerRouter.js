@@ -11,6 +11,7 @@
  */
 
 const gemini = require("./geminiClient");
+const { recordLlmSuccess, recordLlmFailure } = require("./llmStatus");
 const groqClient = require("./groqClient");
 const { allowRequest: allowGroq, recordSuccess: groqSuccess, recordFailure: groqFailure } = require("./circuitBreaker");
 const { allowRequest: allowGemini, recordSuccess: geminiSuccess, recordFailure: geminiFailure } = require("./geminiCircuitBreaker");
@@ -139,6 +140,7 @@ async function callWithFallback(messages, opts = {}) {
     try {
       const result = await provider.call(messages, { ...params, timeoutMs: Math.min(provider.timeoutMs, remaining), slimSystemPrompt: opts.slimSystemPrompt });
       provider.onSuccess();
+      recordLlmSuccess(provider.name);
       return {
         text: result.text,
         provider: provider.name,
@@ -164,6 +166,7 @@ async function callWithFallback(messages, opts = {}) {
 
   // All providers failed → degraded response
   console.warn(`[PROVIDER] all providers exhausted. attempts=${JSON.stringify(attempts)} skipped=${JSON.stringify(skipped)}`);
+  recordLlmFailure(attempts, skipped);
   return {
     text: getDegradedResponse("llm_error"),
     provider: "degraded",

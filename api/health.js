@@ -13,8 +13,10 @@ const geminiCircuit = require("../src/infra/geminiCircuitBreaker");
 const { getGapSnapshot, getPersistedGapSnapshot } = require("../src/infra/topicTracker");
 const { getSnapshot: getAnalyticsSnapshot } = require("../src/infra/analytics");
 const { getProvenance } = require("../src/infra/provenance");
+const { getLlmStatus } = require("../src/infra/llmStatus");
+const { isTrustedProxy } = require("../src/infra/proxyAuth");
 
-module.exports = function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const providers = {
@@ -55,6 +57,14 @@ module.exports = function handler(req, res) {
     providers,
     active_provider: activeProvider,
   };
+
+  // Is the AI path actually answering? Configuration and circuit state cannot see a payment or quota failure.
+  // Anyone gets the state; which provider failed and with what HTTP status (billing detail) only a caller
+  // that holds the proxy secret sees.
+  const llm = await getLlmStatus();
+  response.llm = { state: llm.state, last_success: llm.last_success || null };
+  if (llm.reason) response.llm.reason = llm.reason;
+  if (isTrustedProxy(req)) response.llm.last_failure = llm.last_failure || null;
 
   if (includeGaps) {
     // Use persisted Redis data if available (async)
