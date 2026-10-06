@@ -360,12 +360,23 @@ function mentionsStandaloneFatSoluble(text) {
   return /\b(vitamin\s*d|vit\s*d|d3|vitamin\s*a|retinol|vitamin\s*e|vitamin\s*k|50\s*0{3}\s*(iu|ui)|iron\s*supplement|extra\s*iron|ferrous)\b/.test(t);
 }
 
+// Alcohol, one definition for every gate that needs it (liver, metformin, benzodiazepines). There were
+// three lists: the benzodiazepine one missed "a few drinks" / "can I drink tonight", the metformin one
+// took "drink more water" and "drink coffee" for alcohol. "drink/drinks/drinking" counts unless it is
+// followed by a non-alcoholic drink (or "it", "more", "plenty", "to") or preceded by energy, protein,
+// sports, electrolyte or soft.
+const NON_ALCOHOLIC_AFTER = "water|coffee|green tea|tea|juice|milk|smoothies?|shakes?|soda|pop|kombucha|lemonade|broth|electrolytes?|fluids|it|this|that|plenty|lots|more|to";
+const ALCOHOL = new RegExp(
+  "\\b(?:alcohol(?:ic)?|beers?|wines?|liquor|vodka|whiske?y|bourbon|tequila|rum|cocktails?|booze|drunk|hungover|hangover)\\b" +
+  "|(?<!\\b(?:energy|protein|sports?|electrolyte|soft)\\s)\\bdrink(?:s|ing)?\\b(?!\\s+(?:" + NON_ALCOHOLIC_AFTER + ")\\b)"
+);
+
 // Substances the liver-toxicity gate counts. One list: the gate's reply names what it finds here.
 const HEPATOTOXINS = [
   { id: "kava", re: /\b(kava)\b/ },
   { id: "green_tea_extract", re: /\b(green\s*tea\s*extract|gte|egcg)\b/ },
   { id: "acetaminophen", re: /\b(acetaminophen|tylenol|paracetamol)\b/ },
-  { id: "alcohol", re: /\b(alcohol|drink(s|ing)?\s*(socially|alcohol|beer|wine|heavily|occasionally|daily|weekly|nightly)|beers?|wines?|cocktails?|liquor|bourbon|whiskey|vodka)\b/ },
+  { id: "alcohol", re: ALCOHOL },
   { id: "niacin", re: /\b(niacin|nicotinic\s*acid)\b/ },
 ];
 
@@ -501,7 +512,7 @@ function detectsLithiumNSAID(text) {
 function detectsMetforminAlcohol(text) {
   const t = normalizeText(text);
   const metformin = /\b(metformin|glucophage)\b/.test(t);
-  const alcohol = /\b(alcohol|beer|wine|liquor|drink(ing|s)?|cocktail|bourbon|whiskey|vodka)\b/.test(t);
+  const alcohol = ALCOHOL.test(t);
   return metformin && alcohol;
 }
 
@@ -584,7 +595,7 @@ function detectsStatinMyopathyRisk(text) {
 function detectsBenzoAlcohol(text) {
   const t = normalizeText(text);
   const benzo = /\b(alprazolam|xanax|clonazepam|klonopin|lorazepam|ativan|diazepam|valium|temazepam|restoril|benzodiazepine|benzo)\b/.test(t);
-  const alcohol = /\b(alcohol|beer|wine|vodka|whiskey|liquor|drinking|drunk|tequila|rum|cocktail)\b/.test(t);
+  const alcohol = ALCOHOL.test(t);
   return benzo && alcohol;
 }
 
