@@ -178,7 +178,7 @@ function getFormRecommendation(text, supplementName, entities) {
   if (/\b(sleep|insomnia|can t sleep|trouble sleeping)\b/.test(t)) goals.push("sleep");
   if (/\b(anxiety|anxious|stress|calm|relax)\b/.test(t)) goals.push("anxiety");
   if (/\b(focus|cognitive|memory|brain)\b/.test(t)) goals.push("cognitive");
-  if (/\b(constipat|bowel|digest|stomach|gi|gut)\b/.test(t)) goals.push("constipation");
+  if (/\b(constipat\w*|bowels?|digest|stomach|gi|gut)\b/.test(t)) goals.push("constipation");
   if (/\b(heart|cardio|blood pressure)\b/.test(t)) goals.push("cardiovascular");
   if (/\b(muscle|cramp|leg cramp|restless leg)\b/.test(t)) goals.push("muscle cramps");
   if (/\b(diarrhea|loose stool|upset stomach)\b/.test(t)) goals.push("gi_issues");

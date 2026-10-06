@@ -166,7 +166,7 @@ function isPetQuestion(text) {
   const t = normalizeText(text);
   if (t.length > 200) return false;
   // Only fire if there's clear animal context
-  return /\b(my (dog|cat|pet|puppy|kitten|hamster|rabbit|bird|horse|ferret|guinea pig)|give.{0,15}(dog|cat|pet|puppy|kitten)|dog.{0,15}(take|eat|ate|swallow|chew)|cat.{0,15}(take|eat|ate|swallow|chew)|pet.{0,15}(supplement|vitamin|medication|med|safe)|for (dogs?|cats?|pets?|animals?)|veterinar|my animal)\b/.test(t);
+  return /\b(my (dog|cat|pet|puppy|kitten|hamster|rabbit|bird|horse|ferret|guinea pig)|give.{0,15}(dog|cat|pet|puppy|kitten)|dog.{0,15}(take|eat|ate|swallow|chew)|cat.{0,15}(take|eat|ate|swallow|chew)|pet.{0,15}(supplement|vitamin|medication|med|safe)|for (dogs?|cats?|pets?|animals?)|veterinar\w*|my animal)\b/.test(t);
 }
 
 function isBusinessInquiry(text) {
@@ -188,7 +188,7 @@ function intentScore(text) {
   // Interaction phrasing about taking things together ("are totally fine together", "mix them together"). A message
   // asking whether items are safe together is an interaction question even when the item names are not in any list.
   if (/\b((fine|safe|ok|okay|alright|dangerous|risky|harmful)\s+(to\s+(take|use|mix|combine|have|stack)\s+)?together|(ok|okay|fine|alright)\s+to\s+(mix|combine|stack)|(take|taking|taken|mix|mixing|mixed|combine|combining|combined|stack|stacking)\s+(\w+\s+){0,2}(together|at the same time|alongside))\b/.test(t)) score += 2;
-  if (/\b(blood pressure|cholesterol|thyroid|diabetes|kidney|liver|heart|stomach|gut|digest|inflam|immune|immunity|joint|bone|muscle|weight|cortisol|hormones?|insulin|serotonin|dopamine|pregnant|pregnancy|breastfeed(ing)?|nursing|conceiv|fertility|pcos|allerg(y|ies|ic)?|seasonal|pollen|hay\s*fever|itchy\s*(eye|throat|nose)|runny\s*nose|sinus|congestion|sneezing|watery\s*eyes|scratchy\s*throat|headache|migraines?|nause(a|ous)|diarrhea|constipat(ed|ion)?|bloat(ed|ing)?|fatigue[d]?|insomnia|acne|hair loss|menopaus|menstr|period|pms|anxiety|sleep|energy|pain|symptoms?|side effects?|adhd|depression|seizure|depressed|stressed|focus|doctor|prescriber|pharmacist|wine|alcohol|drink|toxic|toxicity|dangerous|safe|jitter(y|s|ing)?|dizz(y|iness)|rash|hives|swelling|tingling|palpitat(ion|ions|ing)?|uti|urinary\s*tract|yeast\s*infection|vaginal|bv|bacterial\s*vaginosis|candida|bladder\s*infection|kidney\s*infection|prostat(e|itis)|sperm|erectile|libido|testosterone|estrogen|progesterone|endometri|fibroids?|ovarian|cervical|boric\s*acid|cranberry|d.?mannose|dairy|milk|absorption|cold|flu|cough|sore\s*throat|fever|brain\s*fog|acid\s*reflux|gerd|heartburn|detox|cleanse|hangover|deficien(t|cy)|anti.?aging|aging|skin|wrinkles?|hair\s*growth|nails?|recovery|workout|exercise|metabolism|ibs|irritable\s*bowel|tired|exhausted|surgery|pre.?op|post.?op|procedure|anesthesia|blood\s*work|lab\s*results?|chemo|chemotherapy|radiation|cancer|oncology|ozempic|wegovy|mounjaro|weight\s*loss\s*(drug|med|injection|shot)|blood\s*sugar|autoimmune|vertigo|dizz(y|iness)|spinning|room spinning|bppv|inner\s*ear|covid|long\s*covid|keto|vegan|vegetarian|plant\s*based|intermittent\s*fasting|runner|athlete|toddler|teenager|elderly|senior|getting\s*sick|breaking\s*out|cramp(s|ing)?|my\s*(joints?|back|skin|stomach|head)\s*(hurt|ache|pain|is)|i\s+(work|worked)\s+out|i\s+exercise|grapefruit|coffee\s+and|tea\s+and|juice\s+and|milk\s+and|cheese\s+and|banana|kale|spinach|aged?\s*cheese|tyramine|food\s*(interact|and\s*med)|can i (eat|drink)|should i avoid (eating|drinking)|what foods?|talk to (my )?(doctor|pharmacist|prescriber)|tell (my )?(doctor|pharmacist|prescriber))\b/.test(t)) score += 1;
+  if (/\b(blood pressure|cholesterol|thyroid|diabetes|kidney|liver|heart|stomach|gut|digest\w*|inflam\w*|immune|immunity|joint|bone|muscle|weight|cortisol|hormones?|insulin|serotonin|dopamine|pregnant|pregnancy|breastfeed(ing)?|nursing|conceiv\w*|fertility|pcos|allerg(y|ies|ic)?|seasonal|pollen|hay\s*fever|itchy\s*(eye|throat|nose)|runny\s*nose|sinus|congestion|sneezing|watery\s*eyes|scratchy\s*throat|headache|migraines?|nause(a|ous)|diarrhea|constipat(ed|ion)?|bloat(ed|ing)?|fatigue[d]?|insomnia|acne|hair loss|menopaus\w*|menstr\w*|period|pms|anxiety|sleep|energy|pain|symptoms?|side effects?|adhd|depression|seizure|depressed|stressed|focus|doctor|prescriber|pharmacist|wine|alcohol|drink|toxic|toxicity|dangerous|safe|jitter(y|s|ing)?|dizz(y|iness)|rash|hives|swelling|tingling|palpitat(ion|ions|ing)?|uti|urinary\s*tract|yeast\s*infection|vaginal|bv|bacterial\s*vaginosis|candida|bladder\s*infection|kidney\s*infection|prostat(e|itis)|sperm|erectile|libido|testosterone|estrogen|progesterone|endometri\w*|fibroids?|ovarian|cervical|boric\s*acid|cranberry|d.?mannose|dairy|milk|absorption|cold|flu|cough|sore\s*throat|fever|brain\s*fog|acid\s*reflux|gerd|heartburn|detox|cleanse|hangover|deficien(t|cy)|anti.?aging|aging|skin|wrinkles?|hair\s*growth|nails?|recovery|workout|exercise|metabolism|ibs|irritable\s*bowel|tired|exhausted|surgery|pre.?op|post.?op|procedure|anesthesia|blood\s*work|lab\s*results?|chemo|chemotherapy|radiation|cancer|oncology|ozempic|wegovy|mounjaro|weight\s*loss\s*(drug|med|injection|shot)|blood\s*sugar|autoimmune|vertigo|dizz(y|iness)|spinning|room spinning|bppv|inner\s*ear|covid|long\s*covid|keto|vegan|vegetarian|plant\s*based|intermittent\s*fasting|runner|athlete|toddler|teenager|elderly|senior|getting\s*sick|breaking\s*out|cramp(s|ing)?|my\s*(joints?|back|skin|stomach|head)\s*(hurt|ache|pain|is)|i\s+(work|worked)\s+out|i\s+exercise|grapefruit|coffee\s+and|tea\s+and|juice\s+and|milk\s+and|cheese\s+and|banana|kale|spinach|aged?\s*cheese|tyramine|food\s*(interact|and\s*med)|can i (eat|drink)|should i avoid (eating|drinking)|what foods?|talk to (my )?(doctor|pharmacist|prescriber)|tell (my )?(doctor|pharmacist|prescriber))\b/.test(t)) score += 1;
   // Personal health complaint — implies treatment-seeking
   if (/\b(i\s+(get|keep getting|have|feel|am)\s+(migraines?|headaches?|yeast|uti|infections?|sick|bloated|cramps?|nauseous|dizzy|tired|exhausted|anxious|depressed|inflamed|constipated|vertigo|brain fog)|my\s+\w+\s+(hurts?|aches?|is (bad|sore|stiff|swollen|painful))|always\s+(tired|sick|bloated|getting sick|exhausted|fatigued|getting headaches?))\b/.test(t)) score += 1;
   // Condition + treatment/help intent (e.g., "what helps with BV", "natural treatment for UTI")
@@ -374,14 +374,14 @@ function detectsLiverToxicityStack(text) {
     if (p.test(t)) count++;
   }
   if (count >= 2) return true;
-  if (count >= 1 && /\b(liver\s*(damage|failure|injur|toxicit|problem|harm|issue)|hepatotoxic|hepatitis)\b/.test(t)) return true;
+  if (count >= 1 && /\b(liver\s*(damage|failure|injur\w*|toxicit\w*|problems?|harm|issues?)|hepatotoxic\w*|hepatitis)\b/.test(t)) return true;
   return false;
 }
 
 function detectsCharcoalMed(text) {
   const t = normalizeText(text);
   const charcoal = /\b(activated\s*charcoal|charcoal\s*(supplement|capsule|pill|daily|detox))\b/.test(t);
-  const medication = /\b(birth control|contracepti|pills?|medications?|meds?|levothyroxine|synthroid|prescription|rx|drugs?)\b/.test(t);
+  const medication = /\b(birth control|contracepti\w*|pills?|medications?|meds?|levothyroxine|synthroid|prescription|rx|drugs?)\b/.test(t);
   return charcoal && medication;
 }
 
@@ -395,7 +395,7 @@ function detectsGrapefruitInteraction(text) {
 
 function detectsSSRIDiscontinuation(text) {
   const t = normalizeText(text);
-  const discontinued = /\b(stopped|quit|came off|went off|discontinu|weaning off|tapered off|ran out|no longer tak|don t want to take|want to stop|want to quit|want to get off|getting off|going off|dropped|done with|finished|i m off|ditched|stopped abruptly)\b/.test(t);
+  const discontinued = /\b(stopped|quit|came off|went off|discontinu\w*|weaning off|tapered off|ran out|no longer tak\w*|don t want to take|want to stop|want to quit|want to get off|getting off|going off|dropped|done with|finished|i m off|ditched|stopped abruptly)\b/.test(t);
   const ssri = /\b(ssri|antidepressant|sertraline|sertaline|zoloft|fluoxetine|prozac|escitalopram|lexapro|citalopram|celexa|venlafaxine|effexor|paroxetine|paxil|duloxetine|cymbalta|fluvoxamine|desvenlafaxine|pristiq)\b/.test(t);
   const substitute = /\b(5[\s-]?htp|st\.?\s*john|tryptophan|ashwagandha|rhodiola|instead|replace|substitute|switch|can i just)\b/.test(t);
   return discontinued && ssri && substitute;
@@ -506,7 +506,7 @@ function isMedicalConditionQuery(text) {
   const conditionPattern = /\b(rotator cuff|tendinitis|bursitis|impingement|frozen shoulder|arthritis|fracture|dislocation|tinnitus|ringing in.{0,5}ears?|hearing loss|carpal tunnel|sciatica|plantar fasciitis|tennis elbow|herniated disc|sprain(ed)?|muscle strain|torn ligament|acl|meniscus|shin splint|back pain|neck pain|knee pain|hip pain|shoulder pain)\b/;
   if (!conditionPattern.test(t)) return false;
   // Don't redirect if user is asking about supplements/meds for the condition
-  const interactionIntent = /\b(can i take|safe to take|interact|safe with|together with|combine|while on|supplement|vitamin|mineral|probiotic|what (helps?|works?|to take)|natural|herbal|home remed)\b/;
+  const interactionIntent = /\b(can i take|safe to take|interact|safe with|together with|combine|while on|supplement|vitamin|mineral|probiotic|what (helps?|works?|to take)|natural|herbal|home remed\w*)\b/;
   if (interactionIntent.test(t)) return false;
   return true;
 }
