@@ -33,7 +33,7 @@ const { recordAnalytics } = require("../src/infra/analytics");
 const { buildCacheKey, isCacheable, getCachedResponse, setCachedResponse } = require("../src/infra/responseCache");
 const { callWithFallback, scoreComplexity } = require("../src/infra/providerRouter");
 const { buildAugmentedMessages } = require("../src/core/kbLookup");
-const { findInteractions, recordBlock } = require("../src/core/pipelineInteractions");
+const { findInteractions, recordBlock, RECORD_ID } = require("../src/core/pipelineInteractions");
 const { extractDoses, getDoseSummary } = require("../src/core/doseExtractor");
 const { resolveConfidence } = require("../src/core/confidence");
 const { detectAndRecordGaps } = require("../src/infra/topicTracker");
@@ -390,6 +390,9 @@ module.exports = async function handler(req, res) {
       .replace(/\n*\*?Note: this is not medical advice[^\n]*/gi, "")
       .replace(/\n*\*?Consult (?:your |a )?(?:doctor|physician|healthcare provider|clinician|pharmacist)[^\n]*before[^\n]*/gi, "")
       .trim();
+
+    // Internal pipeline record ids are not sources a reader can look up.
+    reply = reply.replace(RECORD_ID, "");
 
     // Strip Markdown link syntax (frontend doesn't render Markdown)
     reply = stripMarkdownLinks(reply);

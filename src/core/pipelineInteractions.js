@@ -133,12 +133,14 @@ function findInteractions(text) {
     .slice(0, MAX_RECORDS);
 }
 
-/** A record as supplied context: what the model is told, verbatim from the pipeline. */
+/**
+ * A record as supplied context: what the model is told, verbatim from the pipeline. No record id: the
+ * model cited it as a source ("*(DSI_WAR_GLUCOSAMINE)*"); api/chat.js also strips any that slips out.
+ */
 function recordBlock(record) {
   const r = record.raw || record;
   return [
     "VERIFIED PHARMAGUIDE RECORD (authoritative: explain it in plain language; do not contradict it or add to it)",
-    `Record: ${r.id}`,
     `Interaction: ${r.agent2_name ?? r.agent2} + ${r.agent1_name ?? r.agent1}`,
     `Severity: ${r.severity}`,
     `Mechanism: ${r.mechanism}`,
@@ -147,4 +149,7 @@ function recordBlock(record) {
   ].join("\n");
 }
 
-module.exports = { findInteractions, agentsIn, recordBlock, AGENTS, PIPELINE_VERSION: MANIFEST.db_version, MANIFEST };
+// Record ids look like DSI_WAR_GARLIC, SSI_IRON_GREENTEA, DDI_METFORMIN_ALCOHOL.
+const RECORD_ID = /\s*\*?\((?:DSI|SSI|DDI)_[A-Z0-9_]+\)\*?|\b(?:DSI|SSI|DDI)_[A-Z0-9_]+\b/g;
+
+module.exports = { RECORD_ID, findInteractions, agentsIn, recordBlock, AGENTS, PIPELINE_VERSION: MANIFEST.db_version, MANIFEST };

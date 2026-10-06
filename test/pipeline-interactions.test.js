@@ -22,9 +22,10 @@ delete process.env.PG_REQUIRE_PROXY_SECRET;
 
 const providerRouter = require("../src/infra/providerRouter");
 let sent = null;
+let stubText = "Stubbed answer.";
 providerRouter.callWithFallback = async (messages) => {
   sent = messages;
-  return { text: "Stubbed answer.", provider: "gemini", modelId: "stub", usage: {}, degraded: false };
+  return { text: stubText, provider: "gemini", modelId: "stub", usage: {}, degraded: false };
 };
 const handler = require("../api/chat");
 const P = require("../src/core/pipelineInteractions");
@@ -41,7 +42,7 @@ async function ask(message, history = []) {
   const out = {};
   await handler({ method: "POST", headers: { "x-forwarded-for": `10.16.0.${++socket}` }, socket: {}, body: { message, history } },
     { setHeader() {}, status(c) { out.status = c; return this; }, json(j) { out.json = j; return this; }, end() { return this; } });
-  return { model: out.json.model, system: sent ? sent.filter((m) => m.role === "system").map((m) => m.content).join("\n") : null };
+  return { model: out.json.model, reply: out.json.reply, system: sent ? sent.filter((m) => m.role === "system").map((m) => m.content).join("\n") : null };
 }
 
 // ── the bundled data is the pipeline's, unedited ────────────────────────────
@@ -127,20 +128,20 @@ test("the block carries the record verbatim with the instruction not to contradi
   const block = P.recordBlock(r);
   assert.ok(block.includes(`Severity: ${r.severity}`) && block.includes(`Mechanism: ${r.mechanism}`) && block.includes(`Management: ${r.management}`));
   assert.match(block, /do not contradict it or add to it/);
-  assert.match(block, /Record: DSI_WAR_GARLIC/);
+  assert.ok(!block.includes("DSI_WAR_GARLIC"), "no internal id for the model to cite");
 });
 
 // ── through the handler ─────────────────────────────────────────────────────
 test("the answer path gives the model the verified record: garlic with warfarin is 'caution'", async () => {
   const r = await ask("Is garlic safe with warfarin?");
   assert.ok(r.system, `went to ${r.model}, not the model`);
-  assert.match(r.system, /Record: DSI_WAR_GARLIC\nInteraction: Garlic \(supplement\) \+ Warfarin\nSeverity: caution/);
+  assert.match(r.system, /Interaction: Garlic \(supplement\) \+ Warfarin\nSeverity: caution/);
 });
 
 test("the earlier message counts: the medicine named first, the supplement next", async () => {
   const r = await ask("is garlic ok?", [{ role: "user", content: "I take warfarin" }, { role: "assistant", content: "Okay." }]);
   assert.ok(r.system, `went to ${r.model}, not the model`);
-  assert.match(r.system, /Record: DSI_WAR_GARLIC/);
+  assert.match(r.system, /Interaction: Garlic \(supplement\) \+ Warfarin/);
 });
 
 test("no record block when nothing pairs up, and deterministic gates still answer first", async () => {
@@ -149,4 +150,13 @@ test("no record block when nothing pairs up, and deterministic gates still answe
   const gate = await ask("Can I take Viagra with nitroglycerin?");
   assert.equal(gate.model, "system:nitrate-vasodilator");
   assert.equal(gate.system, null, "the model is not called");
+});
+
+test("a record id the model writes as a citation is removed from the answer", async () => {
+  stubText = "Glucosamine may raise your INR *(DSI_WAR_GLUCOSAMINE)*. Monitor it closely (see DDI_METFORMIN_ALCOHOL).";
+  try {
+    const r = await ask("I take glucosamine and warfarin, is that ok?");
+    assert.ok(r.reply && !/(?:DSI|SSI|DDI)_/.test(r.reply), r.reply);
+    assert.match(r.reply, /Glucosamine may raise your INR\./);
+  } finally { stubText = "Stubbed answer."; }
 });
