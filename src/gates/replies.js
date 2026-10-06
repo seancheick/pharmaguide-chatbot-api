@@ -663,16 +663,12 @@ const DEPLETION_MAP = {
   warfarin:          { depletes: [], replenish: "Warfarin doesn't deplete, but vitamin K intake must be CONSISTENT (not avoided). Sudden changes in green vegetables alter INR.", severity: "🟢" },
 };
 
-// Aliases that map to depletion entries
+// Aliases that map to depletion entries: exact brand pairs from their one owner
+// (unknownResolver.BRAND_TO_GENERIC) for the drugs DEPLETION_MAP covers, plus local groupings.
+const { BRAND_TO_GENERIC } = require("../core/unknownResolver");
 const DEPLETION_ALIASES = {
-  glucophage: "metformin", prilosec: "omeprazole", protonix: "pantoprazole",
-  nexium: "esomeprazole", prevacid: "lansoprazole", lipitor: "atorvastatin",
-  zocor: "simvastatin", crestor: "rosuvastatin", lasix: "furosemide",
-  hctz: "hydrochlorothiazide", prednisolone: "prednisone",
-  zoloft: "sertraline", prozac: "fluoxetine", lexapro: "escitalopram",
-  synthroid: "levothyroxine", zithromax: "azithromycin", cipro: "ciprofloxacin",
-  prinivil: "lisinopril", zestril: "lisinopril", cozaar: "losartan",
-  neurontin: "gabapentin", coumadin: "warfarin", "oral contraceptive": "birth control",
+  ...Object.fromEntries(Object.entries(BRAND_TO_GENERIC).filter(([, generic]) => DEPLETION_MAP[generic])),
+  hctz: "hydrochlorothiazide", prednisolone: "prednisone", "oral contraceptive": "birth control",
 };
 
 function depletionReply(convoContext) {

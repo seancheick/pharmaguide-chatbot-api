@@ -84,7 +84,6 @@ Moved beyond regex-only detection to structured, verified clinical data for LLM 
 - **`src/core/kbLookup.js`** — KB context injected into LLM system messages (~300 tokens, caps at 4 entities)
 - **`src/core/doseExtractor.js`** — Parses doses from messages, compares against KB upper limits
 - **`src/core/confidence.js`** — Confidence signal in every response: gate → "high", LLM+KB → "moderate", LLM-only → "low"
-- **`src/infra/sessionMemory.js`** — Tracks med_list + supp_list (canonical names, no PHI)
 - **`test/knowledge.test.js`** — 380 tests
 
 ### Phase 2: Structural Upgrades
@@ -635,7 +634,6 @@ pharmaguide-chatbot-api/
 - `normalize.js` — Text normalization (lowercase, strip special chars).
 - `history.js` — Sanitizes conversation history for safe injection into LLM context.
 - `confidence.js` — Assigns confidence level to each response (high/moderate/low).
-- `sessionMemory.js` — Tracks populations and goals within a session (no PHI).
 - `entityClassifier.js` — Maps entity names to privacy-safe coarse classes for analytics.
 - `unknownResolver.js` — Misspelling correction, brand name resolution, unknown item detection.
 - `requiredFields.js` — Detects missing info needed for a gate to give a complete answer.
@@ -654,13 +652,11 @@ pharmaguide-chatbot-api/
 - `gracefulDegradation.js` — Returns safe degraded responses when the circuit is open.
 - `analytics.js` — PHI-free event builder, HMAC-SHA256 IP hashing, dashboard query helpers.
 - `logger.js` — Gate-level logging (route, message length, has-conversation flag — never message content).
-- `audit.js` — Audit logging (no PHI).
 - `releaseGuard.js` — CI release gate: checks policy version, claims governance, forbidden keys.
 
 **`src/postprocess/`** — Runs after every response (gate and LLM):
 - `safetyValidator.js` — 8-rule validator that blocks unsafe responses. If any rule fails, the response is replaced with a safe fallback. Also includes a non-blocking linter for quality monitoring.
 - `index.js` — Mineral spacing notes, disclaimer stripping, single question enforcement.
-- `outputSchema.js` — LLM output parsing.
 
 **`test/`** — 12 test suites, all runnable with `node test/filename.js` (no test framework needed). See the Testing section for details.
 
@@ -692,9 +688,7 @@ src/
     riskScore.js             — Multi-dimension risk scoring + severity resolution
     router.js                — Risk-based routing to gates or LLM
     requiredFields.js        — Missing field detection for gate routes
-    twoTrack.js              — Dual-track processing
     unknownResolver.js       — Misspelling correction, brand resolution, unknown item detection
-    sessionMemory.js         — Session memory (populations, goals, med/supp lists)
     kbLookup.js              — Knowledge base lookup + LLM context builder
     doseExtractor.js         — Dose parsing + upper limit comparison
     confidence.js            — Confidence scoring (high/moderate/low)
@@ -711,7 +705,6 @@ src/
     groqClient.js            — Groq API client
     rateLimit.js             — Per-IP rate limiting
     logger.js                — Gate logging
-    audit.js                 — Audit logging (no PHI)
     analytics.js             — PHI-free analytics events + dashboard queries
     responseCache.js         — LRU response cache (200 entries, 1hr TTL, 9 exclusion rules)
     circuitBreaker.js        — Circuit breaker (CLOSED→OPEN→HALF_OPEN)
@@ -720,7 +713,6 @@ src/
 
   postprocess/
     index.js                 — Mineral spacing notes, disclaimer stripping, single question enforcement
-    outputSchema.js          — LLM output parsing
     safetyValidator.js       — 8-rule post-response validator + 4-rule linter
 
 scripts/

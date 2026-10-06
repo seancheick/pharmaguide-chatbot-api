@@ -14,7 +14,6 @@ const { sanitizeHistory, getConversationContext } = require("../src/core/history
 const detection = require("../src/gates/detection");
 const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply } = require("../src/gates/replies");
 const { validateResponse } = require("../src/postprocess/safetyValidator");
-const { determineSeverityColor } = require("../src/core/twoTrack");
 
 let pass = 0, fail = 0, total = 0;
 const failures = [];
@@ -61,16 +60,15 @@ function trace(message, history = []) {
   const entities = extractEntities(message, convoContext);
   const scores = scoreRisks(entities, normalizeText(message), convoContext);
   const route = routeByRisk(scores, entities, convoContext, message, hasConversation);
-  const severity = determineSeverityColor(scores);
 
   if (route !== "llm") {
     const replyFn = ROUTE_REPLY_MAP[route];
     const reply = replyFn(convoContext, message, entities);
     const validation = validateResponse(reply, route, entities, null);
-    return { route, reply, severity, entities, scores, validation };
+    return { route, reply, entities, scores, validation };
   }
 
-  return { route: "llm", reply: null, severity, entities, scores };
+  return { route: "llm", reply: null, entities, scores };
 }
 
 console.log("\n═══════════════════════════════════════════════════════════════");
@@ -84,7 +82,6 @@ const t1 = trace("I think I took too many pills and I'm feeling dizzy");
 assert("T1: route is emergency", t1.route === "system:emergency");
 assert("T1: reply contains 911", t1.reply.includes("911"));
 assert("T1: reply contains Poison Control", t1.reply.includes("Poison Control") || t1.reply.includes("1-800-222-1222"));
-assert("T1: severity is red", t1.severity === "red");
 
 // ═══════════════════════════════════════════════════════════════
 section("Trace 2: Emergency — suicidal ideation");
@@ -100,7 +97,6 @@ const t3 = trace("I take Zoloft 50mg. Can I add 5-HTP for mood?");
 assert("T3: route is serotonin-risk", t3.route === "system:serotonin-risk");
 assert("T3: reply mentions serotonin", t3.reply.toLowerCase().includes("serotonin"));
 assert("T3: reply mentions prescriber", t3.reply.toLowerCase().includes("prescriber"));
-assert("T3: severity is red", t3.severity === "red");
 assert("T3: entities include 5-htp", t3.entities.supplements.some(s => /5.?htp/i.test(s)));
 assert("T3: validation passes", t3.validation.safe);
 
@@ -111,7 +107,6 @@ const t4 = trace("I'm on warfarin for AFib. Is turmeric safe to take?");
 assert("T4: route is blood-thinner-risk", t4.route === "system:blood-thinner-risk");
 assert("T4: reply mentions bleeding", t4.reply.toLowerCase().includes("bleed"));
 assert("T4: reply mentions prescriber", t4.reply.toLowerCase().includes("prescriber"));
-assert("T4: severity is red", t4.severity === "red");
 assert("T4: validation passes", t4.validation.safe);
 
 // ═══════════════════════════════════════════════════════════════
@@ -121,7 +116,6 @@ const t5 = trace("I'm 8 weeks pregnant. I've been taking a vitamin A supplement 
 assert("T5: route is pregnancy-retinol", t5.route === "system:pregnancy-retinol");
 assert("T5: reply mentions retinol or vitamin A", t5.reply.toLowerCase().includes("retinol") || t5.reply.toLowerCase().includes("vitamin a"));
 assert("T5: reply mentions label checking or prenatal", /label|prenatal|check/i.test(t5.reply));
-assert("T5: severity is red", t5.severity === "red");
 assert("T5: populations include pregnancy", t5.entities.populations.includes("pregnancy"));
 assert("T5: validation passes", t5.validation.safe);
 
@@ -161,7 +155,6 @@ section("Trace 10: Clean LLM route — simple supplement question");
 
 const t10 = trace("What is magnesium glycinate good for?");
 assert("T10: route is llm", t10.route === "llm");
-assert("T10: severity is green", t10.severity === "green");
 assert("T10: entities include magnesium", t10.entities.supplements.some(s => /magnesium/i.test(s)));
 
 // ═══════════════════════════════════════════════════════════════
@@ -172,7 +165,6 @@ const t11 = trace("Can I add 5-HTP?", [
   { role: "assistant", content: "What supplement are you considering?" },
 ]);
 assert("T11: route is serotonin-risk", t11.route === "system:serotonin-risk");
-assert("T11: severity is red", t11.severity === "red");
 
 // ═══════════════════════════════════════════════════════════════
 section("Trace 12: Potassium + ACEi");

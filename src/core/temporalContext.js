@@ -446,66 +446,19 @@ const TEMPORAL_DATA = {
   },
 };
 
-// ── Alias map (built at load time) ──
+// ── Alias map ──
+// Exact brand → generic pairs come from their one owner (unknownResolver.BRAND_TO_GENERIC), limited to
+// the drugs this table covers. The local entries group related drugs on purpose for washout and onset
+// lookups (pantoprazole uses omeprazole's entry); they must never be used to match clinical records.
+const { BRAND_TO_GENERIC } = require("./unknownResolver");
+const LOCAL_ALIASES = {
+  adderall: "amphetamine", vyvanse: "amphetamine", hctz: "hydrochlorothiazide",
+  pantoprazole: "omeprazole", nexium: "omeprazole",
+  levocetirizine: "cetirizine", xyzal: "cetirizine", clarinex: "loratadine",
+};
 const ALIAS_MAP = {
-  zoloft: "sertraline",
-  prozac: "fluoxetine",
-  lexapro: "escitalopram",
-  celexa: "citalopram",
-  paxil: "paroxetine",
-  effexor: "venlafaxine",
-  cymbalta: "duloxetine",
-  pristiq: "desvenlafaxine",
-  wellbutrin: "bupropion",
-  ritalin: "methylphenidate",
-  concerta: "methylphenidate",
-  adderall: "amphetamine",
-  vyvanse: "amphetamine",
-  xanax: "alprazolam",
-  klonopin: "clonazepam",
-  ativan: "lorazepam",
-  valium: "diazepam",
-  coumadin: "warfarin",
-  advil: "ibuprofen",
-  motrin: "ibuprofen",
-  aleve: "naproxen",
-  synthroid: "levothyroxine",
-  lithobid: "lithium",
-  // Beta-blockers
-  lopressor: "metoprolol",
-  toprol: "metoprolol",
-  tenormin: "atenolol",
-  inderal: "propranolol",
-  coreg: "carvedilol",
-  // ACE-i/ARBs
-  zestril: "lisinopril",
-  prinivil: "lisinopril",
-  cozaar: "losartan",
-  // PPIs
-  prilosec: "omeprazole",
-  pantoprazole: "omeprazole",
-  nexium: "omeprazole",
-  // Statins
-  lipitor: "atorvastatin",
-  crestor: "rosuvastatin",
-  // Diuretics
-  lasix: "furosemide",
-  hctz: "hydrochlorothiazide",
-  // Antibiotics
-  zithromax: "azithromycin",
-  "z-pack": "azithromycin",
-  // Other
-  glucophage: "metformin",
-  neurontin: "gabapentin",
-  ultram: "tramadol",
-  // Antihistamines
-  zyrtec: "cetirizine",
-  levocetirizine: "cetirizine",
-  xyzal: "cetirizine",
-  claritin: "loratadine",
-  clarinex: "loratadine",
-  allegra: "fexofenadine",
-  benadryl: "diphenhydramine",
+  ...Object.fromEntries(Object.entries(BRAND_TO_GENERIC).filter(([, generic]) => TEMPORAL_DATA[generic])),
+  ...LOCAL_ALIASES,
 };
 
 /**

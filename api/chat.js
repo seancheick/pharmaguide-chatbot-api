@@ -20,7 +20,6 @@ const { routeByRisk } = require("../src/core/router");
 const detection = require("../src/gates/detection");
 const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, flirtyRepeatReply, flirtyFinalReply, whatIsReply, privacyReply, depletionReply, creatorReply, petQuestionReply, businessInquiryReply, medicalConditionRedirectReply } = require("../src/gates/replies");
 const { getFormRecommendation } = require("../src/core/formAdvisor");
-const { tryDSLGate, isDSLRoute } = require("../src/gates/gateEngine");
 const { checkRateLimit } = require("../src/infra/rateLimit");
 const { isTrustedProxy, proxyEnforcement, forwardedClientIp } = require("../src/infra/proxyAuth");
 const { logGate } = require("../src/infra/logger");
@@ -223,13 +222,8 @@ module.exports = async function handler(req, res) {
 
       // Try DSL gate first, fall back to code gate
       let gateReply;
-      const dslResult = tryDSLGate(triageRoute);
-      if (dslResult.matched) {
-        gateReply = dslResult.reply;
-      } else {
-        const replyFn = ROUTE_REPLY_MAP[triageRoute];
-        gateReply = replyFn(convoContext, message, entities);
-      }
+      // One owner of reply text: replies.js. (gates.json holds gate metadata only.)
+      gateReply = ROUTE_REPLY_MAP[triageRoute](convoContext, message, entities);
       const validation = validateResponse(gateReply, triageRoute, entities, null);
       if (!validation.safe) {
         // Production-visible so regressions in gate replies are
