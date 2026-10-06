@@ -102,7 +102,19 @@ for (const r of INTERACTIONS) {
   }
 }
 
-const SEVERITY_RANK = { contraindicated: 0, avoid: 1, caution: 2, monitor: 3 };
+// A word a supplement, food or reference agent owns never names a drug class. The pipeline's class
+// lists include glucosamine (NSAIDs), cannabidiol (anticonvulsants) and melatonin (sedatives), so
+// "glucosamine with warfarin" also named the NSAID class and supplied the NSAID + anticoagulant record.
+// Real drugs stay class members: warfarin still names the anticoagulant class.
+const AGENT_TYPE = new Map(INTERACTIONS.flatMap((r) => [[r.agent1_id, r.agent1_type], [r.agent2_id, r.agent2_type]]));
+const NON_DRUG_WORDS = new Set([...AGENTS.values()].filter((a) => !["drug", "drug_class"].includes(AGENT_TYPE.get(a.id))).flatMap((a) => a.aliases));
+for (const agent of AGENTS.values()) {
+  if (AGENT_TYPE.get(agent.id) !== "drug_class") continue;
+  agent.aliases = agent.aliases.filter((alias) => !NON_DRUG_WORDS.has(alias));
+  agent.re = new RegExp(`\\b(?:${agent.aliases.map(escapeRegex).join("|")})\\b`);
+}
+
+const SEVERITY_RANK ={ contraindicated: 0, avoid: 1, caution: 2, monitor: 3 };
 const MAX_RECORDS = 3;
 
 /** Agent ids named in the text (any spelling, brand or class member). */
