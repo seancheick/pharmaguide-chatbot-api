@@ -4,7 +4,9 @@
  * The prompt is stored as sections (src/config/systemPromptSections.js). Core sections hold every
  * rule and are ALWAYS sent. Topic sections hold domain guidance and are sent only when the question,
  * the last few user turns, the detected entities or the detected wellness goal touch that domain.
- * A missed topic costs optional guidance, never a rule.
+ * Large topics are split into items (see `group` in the sections file), so a question about one
+ * supplement or one drug gets that item, not the whole guide. A missed topic costs optional guidance,
+ * never a rule.
  *
  * PG_PROMPT_MODE
  *   full        (default) every section for every provider: today's behaviour.
@@ -41,14 +43,19 @@ function selectSections({ message, history = [], entities = {} }, sections = SEC
   const hasWellnessGoal = detectWellnessGoal(raw).length > 0;
 
   // Sections whose selection also depends on what was detected, not only on words.
+  const populations = entities.populations || [];
   const byDetection = {
-    "supplement-form-guide": hasSupplement,
-    "clinical-knowledge": (entities.meds || []).length > 0, // any medication: the interaction knowledge rides along
     "timing-optimizer": itemCount >= 4,
     "stack-review": itemCount >= 3,
     "wellness-goals": hasWellnessGoal,
+    "clinical-knowledge:elderly-sensitivity": populations.includes("elderly"),
+    "clinical-knowledge:melatonin-in-pregnancy": populations.includes("pregnancy"),
   };
-  return sections.filter((s) => s.kind === "core" || byDetection[s.id] === true || (s.triggers || []).some((re) => re.test(text)));
+  const chosen = new Set(sections.filter((s) => s.kind === "core" || byDetection[s.id] === true || (s.triggers || []).some((re) => re.test(text))).map((s) => s.id));
+
+  // A group's header (its heading and instruction) rides along with any selected item of the group.
+  const groupsInUse = new Set(sections.filter((s) => chosen.has(s.id) && s.group).map((s) => s.group));
+  return sections.filter((s) => chosen.has(s.id) || (s.groupHeader && groupsInUse.has(s.group)));
 }
 
 /** The prompt for one question. `mode` "full" is the whole prompt; anything else is core plus triggered topics. */
