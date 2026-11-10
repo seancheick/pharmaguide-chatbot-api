@@ -61,6 +61,78 @@ test("attributed reports, safety ceilings and timing are allowed", () => {
   }
 });
 
+// Review of 87e994f: the first version of the rule rejected these warnings, and two rejected drafts
+// replaced the warning with the generic fallback. Under-warning is the worse failure.
+test("a warning about an amount is never mistaken for an instruction", () => {
+  for (const reply of [
+    "Taking 10 g of niacin can damage the liver.",
+    "Taking 3,000 mcg or more of retinol in pregnancy is linked to birth defects.",
+    "Taking high doses, such as 10,000 IU daily for months, can cause toxicity.",
+    "Using 2 g of vitamin C daily may cause kidney stones.",
+    "Adding 500 mg of berberine to metformin can drop blood sugar too low.",
+    "Avoid St. John's wort. Taking 900 mg/day with sertraline can cause serotonin syndrome.",
+    "NIH sets the upper limit at 350 mg/day; taking 400 mg or more increases diarrhea risk.",
+    "Taking 3 g or more of sustained-release niacin daily can cause liver failure.",
+    "Taking 50,000 IU weekly is a loading protocol prescribed by a clinician for confirmed deficiency.",
+    "Try to keep caffeine under 400 mg a day.",
+    "Keep iron below 45 mg a day unless your clinician advises more.",
+    "Take your levothyroxine 4 hours apart from 500 mg calcium.",
+    "Take calcium 500 mg at least 4 hours after levothyroxine.",
+    "You need to talk to your doctor before taking 500 mg of berberine.",
+    "Consider taking it with food; studies used 300 mg at night.",
+    "If you take warfarin, use caution with fish oil doses of 3 g a day.",
+    "Start with your prescriber: ask whether 1000 IU fits your levels.",
+  ]) {
+    assert.deepEqual(rules(reply), [], `wrongly flagged: ${reply}`);
+  }
+});
+
+test("a dose instruction without an imperative verb, or hidden behind a ceiling word, is rejected", () => {
+  for (const reply of [
+    "I'd go with magnesium glycinate 300 mg at bedtime.",
+    "A good starting dose for you is 500 mg of quercetin twice daily.",
+    "Aim for 2,000 IU of vitamin D daily.",
+    "You'll want 400 mg of magnesium at night.",
+    "Supplement with 2000 IU vitamin D3 daily.",
+    "You need 1000 mcg of B12 daily.",
+    "You should be taking 500 mg quercetin daily.",
+    "My recommendation: quercetin 500 mg twice daily.",
+    "Use 5 ml of the liquid twice daily.",
+    "For your allergies, quercetin 500 mg daily is a good choice.",
+    "Take quercetin over several weeks, 500 mg twice daily.",
+    "Start taking it more than 2 weeks before the season, 500 mg daily.",
+  ]) {
+    assert.ok(rules(reply).includes("no_directive_dosing"), `not flagged: ${reply}`);
+  }
+});
+
+test("a swap of a medicine for a supplement is rejected however it is worded; a refuted claim passes", () => {
+  for (const reply of [
+    "Replace metformin with berberine.",
+    "Try berberine instead of metformin.",
+    "Berberine is a natural alternative to metformin.",
+    "Consider berberine as an alternative to your metformin.",
+    "Use red yeast rice instead of a statin.",
+    "Many people swap their statin for red yeast rice.",
+    "You could switch to berberine rather than metformin.",
+    "Instead of taking your metformin, try berberine.",
+    "You may not need your statin if you take red yeast rice.",
+    "You can come off your statin and use red yeast rice.",
+    "Replace your blood pressure pills with garlic.",
+  ]) {
+    assert.ok(rules(reply).includes("no_medication_substitution"), `not flagged: ${reply}`);
+  }
+  for (const reply of [
+    "Some websites claim you can replace your metformin with berberine; that is not supported.",
+    "Berberine is not an alternative to metformin.",
+    "Take magnesium in the evening instead of the morning.",
+    "Electrolyte drinks replace lost sodium with a balanced mix.",
+    "Rather than your morning coffee, try green tea.",
+  ]) {
+    assert.deepEqual(rules(reply).filter((r) => r === "no_medication_substitution"), [], `wrongly flagged: ${reply}`);
+  }
+});
+
 test("the new rules apply to model answers only, never to curated gate replies", () => {
   assert.deepEqual(rules("Take quercetin 500 mg daily.", "system:some-gate").filter((r) => r === "no_directive_dosing"), []);
 });
@@ -116,6 +188,29 @@ test("a draft that stays prescriptive after the retry gets the safe fallback", a
   const { body, calls } = await ask("what helps blood sugar?", [bad, bad]);
   assert.equal(calls.length, 2);
   assert.equal(body.reply, SAFE_FALLBACK_REPLY);
+});
+
+test("the fallback carries no basis, and the response names the provider that wrote the served reply", async () => {
+  const bad = "Start taking berberine 500 mg twice daily to manage your diabetes.";
+  const { body } = await ask("what is quercetin?", [bad, bad]);
+  assert.equal(body.reply.startsWith(SAFE_FALLBACK_REPLY), true);
+  assert.equal(body.basis, undefined, "a canned fallback is not grounded in PharmaGuide data");
+
+  const calls = [];
+  llm = async () => {
+    calls.push(1);
+    return calls.length === 1
+      ? { text: bad, provider: "gemini", modelId: "first-model", usage: {}, degraded: false }
+      : { text: "Trials of quercetin used 500–1000 mg/day; the evidence is moderate.", provider: "groq", modelId: "retry-model", usage: {}, degraded: false };
+  };
+  const out = {};
+  try {
+    await chatHandler({ method: "POST", headers: { "x-forwarded-for": "10.78.0.9" }, socket: {}, body: { message: "what is quercetin used for?", history: [] } },
+      { setHeader() {}, status(c) { out.status = c; return this; }, json(j) { out.json = j; return this; }, end() { return this; } });
+  } finally {
+    responseCache.clearCache();
+  }
+  assert.equal(out.json.model, "retry-model");
 });
 
 test("the release gate blocks a pipeline bundle more than 90 days old", () => {

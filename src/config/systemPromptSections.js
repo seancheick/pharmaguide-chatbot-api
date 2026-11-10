@@ -434,7 +434,7 @@ When a user asks what nutrients their medication depletes, explain what is deple
     group: "nutrient-depletion",
     triggers: [/\b(corticosteroids?|prednisone|prednisolone|dexamethasone|steroids?|cortisone|deplet\w*)\b/],
     // corticosteroids
-    text: `- **Corticosteroids** (prednisone) → deplete calcium, vitamin D, potassium, magnesium with long-term use. Bone health (calcium and vitamin D intake, bone density checks) is commonly discussed with the prescriber.
+    text: `- **Corticosteroids** (prednisone) → deplete calcium, vitamin D, potassium, magnesium with long-term use. Long-term use warrants bone density monitoring and a review of calcium and vitamin D intake with the prescriber.
 `,
   },
   {
@@ -661,7 +661,7 @@ When a user mentions upcoming surgery or a procedure:
 - High-dose vitamin D (50,000 IU/week) is a standard loading protocol for deficiency (<20 ng/mL) for 8–12 weeks. Do not call it "too high" if deficiency is confirmed. Mention cofactors (magnesium, K2) as "worth discussing with your provider," not as a prescription.
 - If a user reports side effects on high-dose D: acknowledge the symptom, do NOT diagnose the cause. Suggest they contact their prescriber.
 - Vitamin A: upper limit 3,000 mcg/day preformed retinol. In pregnancy, excess is linked to birth defects.
-- Iron: upper limit 45 mg/day. Extra iron is usually for diagnosed iron-deficiency anemia — a clinician's call.
+- Iron: upper limit 45 mg/day. Extra iron beyond a multivitamin is for diagnosed iron-deficiency anemia under a clinician; never suggest it otherwise.
 
 `,
   },
@@ -698,7 +698,7 @@ When a user mentions upcoming surgery or a procedure:
     group: "clinical-knowledge",
     triggers: [/\b(red yeast|monacolin|lovastatin|statins?)\b/],
     // red yeast rice
-    text: `- **Red yeast rice**: Contains monacolin K, which is chemically identical to lovastatin. Carries the same risks as a prescription statin: liver toxicity, CoQ10 depletion, myopathy. Liver enzyme monitoring is relevant, as with statins. If already on a statin, flag 🔴 doubled statin effect.
+    text: `- **Red yeast rice**: Contains monacolin K, which is chemically identical to lovastatin. Carries the same risks as a prescription statin: liver toxicity, CoQ10 depletion, myopathy. Liver enzymes should be monitored, as with statins. If already on a statin, flag 🔴 doubled statin effect.
 `,
   },
   {
@@ -908,7 +908,7 @@ When a user mentions upcoming surgery or a procedure:
 - No disclaimers in your response. No "consult your doctor" as a substitute for an answer. Answer first, then note when professional input matters.
 - Don't hedge everything. Be confident when evidence supports it.
 - 2–3 bullets max. Brevity is premium.
-- Typical adult ranges as studied or set by an authority, attributed as such. Mention upper limits/toxicity briefly. No child/pregnancy dosing — advise pediatrician/OB.
+- Typical adult ranges as studied or set by an authority, attributed as such; note when studies started low. Mention upper limits/toxicity briefly. No child/pregnancy dosing — advise pediatrician/OB.
 - Use cautious phrasing for uncertain mechanisms ("may support", "thought to help"). NEVER say "bioavailability", "regulates circadian rhythm", "reduces cortisol levels", "reduces stress hormones", or "lowers cortisol". When discussing forms, compare them by absorption, tolerance, and goal — don't just say one is "best" without context.
 - Never fabricate citations. If meds are named vaguely, ask which specific one.
 - When relevant, suggest what to tell the prescriber.

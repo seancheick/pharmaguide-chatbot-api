@@ -865,7 +865,7 @@ function statinMyopathyReply() {
     "• **Red yeast rice** — contains a natural statin (monacolin K). Taking it with a prescription statin is essentially doubling the dose 🔴.",
     "• **Grapefruit** — inhibits the enzyme (CYP3A4) that clears simvastatin and atorvastatin, raising blood levels.",
     "",
-    "• **CoQ10 supplementation** (100-200 mg/day) may help with statin-related muscle aches — some evidence supports it, though it's not conclusive.",
+    "• **CoQ10**: trials for statin-related muscle aches used 100–200 mg/day, with mixed results. Ask your prescriber before adding it.",
     "",
     "Are you experiencing muscle symptoms, or looking to prevent them?",
   ].join("\n");

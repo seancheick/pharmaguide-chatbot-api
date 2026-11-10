@@ -183,26 +183,51 @@ function checkPrescribingLanguage(lower) {
   return prescribingPatterns.some((p) => p.test(lower));
 }
 
-// An instruction to this user that carries a dose: an imperative at the start of a sentence, bullet or
-// clause, or after "you should / I suggest / consider". Ceilings ("take no more than 45 mg") are not
-// instructions to take a dose, and a sentence attributing a dose to studies has no imperative verb.
-const DIRECTIVE_DOSE_RE = /(?:^|[.!?\n•*:;,]\s*|\b(?:you should|you could|you can|you might|you may want to|i(?: would|'d)? (?:recommend|suggest)|consider|try)\s+)(?:take|taking|start|starting|begin|beginning|use|using|add|adding|try)(?:\s+taking)?\b([^.!?\n]{0,50}?)\b\d[\d,.]*(?:\s*[-–]\s*\d[\d,.]*)?\s*(?:mg|mcg|µg|g|iu|grams?|milligrams?)\b/g;
-const CEILING_RE = /\b(?:no|not) more than|\bmore than|\bless than|\bbeyond|\bover|\babove|\bexceed/;
+// An instruction to this user that carries a dose. Three shapes:
+//   • an imperative at the start of a sentence, bullet or clause ("Take 500 mg", "Aim for 2,000 IU");
+//   • a second-person or first-person lead ("you should be taking", "you need", "I'd go with");
+//   • a dose called a good choice ("500 mg daily is a good choice").
+// A gerund at the start of a sentence is the subject of a statement, not an order: "Taking 10 g of
+// niacin can damage the liver" is a warning and must pass (review of 87e994f). So are thresholds
+// ("under 400 mg", "400 mg or more") and timing ("4 hours apart from 500 mg calcium").
+const DOSE = String.raw`\d[\d,.]*(?:\s*[-–]\s*\d[\d,.]*)?\s*(?:mg|mcg|µg|g|iu|ml|grams?|milligrams?|micrograms?)\b`;
+const IMPERATIVE = String.raw`(?:take|start|begin|use(?! caution| care)|add|try|supplement with|aim for|go with|stick (?:with|to))`;
+const GERUND = String.raw`(?:take|taking|start|starting|begin|beginning|use|using|add|adding|try|trying|supplement(?:ing)? with)`;
+const LEAD = String.raw`\b(?:you should(?: be)?|you could|you can|you might|you may want to|you'll want to|you will want to|i(?: would|'d)? (?:recommend|suggest)|consider|try)\s+(?:be\s+)?${GERUND}`;
+const BARE_LEAD = String.raw`\b(?:(?:you need|you'll want|you will want)\s+(?:about\s+|around\s+)?(?=\d)|i'd go with|i would go with|my recommendation(?: is)?:?|a good (?:starting )?dose(?: for you)? is|(?:^|\n)\W*dose:)`;
+const DIRECTIVE_DOSE_RE = new RegExp(String.raw`(?:(?:^|[.!?\n•*:;,]\s*)${IMPERATIVE}\b|${LEAD}\b|${BARE_LEAD})([^.!?\n;:]{0,50}?)\b(${DOSE})([^.!?\n]{0,40})`, "g");
+const GOOD_CHOICE_RE = new RegExp(String.raw`\b${DOSE}[^.!?\n]{0,40}\b(?:is|would be|works as)\s+(?:a\s+)?(?:good|great|reasonable|solid|ideal|sensible)\s+(?:choice|option|start|starting point|dose|amount)`);
+// Only the words right before the amount (or right after it) make it a threshold.
+const CEILING_BEFORE = /(?:\b(?:no|not) more than|\bmore than|\bless than|\bfewer than|\bunder|\bbelow|\bbeyond|\bover|\babove|\bexceed(?:ing)?|\bat most|\bmax(?:imum)?(?: of)?)\s*(?:about\s+|around\s+)?$/;
+const CEILING_AFTER = /^\s*(?:\/\s*\w+\s*)?(?:or more|or higher|or above|or greater|and above|\+)/;
+const TIMING = /\bapart\b|\bhours? (?:after|before|from)\b|\bseparate/;
 
 function checkDirectiveDosing(lower) {
   let m;
   DIRECTIVE_DOSE_RE.lastIndex = 0;
   while ((m = DIRECTIVE_DOSE_RE.exec(lower)) !== null) {
-    if (!CEILING_RE.test(m[1])) return true;
+    const [, span, , after] = m;
+    if (CEILING_BEFORE.test(span) || CEILING_AFTER.test(after) || TIMING.test(span + after)) continue;
+    return true;
   }
-  return false;
+  return GOOD_CHOICE_RE.test(lower);
 }
 
-// Swapping a prescription for a supplement is a treatment decision for the prescriber. "Do not use X
-// instead of your metformin" protects the user and passes.
+// Swapping a prescription for a supplement is a treatment decision for the prescriber. The swap words
+// count when they reach a medicine within three words: a generic medicine word or a medicine the chat already
+// recognises (core/entities.js owns that list). "Do not use X instead of your metformin" and "Some sites
+// claim you can replace your metformin" protect or refute and pass; "instead of the morning" is timing.
+const { ENTITY_PATTERNS } = require("../core/entities");
+const MED_KEYS = ["antidepressants", "stimulantMeds", "benzodiazepines", "betaBlockers", "antihistamines", "medications", "pde5Inhibitors", "nitrates"];
+const MED_WORD = String.raw`(?:(?:prescribed\s+)?(?:medications?|medicines?|prescriptions?|drugs?|meds|pills?|statins?|blood thinners?|antidepressants?|insulin)\b|${MED_KEYS.map((k) => ENTITY_PATTERNS[k].source).join("|")})`;
+const SWAP = String.raw`(?:replace|replacing|swap|swapping|substitute|substituting|switch(?:ing)? (?:from|off)|come off|coming off|get off|instead of(?: taking)?|in place of|rather than(?: taking)?|(?:an |a natural |natural )?alternatives? to|(?:may|might|will|would) not need|won't need|wouldn't need|no longer need)`;
+const SWAP_RE = new RegExp(String.raw`\b${SWAP}\s+(?:[\w-]+\s+){0,3}?${MED_WORD}`);
+const REFUTED_BEFORE = /\b(?:claim|claims|claimed|marketed|promoted|advertised|sold|myth|misconception)\W+(?:\w+\W+){0,4}$/;
+
 function checkMedicationSubstitution(lower) {
-  const swap = /\b(?:replace|replacing|swap|swapping|substitute) your\b|\binstead of your\b|\bin place of your\b|\bswitch(?:ing)? (?:from|off) your\b/;
-  return hasUnneutralisedMatch(lower, swap, { beforeOk: NEGATED_OR_PROTECTIVE_BEFORE });
+  return hasUnneutralisedMatch(lower, SWAP_RE, {
+    beforeOk: { test: (prefix) => NEGATED_OR_PROTECTIVE_BEFORE.test(prefix) || REFUTED_BEFORE.test(prefix) },
+  });
 }
 
 function checkFabricatedContactInfo(reply) {

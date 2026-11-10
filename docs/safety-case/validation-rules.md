@@ -100,15 +100,18 @@ Detects language that implies the system is prescribing medication.
 PharmaGuide reports what sources found; the user and their prescriber decide. Curated gate replies are not checked by these two rules.
 
 **Blocked**:
-- An instruction to take a dose: "For your allergies, take quercetin 500 mg daily", "Start taking berberine 500 mg twice daily", "You should take 2,000 IU of vitamin D"
-- Replacing a prescription: "replace your metformin", "instead of your statin", "switch from your …"
+- An instruction to take a dose: "For your allergies, take quercetin 500 mg daily", "You should be taking 500 mg", "Aim for 2,000 IU", "I'd go with 300 mg", "500 mg daily is a good choice"
+- Replacing a prescription, worded any way that reaches a medicine: "replace metformin with berberine", "an alternative to your statin", "come off your statin", "you may not need your statin"
 
 **Allowed**:
 - Attributed amounts: "trials used 500–1000 mg/day", "NIH sets the upper limit at 350 mg/day"
-- Ceilings: "don't take more than 45 mg of iron a day"
-- Protective wording: "do not use berberine instead of your metformin without your prescriber"
+- Warnings about an amount: "Taking 10 g of niacin can damage the liver", "400 mg or more increases diarrhea risk" (a gerund at the start of a sentence is a subject, not an order)
+- Ceilings and timing: "keep caffeine under 400 mg", "take levothyroxine 4 hours apart from 500 mg calcium"
+- Protective or refuting wording: "do not use berberine instead of your metformin", "some sites claim you can replace your metformin; that is not supported"
 
-A model draft that breaks any blocking rule is rewritten once with the reason; only a second failure gets the safe fallback.
+A model draft that breaks any blocking rule is rewritten once with the reason, and the served reply's provider and model are the retry's. A second failure gets the safe fallback, which keeps the deterministic dose flag and carries no `basis`. The rewrite costs one more provider call, so a rejected draft roughly doubles that answer's latency.
+
+The rules are a backstop for the prompt, not a complete parser: a dose written in words or an unusual phrasing can still pass, so the prompt's report-don't-prescribe section stays the primary control.
 
 ---
 

@@ -363,7 +363,7 @@ module.exports = async function handler(req, res) {
       console.log(`[TOKEN EST] ~${estTokens} input tokens | history: ${safeHistory.length} msgs | KB hits: ${kbHits} | complexity: ${complexity}`);
     }
 
-    const llmResult = await callWithFallback(finalMessages, { complexity, entities, kbHits, ...(mode === "fallback" ? { slimSystemPrompt: slimPrompt } : {}) });
+    let llmResult = await callWithFallback(finalMessages, { complexity, entities, kbHits, ...(mode === "fallback" ? { slimSystemPrompt: slimPrompt } : {}) });
 
     if (llmResult.degraded) {
       recordAnalytics({
@@ -448,7 +448,11 @@ module.exports = async function handler(req, res) {
         [...finalMessages, { role: "system", content: rewriteInstruction(rules) }],
         { complexity, entities, kbHits, ...(mode === "fallback" ? { slimSystemPrompt: slimPrompt } : {}) }
       );
-      if (!retry.degraded) ({ reply, validation: llmValidation } = finishDraft(retry.text));
+      // The retry's answer, provider and model are what the user is served (cache key, analytics, `model`).
+      if (!retry.degraded) {
+        llmResult = retry;
+        ({ reply, validation: llmValidation } = finishDraft(retry.text));
+      }
     }
 
     // Post-response safety validation. Two outcomes:
@@ -476,6 +480,8 @@ module.exports = async function handler(req, res) {
         message.length
       );
       reply = llmValidation.fallback;
+      // The deterministic over-limit warning comes from the user's own numbers, not the rejected draft.
+      try { reply = addDoseWarnings(reply, doses); } catch { /* optional decorator */ }
     }
 
     // ── Cache store (only if safe and cacheable) ──
@@ -495,12 +501,13 @@ module.exports = async function handler(req, res) {
       unknownDosedCount: unknownDosed.length, missingFields: [],
     });
 
-    const basis = resolveBasis({ pipelineRecords: pipelineRecords.length, kbHits });
-    const response = { reply, model: llmResult.modelId, basis, _state: conversationState };
+    // A canned fallback is grounded in nothing, like the degraded reply: it carries no basis.
+    const basis = llmValidation.safe ? resolveBasis({ pipelineRecords: pipelineRecords.length, kbHits }) : undefined;
+    const response = { reply, model: llmResult.modelId, ...(basis ? { basis } : {}), _state: conversationState };
     if (process.env.NODE_ENV === "development") {
       response.usage = llmResult.usage;
       response._validation = llmValidation;
-      response._basis_label = BASIS_LABELS[basis];
+      if (basis) response._basis_label = BASIS_LABELS[basis];
       response._kb_hits = kbHits;
       response._pipeline_records = pipelineRecords.map((r) => r.id);
       response._dose_summary = doseSummary;
