@@ -24,7 +24,7 @@ const pregEntities = { ...emptyEntities, populations: ["pregnancy"] };
 section("Rule: No diagnosing language");
 
 assert("safe: general info", validateResponse(
-  "Magnesium glycinate is well-absorbed. Take 200-400mg daily.",
+  "Magnesium glycinate is well-absorbed. Studies used 200-400mg daily.",
   "llm", emptyEntities, null
 ).safe);
 

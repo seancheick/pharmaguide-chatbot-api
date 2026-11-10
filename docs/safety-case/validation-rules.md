@@ -93,6 +93,25 @@ Detects language that implies the system is prescribing medication.
 
 ---
 
+### Report, don't prescribe (model answers only)
+
+**IDs**: `no_directive_dosing`, `no_medication_substitution` (2026-11-10 regulatory review)
+
+PharmaGuide reports what sources found; the user and their prescriber decide. Curated gate replies are not checked by these two rules.
+
+**Blocked**:
+- An instruction to take a dose: "For your allergies, take quercetin 500 mg daily", "Start taking berberine 500 mg twice daily", "You should take 2,000 IU of vitamin D"
+- Replacing a prescription: "replace your metformin", "instead of your statin", "switch from your …"
+
+**Allowed**:
+- Attributed amounts: "trials used 500–1000 mg/day", "NIH sets the upper limit at 350 mg/day"
+- Ceilings: "don't take more than 45 mg of iron a day"
+- Protective wording: "do not use berberine instead of your metformin without your prescriber"
+
+A model draft that breaks any blocking rule is rewritten once with the reason; only a second failure gets the safe fallback.
+
+---
+
 ### Rule 6: Response Length Limit
 
 **ID**: `length_limit`

@@ -633,34 +633,35 @@ function privacyReply() {
 }
 
 // ── Nutrient Depletion Map ──
-// Structured data so depletion answers are always grounded and consistent.
+// Structured data so depletion answers are always grounded and consistent. `discuss` is what to raise
+// with the prescriber: a report, never a self-dosing instruction (2026-11-10 regulatory review).
 const DEPLETION_MAP = {
-  metformin:         { depletes: ["B12 (10-30% reduced absorption)", "Folate (less common)"], replenish: "Sublingual B12 1000-2500 mcg/day. Monitor levels annually.", severity: "🟡" },
-  omeprazole:        { depletes: ["B12", "Magnesium", "Calcium", "Iron"], replenish: "Sublingual B12, magnesium glycinate, calcium citrate (not carbonate — needs acid), separate iron by 2h.", severity: "🟡" },
-  pantoprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], replenish: "Same as omeprazole — all PPIs deplete the same nutrients.", severity: "🟡" },
-  esomeprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], replenish: "Same as omeprazole — all PPIs deplete the same nutrients.", severity: "🟡" },
-  lansoprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], replenish: "Same as omeprazole — all PPIs deplete the same nutrients.", severity: "🟡" },
-  atorvastatin:      { depletes: ["CoQ10"], replenish: "CoQ10 100-200 mg/day. May help with statin-related muscle aches.", severity: "🟡" },
-  simvastatin:       { depletes: ["CoQ10"], replenish: "CoQ10 100-200 mg/day.", severity: "🟡" },
-  rosuvastatin:      { depletes: ["CoQ10"], replenish: "CoQ10 100-200 mg/day.", severity: "🟡" },
-  pravastatin:       { depletes: ["CoQ10"], replenish: "CoQ10 100-200 mg/day.", severity: "🟡" },
-  lovastatin:        { depletes: ["CoQ10"], replenish: "CoQ10 100-200 mg/day.", severity: "🟡" },
-  furosemide:        { depletes: ["Potassium", "Magnesium", "Calcium", "Zinc", "B1 (Thiamine)"], replenish: "Electrolyte monitoring. Magnesium glycinate 200-400mg. Potassium — only supplement under provider supervision.", severity: "🔴" },
-  hydrochlorothiazide: { depletes: ["Potassium", "Magnesium", "Zinc", "B vitamins"], replenish: "Electrolyte panel. Magnesium glycinate. Zinc 15-30mg. Potassium — monitor, don't self-supplement.", severity: "🟡" },
-  prednisone:        { depletes: ["Calcium", "Vitamin D", "Potassium", "Magnesium", "Vitamin C"], replenish: "Calcium 1000mg + D3 2000-4000 IU for bone protection. Monitor bone density with long-term use.", severity: "🔴" },
-  "birth control":   { depletes: ["B6", "B12", "Folate", "Magnesium", "Zinc", "Vitamin C", "Vitamin E"], replenish: "B-complex + magnesium glycinate 200-400mg. Especially important: folate if you plan to conceive after stopping.", severity: "🟡" },
-  sertraline:        { depletes: ["Sodium (hyponatremia — especially in elderly)"], replenish: "No routine supplementation. Monitor sodium if elderly, on diuretics, or experiencing confusion/weakness.", severity: "🟢" },
-  fluoxetine:        { depletes: ["Sodium (hyponatremia risk)"], replenish: "Same as sertraline. Monitor in elderly.", severity: "🟢" },
-  escitalopram:      { depletes: ["Sodium (hyponatremia risk)"], replenish: "Same as sertraline. Monitor in elderly.", severity: "🟢" },
-  levothyroxine:     { depletes: [], replenish: "Levothyroxine doesn't deplete nutrients, but many nutrients interfere with its ABSORPTION: iron, calcium, magnesium (separate by 4h), coffee (separate by 1h).", severity: "🟢" },
-  amoxicillin:       { depletes: ["Gut microbiome (beneficial bacteria)"], replenish: "Probiotics (S. boulardii, L. rhamnosus) — take 2h apart from antibiotic dose. Continue 1-2 weeks after course.", severity: "🟡" },
-  azithromycin:      { depletes: ["Gut microbiome"], replenish: "Same probiotic guidance as amoxicillin.", severity: "🟡" },
-  doxycycline:       { depletes: ["Gut microbiome", "Calcium/Iron/Zinc (chelation)"], replenish: "Probiotics 2h apart. Separate minerals by 2-3h.", severity: "🟡" },
-  ciprofloxacin:     { depletes: ["Gut microbiome", "Calcium/Magnesium/Iron (chelation)"], replenish: "Probiotics 2h apart. Separate minerals by 2h.", severity: "🟡" },
-  lisinopril:        { depletes: [], replenish: "ACE inhibitors don't deplete — they INCREASE potassium. Do NOT supplement potassium without monitoring.", severity: "🟢" },
-  losartan:          { depletes: [], replenish: "ARBs increase potassium. Same caution as ACE inhibitors.", severity: "🟢" },
-  gabapentin:        { depletes: ["Calcium (long-term, bone density concern)"], replenish: "Calcium 500-600mg + D3 for long-term users. Monitor bone density.", severity: "🟡" },
-  warfarin:          { depletes: [], replenish: "Warfarin doesn't deplete, but vitamin K intake must be CONSISTENT (not avoided). Sudden changes in green vegetables alter INR.", severity: "🟢" },
+  metformin:         { depletes: ["B12 (10-30% reduced absorption)", "Folate (less common)"], discuss: "A periodic B12 level check. Oral or sublingual B12 are the forms usually discussed.", severity: "🟡" },
+  omeprazole:        { depletes: ["B12", "Magnesium", "Calcium", "Iron"], discuss: "B12 and magnesium levels with long-term use. Calcium citrate absorbs without stomach acid (carbonate needs it). Iron is usually separated by 2h.", severity: "🟡" },
+  pantoprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], discuss: "Same as omeprazole — all PPIs deplete the same nutrients.", severity: "🟡" },
+  esomeprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], discuss: "Same as omeprazole — all PPIs deplete the same nutrients.", severity: "🟡" },
+  lansoprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], discuss: "Same as omeprazole — all PPIs deplete the same nutrients.", severity: "🟡" },
+  atorvastatin:      { depletes: ["CoQ10"], discuss: "CoQ10 is often asked about for statin-related muscle aches; trials (100-200 mg/day) show mixed results.", severity: "🟡" },
+  simvastatin:       { depletes: ["CoQ10"], discuss: "Same as atorvastatin.", severity: "🟡" },
+  rosuvastatin:      { depletes: ["CoQ10"], discuss: "Same as atorvastatin.", severity: "🟡" },
+  pravastatin:       { depletes: ["CoQ10"], discuss: "Same as atorvastatin.", severity: "🟡" },
+  lovastatin:        { depletes: ["CoQ10"], discuss: "Same as atorvastatin.", severity: "🟡" },
+  furosemide:        { depletes: ["Potassium", "Magnesium", "Calcium", "Zinc", "B1 (Thiamine)"], discuss: "Electrolyte monitoring, including magnesium. Potassium — only supplement under provider supervision.", severity: "🔴" },
+  hydrochlorothiazide: { depletes: ["Potassium", "Magnesium", "Zinc", "B vitamins"], discuss: "An electrolyte panel, including magnesium and zinc. Potassium — monitor, don't self-supplement.", severity: "🟡" },
+  prednisone:        { depletes: ["Calcium", "Vitamin D", "Potassium", "Magnesium", "Vitamin C"], discuss: "Calcium and vitamin D intake for bone protection. Monitor bone density with long-term use.", severity: "🔴" },
+  "birth control":   { depletes: ["B6", "B12", "Folate", "Magnesium", "Zinc", "Vitamin C", "Vitamin E"], discuss: "Whether a B-complex or magnesium makes sense for you. Especially important: folate if you plan to conceive after stopping.", severity: "🟡" },
+  sertraline:        { depletes: ["Sodium (hyponatremia — especially in elderly)"], discuss: "No routine supplementation. Monitor sodium if elderly, on diuretics, or experiencing confusion/weakness.", severity: "🟢" },
+  fluoxetine:        { depletes: ["Sodium (hyponatremia risk)"], discuss: "Same as sertraline. Monitor in elderly.", severity: "🟢" },
+  escitalopram:      { depletes: ["Sodium (hyponatremia risk)"], discuss: "Same as sertraline. Monitor in elderly.", severity: "🟢" },
+  levothyroxine:     { depletes: [], discuss: "Levothyroxine doesn't deplete nutrients, but many nutrients interfere with its ABSORPTION: iron, calcium, magnesium (separate by 4h), coffee (separate by 1h).", severity: "🟢" },
+  amoxicillin:       { depletes: ["Gut microbiome (beneficial bacteria)"], discuss: "Probiotics (S. boulardii, L. rhamnosus) have been studied for antibiotic-associated diarrhea, taken 2h apart from the antibiotic dose and for 1-2 weeks after the course.", severity: "🟡" },
+  azithromycin:      { depletes: ["Gut microbiome"], discuss: "Same probiotic guidance as amoxicillin.", severity: "🟡" },
+  doxycycline:       { depletes: ["Gut microbiome", "Calcium/Iron/Zinc (chelation)"], discuss: "Probiotics 2h apart. Separate minerals by 2-3h.", severity: "🟡" },
+  ciprofloxacin:     { depletes: ["Gut microbiome", "Calcium/Magnesium/Iron (chelation)"], discuss: "Probiotics 2h apart. Separate minerals by 2h.", severity: "🟡" },
+  lisinopril:        { depletes: [], discuss: "ACE inhibitors don't deplete — they INCREASE potassium. Do NOT supplement potassium without monitoring.", severity: "🟢" },
+  losartan:          { depletes: [], discuss: "ARBs increase potassium. Same caution as ACE inhibitors.", severity: "🟢" },
+  gabapentin:        { depletes: ["Calcium (long-term, bone density concern)"], discuss: "Calcium and vitamin D intake for long-term users. Monitor bone density.", severity: "🟡" },
+  warfarin:          { depletes: [], discuss: "Warfarin doesn't deplete, but vitamin K intake must be CONSISTENT (not avoided). Sudden changes in green vegetables alter INR.", severity: "🟢" },
 };
 
 // Aliases that map to depletion entries: exact brand pairs from their one owner
@@ -703,7 +704,7 @@ function depletionReply(convoContext) {
   }
 
   const lines = [];
-  lines.push("Here's what your medication(s) may deplete and what to consider:");
+  lines.push("Here's what your medication(s) may deplete and what to raise with your prescriber:");
   lines.push("");
 
   for (const med of found) {
@@ -711,15 +712,15 @@ function depletionReply(convoContext) {
     if (!data) continue;
     const name = med.charAt(0).toUpperCase() + med.slice(1);
     if (data.depletes.length === 0) {
-      lines.push(`${data.severity} **${name}**: ${data.replenish}`);
+      lines.push(`${data.severity} **${name}**: ${data.discuss}`);
     } else {
       lines.push(`${data.severity} **${name}** may deplete: ${data.depletes.join(", ")}`);
-      lines.push(`  Replenish: ${data.replenish}`);
+      lines.push(`  Ask your prescriber about: ${data.discuss}`);
     }
     lines.push("");
   }
 
-  lines.push("**What to tell your prescriber:** \"I'd like to check if any of my medications are depleting nutrients I should supplement.\"");
+  lines.push("**What to tell your prescriber:** \"Could any of my medications be lowering a nutrient, and is a level check worth doing?\"");
 
   return lines.join("\n").trim();
 }

@@ -262,7 +262,7 @@ assert("bullet point start is clean", (() => {
 section("Response Linter — doesn't break existing validator");
 
 assert("validateResponse still works normally", (() => {
-  const result = validateResponse("Magnesium is safe. Take 200mg daily.", "llm", emptyEntities, null);
+  const result = validateResponse("Magnesium glycinate is well absorbed. Studies used 200mg daily.", "llm", emptyEntities, null);
   return result.safe;
 })());
 

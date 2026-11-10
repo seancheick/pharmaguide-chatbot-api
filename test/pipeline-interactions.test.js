@@ -78,6 +78,8 @@ const COMMON = {
   "class:antipsychotics": "quetiapine", "class:anticonvulsants": "lamotrigine", "class:immunosuppressants": "tacrolimus",
   "class:hiv_protease_inhibitors": "ritonavir", "class:bisphosphonates": "alendronate", "class:stimulants": "adderall",
   "class:triptans": "sumatriptan", "class:sedatives": "sleeping pills",
+  "class:cyp3a4_metabolized_statins": "simvastatin", "class:thiazide_diuretics": "hydrochlorothiazide",
+  "class:fluconazole_sensitive_statins": "simvastatin", "class:opioids": "oxycodone",
 };
 const everyday = (r, k) => (r[`${k}_type`] === "drug_class" ? COMMON[r[`${k}_id`]] : r[`${k}_name`].replace(/\s*\([^)]*\)/g, "").split("/")[0].trim());
 

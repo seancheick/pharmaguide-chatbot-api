@@ -52,7 +52,16 @@ function validateResponse(reply, route, entities, state) {
     violations.push({ rule: "no_empty_safety", detail: "Safety route produced empty reply" });
   }
 
-  // 8. No fabricated URLs, emails, or non-emergency phone numbers (LLM only).
+  // 8. Report, don't prescribe (LLM only; curated gate replies are reviewed text).
+  //    "Trials used 500 mg/day" is a report; "take 500 mg for your allergies" is an instruction.
+  if (route === "llm" && checkDirectiveDosing(lower)) {
+    violations.push({ rule: "no_directive_dosing", detail: "Reply tells the user to take a dose" });
+  }
+  if (route === "llm" && checkMedicationSubstitution(lower)) {
+    violations.push({ rule: "no_medication_substitution", detail: "Reply suggests replacing a medication" });
+  }
+
+  // 9. No fabricated URLs, emails, or non-emergency phone numbers (LLM only).
   let sanitizedReply = reply;
   if (route === "llm") {
     const stripped = stripFabricatedContactInfo(reply);
@@ -172,6 +181,28 @@ function checkPrescribingLanguage(lower) {
     /\bi recommend you take \d+\s*mg.{0,20}(daily|twice|three times).{0,20}for \d+ (days|weeks|months)\b/,
   ];
   return prescribingPatterns.some((p) => p.test(lower));
+}
+
+// An instruction to this user that carries a dose: an imperative at the start of a sentence, bullet or
+// clause, or after "you should / I suggest / consider". Ceilings ("take no more than 45 mg") are not
+// instructions to take a dose, and a sentence attributing a dose to studies has no imperative verb.
+const DIRECTIVE_DOSE_RE = /(?:^|[.!?\n•*:;,]\s*|\b(?:you should|you could|you can|you might|you may want to|i(?: would|'d)? (?:recommend|suggest)|consider|try)\s+)(?:take|taking|start|starting|begin|beginning|use|using|add|adding|try)(?:\s+taking)?\b([^.!?\n]{0,50}?)\b\d[\d,.]*(?:\s*[-–]\s*\d[\d,.]*)?\s*(?:mg|mcg|µg|g|iu|grams?|milligrams?)\b/g;
+const CEILING_RE = /\b(?:no|not) more than|\bmore than|\bless than|\bbeyond|\bover|\babove|\bexceed/;
+
+function checkDirectiveDosing(lower) {
+  let m;
+  DIRECTIVE_DOSE_RE.lastIndex = 0;
+  while ((m = DIRECTIVE_DOSE_RE.exec(lower)) !== null) {
+    if (!CEILING_RE.test(m[1])) return true;
+  }
+  return false;
+}
+
+// Swapping a prescription for a supplement is a treatment decision for the prescriber. "Do not use X
+// instead of your metformin" protects the user and passes.
+function checkMedicationSubstitution(lower) {
+  const swap = /\b(?:replace|replacing|swap|swapping|substitute) your\b|\binstead of your\b|\bin place of your\b|\bswitch(?:ing)? (?:from|off) your\b/;
+  return hasUnneutralisedMatch(lower, swap, { beforeOk: NEGATED_OR_PROTECTIVE_BEFORE });
 }
 
 function checkFabricatedContactInfo(reply) {
