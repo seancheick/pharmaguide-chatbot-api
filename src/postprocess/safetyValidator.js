@@ -201,7 +201,7 @@ const GOOD_CHOICE_RE = new RegExp(String.raw`\b${DOSE}[^.!?\n]{0,40}\b(?:is|woul
 const CEILING_BEFORE = /(?:\b(?:no|not) more than|\bmore than|\bless than|\bfewer than|\bunder|\bbelow|\bbeyond|\bover|\babove|\bexceed(?:ing)?|\bat most|\bmax(?:imum)?(?: of)?)\s*(?:about\s+|around\s+)?$/;
 const CEILING_AFTER = /^\s*(?:\/\s*\w+\s*)?(?:or more|or higher|or above|or greater|and above|\+)/;
 const TIMING = /\bapart\b|\bhours? (?:after|before|from)\b|\bseparate/;
-// After the amount, timing exempts only a separation from a medicine ("500 mg at least 4 hours after
+// After the amount, timing exempts only a stated separation from a medicine ("500 mg at least 4 hours after
 // levothyroxine"). "300 mg 1 hour before bed" or "500 mg daily, separate from iron" is still a directive.
 const timingFromMedicine = (after) => TIMING_FROM_MED_RE.test(after);
 
@@ -224,7 +224,9 @@ const { ENTITY_PATTERNS } = require("../core/entities");
 const MED_KEYS = ["antidepressants", "stimulantMeds", "benzodiazepines", "betaBlockers", "antihistamines", "medications", "pde5Inhibitors", "nitrates"];
 const MED_WORD = String.raw`(?:(?:prescribed\s+)?(?:medications?|medicines?|prescriptions?|drugs?|meds|pills?|statins?|blood thinners?|antidepressants?|insulin)\b|${MED_KEYS.map((k) => ENTITY_PATTERNS[k].source).join("|")})`;
 const SWAP = String.raw`(?:replace|replacing|swap|swapping|substitute|substituting|switch(?:ing)? (?:from|off)|come off|coming off|get off|instead of(?: taking)?|in place of|rather than(?: taking)?|(?:an |a natural |natural )?alternatives? to|(?:may|might|will|would) not need|won't need|wouldn't need|no longer need)`;
-const TIMING_FROM_MED_RE = new RegExp(String.raw`(?:\bapart|\bafter|\bbefore|\bfrom)\s+(?:[\w-]+\s+){0,2}?${MED_WORD}`);
+// A stated interval ("4 hours after", "2 h apart from") or "apart from", then a medicine within two words.
+// "before discussing metformin" is not spacing between doses and does not count.
+const TIMING_FROM_MED_RE = new RegExp(String.raw`(?:\b\d[\d.]*(?:\s*[-–]\s*\d[\d.]*)?\s*(?:hours?|hrs?|h|minutes?|mins?)\s+(?:apart\s+from|after|before|from)|\bapart\s+from)\s+(?:[\w-]+\s+){0,2}?${MED_WORD}`);
 const SWAP_RE = new RegExp(String.raw`\b${SWAP}\s+(?:[\w-]+\s+){0,3}?${MED_WORD}`);
 const REFUTED_BEFORE = /\b(?:claim|claims|claimed|marketed|promoted|advertised|sold|myth|misconception)\W+(?:\w+\W+){0,4}$/;
 

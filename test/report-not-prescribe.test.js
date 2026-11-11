@@ -106,6 +106,7 @@ test("a dose instruction without an imperative verb, or hidden behind a ceiling 
     "Take 300 mg magnesium 1 hour before bed.",
     "Take 500 mg quercetin daily, separate from iron.",
     "Take 400 mg magnesium 2 hours after dinner.",
+    "Take berberine 500 mg daily before discussing metformin with your prescriber.",
   ]) {
     assert.ok(rules(reply).includes("no_directive_dosing"), `not flagged: ${reply}`);
   }
@@ -227,6 +228,18 @@ test("a clarifying question or a redirect carries no basis; a curated safety rep
   const { body } = await ask("is niacin safe with my atorvastatin", ["unused"]);
   assert.equal(body.model, "system:niacin-statin");
   assert.equal(body.basis, "pharmaguide_record");
+
+  // A gate reply the validator rejects is served as the generic fallback, which explains no record.
+  const { ROUTE_REPLY_MAP } = require("../src/gates/replies");
+  const original = ROUTE_REPLY_MAP["system:niacin-statin"];
+  ROUTE_REPLY_MAP["system:niacin-statin"] = () => "You have diabetes.";
+  try {
+    const { body: rejected } = await ask("is niacin safe with my atorvastatin", ["unused"]);
+    assert.equal(rejected.reply, SAFE_FALLBACK_REPLY);
+    assert.equal(rejected.basis, undefined, "a fallback is not grounded in a record");
+  } finally {
+    ROUTE_REPLY_MAP["system:niacin-statin"] = original;
+  }
 });
 
 test("the rewrite shares the first draft's time budget and is skipped when too little is left", async () => {

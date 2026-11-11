@@ -261,7 +261,8 @@ module.exports = async function handler(req, res) {
         missingFields,
       });
 
-      const basis = CONVERSATIONAL_ROUTES.has(triageRoute) ? undefined : resolveBasis({ gate: true });
+      // A rejected gate reply was replaced by the generic fallback, which explains no record.
+      const basis = CONVERSATIONAL_ROUTES.has(triageRoute) || !validation.safe ? undefined : resolveBasis({ gate: true });
       const payload = {
         reply: gateReply,
         model: triageRoute,
