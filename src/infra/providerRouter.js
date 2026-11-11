@@ -272,6 +272,8 @@ function buildProviderChain() {
 
 module.exports = {
   callWithFallback,
+  CHAIN_DEADLINE_MS,
+  MIN_ATTEMPT_MS,
   scoreComplexity,
   getGenerationParams,
 };

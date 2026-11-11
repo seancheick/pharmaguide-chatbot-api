@@ -78,6 +78,7 @@ test("a warning about an amount is never mistaken for an instruction", () => {
     "Keep iron below 45 mg a day unless your clinician advises more.",
     "Take your levothyroxine 4 hours apart from 500 mg calcium.",
     "Take calcium 500 mg at least 4 hours after levothyroxine.",
+    "Take 500 mg calcium 4 hours apart from your medications.",
     "You need to talk to your doctor before taking 500 mg of berberine.",
     "Consider taking it with food; studies used 300 mg at night.",
     "If you take warfarin, use caution with fish oil doses of 3 g a day.",
@@ -101,6 +102,10 @@ test("a dose instruction without an imperative verb, or hidden behind a ceiling 
     "For your allergies, quercetin 500 mg daily is a good choice.",
     "Take quercetin over several weeks, 500 mg twice daily.",
     "Start taking it more than 2 weeks before the season, 500 mg daily.",
+    // Review of d033ffb: timing words after the dose exempted these.
+    "Take 300 mg magnesium 1 hour before bed.",
+    "Take 500 mg quercetin daily, separate from iron.",
+    "Take 400 mg magnesium 2 hours after dinner.",
   ]) {
     assert.ok(rules(reply).includes("no_directive_dosing"), `not flagged: ${reply}`);
   }
@@ -213,6 +218,49 @@ test("the fallback carries no basis, and the response names the provider that wr
   assert.equal(out.json.model, "retry-model");
 });
 
+test("a clarifying question or a redirect carries no basis; a curated safety reply does", async () => {
+  for (const [message, route] of [["is my medication ok with zinc", "system:clarifier"], ["i have arthritis what do i do", "system:medical-condition"]]) {
+    const { body } = await ask(message, ["unused"]);
+    assert.equal(body.model, route, message);
+    assert.equal(body.basis, undefined, `${route} is not grounded in a record`);
+  }
+  const { body } = await ask("is niacin safe with my atorvastatin", ["unused"]);
+  assert.equal(body.model, "system:niacin-statin");
+  assert.equal(body.basis, "pharmaguide_record");
+});
+
+test("the rewrite shares the first draft's time budget and is skipped when too little is left", async () => {
+  const { CHAIN_DEADLINE_MS, MIN_ATTEMPT_MS } = providerRouter;
+  const bad = "Start taking berberine 500 mg twice daily to manage your diabetes.";
+  const good = "Trials of berberine used 500 mg two or three times a day; the evidence is moderate.";
+  const realNow = Date.now;
+  for (const [elapsed, expectRetry] of [[5000, true], [CHAIN_DEADLINE_MS - MIN_ATTEMPT_MS + 500, false]]) {
+    let offset = 0;
+    Date.now = () => realNow() + offset;
+    const opts = [];
+    llm = async (messages, o) => {
+      opts.push(o);
+      if (opts.length === 1) offset += elapsed;
+      return { text: opts.length === 1 ? bad : good, provider: "stub", modelId: "stub-llm", usage: {}, degraded: false };
+    };
+    const out = {};
+    try {
+      await chatHandler({ method: "POST", headers: { "x-forwarded-for": `10.79.0.${elapsed % 200}` }, socket: {}, body: { message: "what helps blood sugar?", history: [] } },
+        { setHeader() {}, status(c) { out.status = c; return this; }, json(j) { out.json = j; return this; }, end() { return this; } });
+    } finally {
+      Date.now = realNow;
+      responseCache.clearCache();
+    }
+    if (expectRetry) {
+      assert.equal(opts.length, 2, "rewrite runs");
+      assert.ok(opts[1].deadlineMs <= CHAIN_DEADLINE_MS - elapsed, `rewrite budget ${opts[1].deadlineMs} exceeds what is left`);
+    } else {
+      assert.equal(opts.length, 1, "no rewrite with too little time left");
+      assert.equal(out.json.reply, SAFE_FALLBACK_REPLY);
+    }
+  }
+});
+
 test("the release gate blocks a pipeline bundle more than 90 days old", () => {
   const { checkPipelineBundleAge } = require("../src/infra/releaseGuard");
   const built = new Date(require("../src/data/pipeline/MANIFEST.json").built_at);
@@ -234,4 +282,16 @@ test("the depletion reply raises questions for the prescriber; it never gives a 
     }
   }
   assert.match(depletionReply("does furosemide deplete anything"), /Potassium — only supplement under provider supervision/, "the potassium caution stays");
+});
+
+test("every depletion entry states its own guidance, never a cross-reference to another medicine", () => {
+  const { DEPLETION_MAP, depletionReply } = require("../src/gates/replies");
+  for (const [med, data] of Object.entries(DEPLETION_MAP)) {
+    assert.doesNotMatch(data.discuss, /\bsame (?:as|probiotic|caution)\b/i, `${med}: ${data.discuss}`);
+  }
+  for (const med of ["simvastatin", "rosuvastatin", "pravastatin", "lovastatin", "pantoprazole", "esomeprazole", "lansoprazole", "fluoxetine", "escitalopram", "azithromycin", "losartan"]) {
+    const reply = depletionReply(`does ${med} deplete anything`);
+    assert.ok(reply, med);
+    assert.doesNotMatch(reply, /\bsame (?:as|probiotic|caution)\b/i, med);
+  }
 });

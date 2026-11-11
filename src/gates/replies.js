@@ -608,7 +608,7 @@ function whatIsReply() {
     "• Safety alerts — pregnancy, kidney, liver, and elderly-specific warnings",
     "• Dose awareness — flag doses that exceed safe upper limits",
     "• Condition-specific guidance — allergies, UTIs, hormonal health, gut health, and more",
-    "• Confidence scoring — every answer tells you how well-grounded it is in clinical evidence",
+    "• Source labels — answers say what they are based on: PharmaGuide records, reference data or general background",
     "",
     "I use 90+ verified knowledge base entries, 35+ safety gates for high-risk interactions, and AI models trained on medical literature.",
     "",
@@ -635,31 +635,35 @@ function privacyReply() {
 // ── Nutrient Depletion Map ──
 // Structured data so depletion answers are always grounded and consistent. `discuss` is what to raise
 // with the prescriber: a report, never a self-dosing instruction (2026-11-10 regulatory review).
+const PPI_DISCUSS = "B12 and magnesium levels with long-term use. Calcium citrate absorbs without stomach acid (carbonate needs it). Iron is usually separated by 2h.";
+const STATIN_DISCUSS = "CoQ10 is often asked about for statin-related muscle aches; trials (100-200 mg/day) show mixed results.";
+const SSRI_DISCUSS = "No routine supplementation. Monitor sodium if elderly, on diuretics, or experiencing confusion/weakness.";
+const PROBIOTIC_DISCUSS = "Probiotics (S. boulardii, L. rhamnosus) have been studied for antibiotic-associated diarrhea, taken 2h apart from the antibiotic dose and for 1-2 weeks after the course.";
 const DEPLETION_MAP = {
   metformin:         { depletes: ["B12 (10-30% reduced absorption)", "Folate (less common)"], discuss: "A periodic B12 level check. Oral or sublingual B12 are the forms usually discussed.", severity: "🟡" },
-  omeprazole:        { depletes: ["B12", "Magnesium", "Calcium", "Iron"], discuss: "B12 and magnesium levels with long-term use. Calcium citrate absorbs without stomach acid (carbonate needs it). Iron is usually separated by 2h.", severity: "🟡" },
-  pantoprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], discuss: "Same as omeprazole — all PPIs deplete the same nutrients.", severity: "🟡" },
-  esomeprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], discuss: "Same as omeprazole — all PPIs deplete the same nutrients.", severity: "🟡" },
-  lansoprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], discuss: "Same as omeprazole — all PPIs deplete the same nutrients.", severity: "🟡" },
-  atorvastatin:      { depletes: ["CoQ10"], discuss: "CoQ10 is often asked about for statin-related muscle aches; trials (100-200 mg/day) show mixed results.", severity: "🟡" },
-  simvastatin:       { depletes: ["CoQ10"], discuss: "Same as atorvastatin.", severity: "🟡" },
-  rosuvastatin:      { depletes: ["CoQ10"], discuss: "Same as atorvastatin.", severity: "🟡" },
-  pravastatin:       { depletes: ["CoQ10"], discuss: "Same as atorvastatin.", severity: "🟡" },
-  lovastatin:        { depletes: ["CoQ10"], discuss: "Same as atorvastatin.", severity: "🟡" },
+  omeprazole:        { depletes: ["B12", "Magnesium", "Calcium", "Iron"], discuss: PPI_DISCUSS, severity: "🟡" },
+  pantoprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], discuss: PPI_DISCUSS, severity: "🟡" },
+  esomeprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], discuss: PPI_DISCUSS, severity: "🟡" },
+  lansoprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], discuss: PPI_DISCUSS, severity: "🟡" },
+  atorvastatin:      { depletes: ["CoQ10"], discuss: STATIN_DISCUSS, severity: "🟡" },
+  simvastatin:       { depletes: ["CoQ10"], discuss: STATIN_DISCUSS, severity: "🟡" },
+  rosuvastatin:      { depletes: ["CoQ10"], discuss: STATIN_DISCUSS, severity: "🟡" },
+  pravastatin:       { depletes: ["CoQ10"], discuss: STATIN_DISCUSS, severity: "🟡" },
+  lovastatin:        { depletes: ["CoQ10"], discuss: STATIN_DISCUSS, severity: "🟡" },
   furosemide:        { depletes: ["Potassium", "Magnesium", "Calcium", "Zinc", "B1 (Thiamine)"], discuss: "Electrolyte monitoring, including magnesium. Potassium — only supplement under provider supervision.", severity: "🔴" },
   hydrochlorothiazide: { depletes: ["Potassium", "Magnesium", "Zinc", "B vitamins"], discuss: "An electrolyte panel, including magnesium and zinc. Potassium — monitor, don't self-supplement.", severity: "🟡" },
   prednisone:        { depletes: ["Calcium", "Vitamin D", "Potassium", "Magnesium", "Vitamin C"], discuss: "Calcium and vitamin D intake for bone protection. Monitor bone density with long-term use.", severity: "🔴" },
   "birth control":   { depletes: ["B6", "B12", "Folate", "Magnesium", "Zinc", "Vitamin C", "Vitamin E"], discuss: "Whether a B-complex or magnesium makes sense for you. Especially important: folate if you plan to conceive after stopping.", severity: "🟡" },
-  sertraline:        { depletes: ["Sodium (hyponatremia — especially in elderly)"], discuss: "No routine supplementation. Monitor sodium if elderly, on diuretics, or experiencing confusion/weakness.", severity: "🟢" },
-  fluoxetine:        { depletes: ["Sodium (hyponatremia risk)"], discuss: "Same as sertraline. Monitor in elderly.", severity: "🟢" },
-  escitalopram:      { depletes: ["Sodium (hyponatremia risk)"], discuss: "Same as sertraline. Monitor in elderly.", severity: "🟢" },
+  sertraline:        { depletes: ["Sodium (hyponatremia — especially in elderly)"], discuss: SSRI_DISCUSS, severity: "🟢" },
+  fluoxetine:        { depletes: ["Sodium (hyponatremia risk)"], discuss: SSRI_DISCUSS, severity: "🟢" },
+  escitalopram:      { depletes: ["Sodium (hyponatremia risk)"], discuss: SSRI_DISCUSS, severity: "🟢" },
   levothyroxine:     { depletes: [], discuss: "Levothyroxine doesn't deplete nutrients, but many nutrients interfere with its ABSORPTION: iron, calcium, magnesium (separate by 4h), coffee (separate by 1h).", severity: "🟢" },
-  amoxicillin:       { depletes: ["Gut microbiome (beneficial bacteria)"], discuss: "Probiotics (S. boulardii, L. rhamnosus) have been studied for antibiotic-associated diarrhea, taken 2h apart from the antibiotic dose and for 1-2 weeks after the course.", severity: "🟡" },
-  azithromycin:      { depletes: ["Gut microbiome"], discuss: "Same probiotic guidance as amoxicillin.", severity: "🟡" },
+  amoxicillin:       { depletes: ["Gut microbiome (beneficial bacteria)"], discuss: PROBIOTIC_DISCUSS, severity: "🟡" },
+  azithromycin:      { depletes: ["Gut microbiome"], discuss: PROBIOTIC_DISCUSS, severity: "🟡" },
   doxycycline:       { depletes: ["Gut microbiome", "Calcium/Iron/Zinc (chelation)"], discuss: "Probiotics 2h apart. Separate minerals by 2-3h.", severity: "🟡" },
   ciprofloxacin:     { depletes: ["Gut microbiome", "Calcium/Magnesium/Iron (chelation)"], discuss: "Probiotics 2h apart. Separate minerals by 2h.", severity: "🟡" },
   lisinopril:        { depletes: [], discuss: "ACE inhibitors don't deplete — they INCREASE potassium. Do NOT supplement potassium without monitoring.", severity: "🟢" },
-  losartan:          { depletes: [], discuss: "ARBs increase potassium. Same caution as ACE inhibitors.", severity: "🟢" },
+  losartan:          { depletes: [], discuss: "ARBs don't deplete — they INCREASE potassium. Do NOT supplement potassium without monitoring.", severity: "🟢" },
   gabapentin:        { depletes: ["Calcium (long-term, bone density concern)"], discuss: "Calcium and vitamin D intake for long-term users. Monitor bone density.", severity: "🟡" },
   warfarin:          { depletes: [], discuss: "Warfarin doesn't deplete, but vitamin K intake must be CONSISTENT (not avoided). Sudden changes in green vegetables alter INR.", severity: "🟢" },
 };
@@ -985,7 +989,14 @@ const ROUTE_REPLY_MAP = {
   "system:nsaid-chronic": function() { return chronicNSAIDReply(); },
 };
 
+// Replies that ask, redirect or introduce. They are grounded in no record, so they carry no `basis`.
+const CONVERSATIONAL_ROUTES = new Set([
+  "system:clarifier", "system:off-topic", "system:medical-condition", "system:flirty", "system:flirty-repeat",
+  "system:flirty-final", "system:what-is", "system:privacy", "system:creator", "system:pet-question", "system:business-inquiry",
+]);
+
 module.exports = {
+  CONVERSATIONAL_ROUTES,
   emergencyReply,
   premiumWelcomeReply,
   premiumThanksReply,

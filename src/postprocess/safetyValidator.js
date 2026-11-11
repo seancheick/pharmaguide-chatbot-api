@@ -195,19 +195,22 @@ const IMPERATIVE = String.raw`(?:take|start|begin|use(?! caution| care)|add|try|
 const GERUND = String.raw`(?:take|taking|start|starting|begin|beginning|use|using|add|adding|try|trying|supplement(?:ing)? with)`;
 const LEAD = String.raw`\b(?:you should(?: be)?|you could|you can|you might|you may want to|you'll want to|you will want to|i(?: would|'d)? (?:recommend|suggest)|consider|try)\s+(?:be\s+)?${GERUND}`;
 const BARE_LEAD = String.raw`\b(?:(?:you need|you'll want|you will want)\s+(?:about\s+|around\s+)?(?=\d)|i'd go with|i would go with|my recommendation(?: is)?:?|a good (?:starting )?dose(?: for you)? is|(?:^|\n)\W*dose:)`;
-const DIRECTIVE_DOSE_RE = new RegExp(String.raw`(?:(?:^|[.!?\n•*:;,]\s*)${IMPERATIVE}\b|${LEAD}\b|${BARE_LEAD})([^.!?\n;:]{0,50}?)\b(${DOSE})([^.!?\n]{0,40})`, "g");
+const DIRECTIVE_DOSE_RE = new RegExp(String.raw`(?:(?:^|[.!?\n•*:;,]\s*)${IMPERATIVE}\b|${LEAD}\b|${BARE_LEAD})([^.!?\n;:]{0,50}?)\b(${DOSE})([^.!?\n]{0,60})`, "g");
 const GOOD_CHOICE_RE = new RegExp(String.raw`\b${DOSE}[^.!?\n]{0,40}\b(?:is|would be|works as)\s+(?:a\s+)?(?:good|great|reasonable|solid|ideal|sensible)\s+(?:choice|option|start|starting point|dose|amount)`);
 // Only the words right before the amount (or right after it) make it a threshold.
 const CEILING_BEFORE = /(?:\b(?:no|not) more than|\bmore than|\bless than|\bfewer than|\bunder|\bbelow|\bbeyond|\bover|\babove|\bexceed(?:ing)?|\bat most|\bmax(?:imum)?(?: of)?)\s*(?:about\s+|around\s+)?$/;
 const CEILING_AFTER = /^\s*(?:\/\s*\w+\s*)?(?:or more|or higher|or above|or greater|and above|\+)/;
 const TIMING = /\bapart\b|\bhours? (?:after|before|from)\b|\bseparate/;
+// After the amount, timing exempts only a separation from a medicine ("500 mg at least 4 hours after
+// levothyroxine"). "300 mg 1 hour before bed" or "500 mg daily, separate from iron" is still a directive.
+const timingFromMedicine = (after) => TIMING_FROM_MED_RE.test(after);
 
 function checkDirectiveDosing(lower) {
   let m;
   DIRECTIVE_DOSE_RE.lastIndex = 0;
   while ((m = DIRECTIVE_DOSE_RE.exec(lower)) !== null) {
     const [, span, , after] = m;
-    if (CEILING_BEFORE.test(span) || CEILING_AFTER.test(after) || TIMING.test(span + after)) continue;
+    if (CEILING_BEFORE.test(span) || CEILING_AFTER.test(after) || TIMING.test(span) || timingFromMedicine(after)) continue;
     return true;
   }
   return GOOD_CHOICE_RE.test(lower);
@@ -221,6 +224,7 @@ const { ENTITY_PATTERNS } = require("../core/entities");
 const MED_KEYS = ["antidepressants", "stimulantMeds", "benzodiazepines", "betaBlockers", "antihistamines", "medications", "pde5Inhibitors", "nitrates"];
 const MED_WORD = String.raw`(?:(?:prescribed\s+)?(?:medications?|medicines?|prescriptions?|drugs?|meds|pills?|statins?|blood thinners?|antidepressants?|insulin)\b|${MED_KEYS.map((k) => ENTITY_PATTERNS[k].source).join("|")})`;
 const SWAP = String.raw`(?:replace|replacing|swap|swapping|substitute|substituting|switch(?:ing)? (?:from|off)|come off|coming off|get off|instead of(?: taking)?|in place of|rather than(?: taking)?|(?:an |a natural |natural )?alternatives? to|(?:may|might|will|would) not need|won't need|wouldn't need|no longer need)`;
+const TIMING_FROM_MED_RE = new RegExp(String.raw`(?:\bapart|\bafter|\bbefore|\bfrom)\s+(?:[\w-]+\s+){0,2}?${MED_WORD}`);
 const SWAP_RE = new RegExp(String.raw`\b${SWAP}\s+(?:[\w-]+\s+){0,3}?${MED_WORD}`);
 const REFUTED_BEFORE = /\b(?:claim|claims|claimed|marketed|promoted|advertised|sold|myth|misconception)\W+(?:\w+\W+){0,4}$/;
 

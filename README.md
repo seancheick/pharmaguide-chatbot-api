@@ -371,7 +371,7 @@ This assistant is built on the same safety philosophy, with migration to the sha
 ```
 
 - `message`: required, at most 2,000 characters. `history`: optional, the last 10 messages are used (1,000 characters each). `_state`: optional, send back what the previous response returned.
-- `basis` and `_state` appear on triage and model responses; a degraded reply has no `basis`. Early conversational and emergency routes return only `reply` and `model`.
+- `basis` and `_state` appear on triage and model responses; a degraded reply has no `basis`. Emergency and conversational replies (greetings, clarifying questions, redirects; `CONVERSATIONAL_ROUTES` in `src/gates/replies.js`) carry no `basis`.
 
 ```json
 { "reply": "...", "model": "gemini-2.5-flash", "basis": "reference_data",

@@ -18,7 +18,7 @@ const { extractEntities, extractKnownItems } = require("../src/core/entities");
 const { scoreRisks } = require("../src/core/riskScore");
 const { routeByRisk } = require("../src/core/router");
 const detection = require("../src/gates/detection");
-const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, flirtyRepeatReply, flirtyFinalReply, whatIsReply, privacyReply, depletionReply, creatorReply, petQuestionReply, businessInquiryReply, medicalConditionRedirectReply } = require("../src/gates/replies");
+const { ROUTE_REPLY_MAP, CONVERSATIONAL_ROUTES, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, flirtyRepeatReply, flirtyFinalReply, whatIsReply, privacyReply, depletionReply, creatorReply, petQuestionReply, businessInquiryReply, medicalConditionRedirectReply } = require("../src/gates/replies");
 const { getFormRecommendation } = require("../src/core/formAdvisor");
 const { checkRateLimit } = require("../src/infra/rateLimit");
 const { isTrustedProxy, proxyEnforcement, forwardedClientIp } = require("../src/infra/proxyAuth");
@@ -44,7 +44,7 @@ const { correctMisspellings, resolveBrandName, detectUnknownDosedItems } = requi
 const { findMissingFields } = require("../src/core/requiredFields");
 const { recordAnalytics } = require("../src/infra/analytics");
 const { buildCacheKey, isCacheable, getCachedResponse, setCachedResponse } = require("../src/infra/responseCache");
-const { callWithFallback, scoreComplexity } = require("../src/infra/providerRouter");
+const { callWithFallback, scoreComplexity, CHAIN_DEADLINE_MS, MIN_ATTEMPT_MS } = require("../src/infra/providerRouter");
 const { buildAugmentedMessages } = require("../src/core/kbLookup");
 const { findInteractions, recordBlock, RECORD_ID } = require("../src/core/pipelineInteractions");
 const { extractDoses, getDoseSummary } = require("../src/core/doseExtractor");
@@ -261,11 +261,11 @@ module.exports = async function handler(req, res) {
         missingFields,
       });
 
-      const basis = resolveBasis({ gate: true });
+      const basis = CONVERSATIONAL_ROUTES.has(triageRoute) ? undefined : resolveBasis({ gate: true });
       const payload = {
         reply: gateReply,
         model: triageRoute,
-        basis,
+        ...(basis ? { basis } : {}),
         _state: conversationState,
       };
       if (process.env.NODE_ENV === "development") {
@@ -363,6 +363,7 @@ module.exports = async function handler(req, res) {
       console.log(`[TOKEN EST] ~${estTokens} input tokens | history: ${safeHistory.length} msgs | KB hits: ${kbHits} | complexity: ${complexity}`);
     }
 
+    const llmStart = Date.now();
     let llmResult = await callWithFallback(finalMessages, { complexity, entities, kbHits, ...(mode === "fallback" ? { slimSystemPrompt: slimPrompt } : {}) });
 
     if (llmResult.degraded) {
@@ -441,12 +442,15 @@ module.exports = async function handler(req, res) {
 
     // A draft that broke a rule gets one rewrite with the reason spelled out, so a user asking an ordinary
     // question gets an answer rather than the generic fallback. Only the second failure falls back.
-    if (!llmValidation.safe) {
+    // The rewrite spends what is left of the one chain budget, so the reply still beats the website proxy's
+    // 15 s limit; with too little left, the safe fallback is served instead.
+    const rewriteBudgetMs = CHAIN_DEADLINE_MS - (Date.now() - llmStart);
+    if (!llmValidation.safe && rewriteBudgetMs >= MIN_ATTEMPT_MS) {
       const rules = (llmValidation.violations || []).filter((v) => !v.nonBlocking).map((v) => v.rule);
       console.warn("[VALIDATOR] LLM draft rejected, rewriting once:", rules, "| message_length:", message.length);
       const retry = await callWithFallback(
         [...finalMessages, { role: "system", content: rewriteInstruction(rules) }],
-        { complexity, entities, kbHits, ...(mode === "fallback" ? { slimSystemPrompt: slimPrompt } : {}) }
+        { complexity, entities, kbHits, deadlineMs: rewriteBudgetMs, ...(mode === "fallback" ? { slimSystemPrompt: slimPrompt } : {}) }
       );
       // The retry's answer, provider and model are what the user is served (cache key, analytics, `model`).
       if (!retry.degraded) {
