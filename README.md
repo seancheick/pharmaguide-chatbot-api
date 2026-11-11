@@ -57,9 +57,9 @@ A production decision-and-explanation system for high-stakes supplement–medica
 | Curated source references | 31 |
 | Approved clinical claims (with review dates) | 21 |
 | Safety-policy domains | 21 |
-| Post-response validator rules | 8 |
+| Post-response validator rules | 10 |
 | Pinned production canaries (replayable live) | 10 (9) |
-| Test suites | 36 |
+| Test suites | 37 |
 <!-- metrics:end -->
 
 *That table is generated from the code by `scripts/readme_metrics.js`; `npm test` fails if it drifts.*
@@ -106,7 +106,7 @@ A production decision-and-explanation system for high-stakes supplement–medica
  9  Safety validator (every reply) ........ sanitise in place, or replace with a safe fallback
       │
       ▼
- Response  { reply, model (provenance), confidence, _state }
+ Response  { reply, model (provenance), basis, _state }
 ```
 
 The ordering is the design: steps 1–5 are rules, so the questions that matter most never depend on sampling, latency, quota or a vendor outage.
@@ -139,7 +139,7 @@ Every response says where it came from, in the `model` field:
 | `cache` | A previously validated answer for a context-free question |
 | `system:degraded` | Every provider failed; the deterministic safe reply was returned |
 
-`confidence` (`high` / `moderate` / `low`) is derived from provenance, not from the model: deterministic and cached answers are `high`; a model answer grounded in two or more knowledge entries from the primary model is `high`; any other grounded answer is `moderate`; an ungrounded answer is `moderate` from the primary model and `low` from a lighter one.
+`basis` names what grounded the answer, never the model or the cache (`src/core/confidence.js`): `pharmaguide_record` when a curated safety reply or a pipeline interaction record was the basis, `reference_data` when knowledge-base entries were matched, `general_background` otherwise. It replaced a `confidence` label that called a strong model with two knowledge hits "clinical guidelines" (2026-11-10). A model draft that breaks a validator rule is rewritten once with the reason before the safe fallback is used.
 
 Which *rules* produced an answer is reported too: every response carries an `X-PG-Ruleset` header (policy version, gates version, system-prompt hash, knowledge-base and approved-claims content hashes, deployed commit), so two answers can be compared by header and any edit to the knowledge, claims or prompt changes the tag. The JSON contract is unchanged.
 
@@ -371,10 +371,10 @@ This assistant is built on the same safety philosophy, with migration to the sha
 ```
 
 - `message`: required, at most 2,000 characters. `history`: optional, the last 10 messages are used (1,000 characters each). `_state`: optional, send back what the previous response returned.
-- `confidence` and `_state` appear on triage and model responses. Early conversational and emergency routes return only `reply` and `model`.
+- `basis` and `_state` appear on triage and model responses; a degraded reply has no `basis`. Emergency and conversational replies (greetings, clarifying questions, redirects; `CONVERSATIONAL_ROUTES` in `src/gates/replies.js`) carry no `basis`.
 
 ```json
-{ "reply": "...", "model": "gemini-2.5-flash", "confidence": "moderate",
+{ "reply": "...", "model": "gemini-2.5-flash", "basis": "reference_data",
   "_state": { "populations": [], "known_meds": [], "known_supps": [], "conditions": [] } }
 ```
 
@@ -440,7 +440,7 @@ RUN_LLM_TESTS=1 node test/llm-behavior.test.js   # opt-in live-provider behaviou
 
 - **Educational, not medical advice.** The service does not diagnose, prescribe, or give dosing guidance for pregnancy or children; the validator enforces this on every reply.
 - **Pattern-based detection has recall limits.** Emergency and interaction detection is tested against paraphrases and negative controls, but tested is not proven complete; new gaps become permanent regression cases.
-- **The knowledge layer is bounded.** For topics it does not cover, the service answers more generally with lower confidence, and coverage telemetry flags the topic for review.
+- **The knowledge layer is bounded.** For topics it does not cover, the service answers with general background labelled `general_background`, and coverage telemetry flags the topic for review.
 - **Tested in English.**
 - **Language-model providers process message text.** See the privacy policy.
 

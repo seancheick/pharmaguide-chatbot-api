@@ -15,19 +15,19 @@ const { SECTIONS, composePrompt } = require("../src/config/systemPromptSections"
 const { systemPromptHash } = require("../src/infra/provenance");
 const { MUST_ALWAYS_APPLY } = require("./prompt-rules");
 
-// The prompt that was in production when it was split into sections (2026-10-06). A deliberate
-// prompt edit changes these: update both together, in the same commit as the edit, so the change
-// is visible in review. Responses are cached on this hash and report it in X-PG-Ruleset.
-const PRODUCTION_PROMPT_SHA256 = "6294d6d4bd1ea13fc1c47422f9d5de04907af16a70c628126cd80406e6da4b1a";
-const PRODUCTION_PROMPT_LENGTH = 42552;
+// The current prompt. A deliberate prompt edit changes these: update both together, in the same commit
+// as the edit, so the change is visible in review. Responses are cached on this hash and report it in
+// X-PG-Ruleset. 2026-10-06: split into sections. 2026-11-10: report, don't prescribe.
+const PRODUCTION_PROMPT_SHA256 = "38a1c1aa600b9578900e71abf894da11a6dfcaa09a643e0fb15eac1416aa1fc1";
+const PRODUCTION_PROMPT_LENGTH = 45108;
 
 const core = () => SECTIONS.filter((s) => s.kind === "core").map((s) => s.text).join("");
 
-test("the sectioned prompt is byte-identical to the prompt that was in production", () => {
+test("the sectioned prompt is byte-identical to the pinned production prompt", () => {
   assert.equal(SYSTEM_PROMPT.length, PRODUCTION_PROMPT_LENGTH);
   assert.equal(crypto.createHash("sha256").update(SYSTEM_PROMPT).digest("hex"), PRODUCTION_PROMPT_SHA256);
   assert.equal(composePrompt(SECTIONS), SYSTEM_PROMPT);
-  assert.equal(systemPromptHash, PRODUCTION_PROMPT_SHA256.slice(0, 12), "the cache key and X-PG-Ruleset prompt hash must not change in a refactor");
+  assert.equal(systemPromptHash, PRODUCTION_PROMPT_SHA256.slice(0, 12), "the cache key and X-PG-Ruleset prompt hash follow the pinned prompt");
 });
 
 test("sections are well formed: unique ids, a known kind, text that starts at a block header, nothing empty", () => {

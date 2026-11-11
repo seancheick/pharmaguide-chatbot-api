@@ -18,23 +18,37 @@ const { extractEntities, extractKnownItems } = require("../src/core/entities");
 const { scoreRisks } = require("../src/core/riskScore");
 const { routeByRisk } = require("../src/core/router");
 const detection = require("../src/gates/detection");
-const { ROUTE_REPLY_MAP, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, flirtyRepeatReply, flirtyFinalReply, whatIsReply, privacyReply, depletionReply, creatorReply, petQuestionReply, businessInquiryReply, medicalConditionRedirectReply } = require("../src/gates/replies");
+const { ROUTE_REPLY_MAP, CONVERSATIONAL_ROUTES, emergencyReply, premiumWelcomeReply, premiumThanksReply, premiumGoodbyeReply, offTopicReply, flirtyDeflectReply, flirtyRepeatReply, flirtyFinalReply, whatIsReply, privacyReply, depletionReply, creatorReply, petQuestionReply, businessInquiryReply, medicalConditionRedirectReply } = require("../src/gates/replies");
 const { getFormRecommendation } = require("../src/core/formAdvisor");
 const { checkRateLimit } = require("../src/infra/rateLimit");
 const { isTrustedProxy, proxyEnforcement, forwardedClientIp } = require("../src/infra/proxyAuth");
 const { logGate } = require("../src/infra/logger");
 const { mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion, addDoseWarnings, stripMarkdownLinks, stripUnverifiedCitations } = require("../src/postprocess");
 const { validateResponse, SAFE_FALLBACK_REPLY } = require("../src/postprocess/safetyValidator");
+
+// What the rewrite is told, by rule. Report, don't prescribe: the information stays, the instruction goes.
+const REWRITE_REASONS = {
+  no_directive_dosing: "It told the user to take a dose. Report doses instead: say what studies used or what a named authority (NIH, FDA, the label) sets, with the evidence grade, and that the user should check with their pharmacist whether it fits them.",
+  no_medication_substitution: "It suggested replacing a prescribed medication. Explain what the research compared and any interaction, and say that changing a prescription is a decision for the prescriber.",
+};
+function rewriteInstruction(rules) {
+  const reasons = rules.map((r) => REWRITE_REASONS[r]).filter(Boolean);
+  return [
+    "REWRITE: your previous draft broke a PharmaGuide rule (" + rules.join(", ") + ").",
+    ...reasons,
+    "Rewrite the full answer as a report of what sources found. Keep every safety warning and keep it as helpful and specific as before.",
+  ].join(" ");
+}
 const { classifyEntities } = require("../src/core/entityClassifier");
 const { correctMisspellings, resolveBrandName, detectUnknownDosedItems } = require("../src/core/unknownResolver");
 const { findMissingFields } = require("../src/core/requiredFields");
 const { recordAnalytics } = require("../src/infra/analytics");
 const { buildCacheKey, isCacheable, getCachedResponse, setCachedResponse } = require("../src/infra/responseCache");
-const { callWithFallback, scoreComplexity } = require("../src/infra/providerRouter");
+const { callWithFallback, scoreComplexity, CHAIN_DEADLINE_MS, MIN_ATTEMPT_MS } = require("../src/infra/providerRouter");
 const { buildAugmentedMessages } = require("../src/core/kbLookup");
 const { findInteractions, recordBlock, RECORD_ID } = require("../src/core/pipelineInteractions");
 const { extractDoses, getDoseSummary } = require("../src/core/doseExtractor");
-const { resolveConfidence } = require("../src/core/confidence");
+const { resolveBasis, BASIS_LABELS } = require("../src/core/confidence");
 const { detectAndRecordGaps } = require("../src/infra/topicTracker");
 const { buildTemporalContext } = require("../src/core/temporalContext");
 
@@ -196,7 +210,7 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({
           reply: deplReply,
           model: "system:depletion",
-          confidence: "high",
+          basis: resolveBasis({ gate: true }),
           _state: conversationState,
         });
       }
@@ -247,18 +261,19 @@ module.exports = async function handler(req, res) {
         missingFields,
       });
 
-      const { confidence, label: confidenceLabel } = resolveConfidence("gate", 0);
+      // A rejected gate reply was replaced by the generic fallback, which explains no record.
+      const basis = CONVERSATIONAL_ROUTES.has(triageRoute) || !validation.safe ? undefined : resolveBasis({ gate: true });
       const payload = {
         reply: gateReply,
         model: triageRoute,
-        confidence,
+        ...(basis ? { basis } : {}),
         _state: conversationState,
       };
       if (process.env.NODE_ENV === "development") {
         payload._scores = scores;
         payload._entities = entities;
         payload._validation = validation;
-        payload._confidence_label = confidenceLabel;
+        payload._basis_label = BASIS_LABELS[basis];
         payload._dose_summary = doseSummary;
       }
       return res.status(200).json(payload);
@@ -337,8 +352,8 @@ module.exports = async function handler(req, res) {
         brandResolved: !!brandResult, clarifierTriggered: false,
         unknownDosedCount: unknownDosed.length, missingFields: [],
       });
-      const { confidence: cacheConf } = resolveConfidence("cache", 0);
-      return res.status(200).json({ reply: cached, model: "cache", confidence: cacheConf, _state: conversationState });
+      // Same message, prompt and data as when it was stored, so the same records grounded it.
+      return res.status(200).json({ reply: cached, model: "cache", basis: resolveBasis({ pipelineRecords: pipelineRecords.length, kbHits }), _state: conversationState });
     }
 
     // ── LLM call via provider router (Gemini → Groq → degraded) ──
@@ -349,7 +364,8 @@ module.exports = async function handler(req, res) {
       console.log(`[TOKEN EST] ~${estTokens} input tokens | history: ${safeHistory.length} msgs | KB hits: ${kbHits} | complexity: ${complexity}`);
     }
 
-    const llmResult = await callWithFallback(finalMessages, { complexity, entities, kbHits, ...(mode === "fallback" ? { slimSystemPrompt: slimPrompt } : {}) });
+    const llmStart = Date.now();
+    let llmResult = await callWithFallback(finalMessages, { complexity, entities, kbHits, ...(mode === "fallback" ? { slimSystemPrompt: slimPrompt } : {}) });
 
     if (llmResult.degraded) {
       recordAnalytics({
@@ -360,11 +376,9 @@ module.exports = async function handler(req, res) {
         brandResolved: !!brandResult, clarifierTriggered: false,
         unknownDosedCount: unknownDosed.length, missingFields: [],
       });
-      const { confidence: degradedConf } = resolveConfidence("degraded", 0);
       const degradedPayload = {
         reply: llmResult.text,
         model: "system:degraded",
-        confidence: degradedConf,
       };
       // Provider names and raw upstream error text are for developers only: in
       // production they reach the visitor's browser. The same detail is in the
@@ -376,59 +390,82 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(degradedPayload);
     }
 
-    let reply = llmResult.text || "I couldn't generate a response. Please try again.";
+    // Clean-up, decorators and validation for one draft; the retry below goes through the same steps.
+    const finishDraft = (text) => {
+      let reply = text || "I couldn't generate a response. Please try again.";
+      // Strip disclaimers (UI footer handles it)
+      reply = reply
+        .replace(/\n*\*?Educational only[^\n]*/gi, "")
+        .replace(/\n*\*?This is for educational[^\n]*/gi, "")
+        .replace(/\n*\*?Disclaimer[^\n]*/gi, "")
+        .replace(/\n*\*?Note: this is not medical advice[^\n]*/gi, "")
+        .replace(/\n*\*?Consult (?:your |a )?(?:doctor|physician|healthcare provider|clinician|pharmacist)[^\n]*before[^\n]*/gi, "")
+        .trim();
 
-    // Strip disclaimers (UI footer handles it)
-    reply = reply
-      .replace(/\n*\*?Educational only[^\n]*/gi, "")
-      .replace(/\n*\*?This is for educational[^\n]*/gi, "")
-      .replace(/\n*\*?Disclaimer[^\n]*/gi, "")
-      .replace(/\n*\*?Note: this is not medical advice[^\n]*/gi, "")
-      .replace(/\n*\*?Consult (?:your |a )?(?:doctor|physician|healthcare provider|clinician|pharmacist)[^\n]*before[^\n]*/gi, "")
-      .trim();
+      // Internal pipeline record ids are not sources a reader can look up.
+      reply = reply.replace(RECORD_ID, "");
+      // Citations: only references verified against PubMed (or listed regulatory sources) survive.
+      reply = stripUnverifiedCitations(reply);
 
-    // Internal pipeline record ids are not sources a reader can look up.
-    reply = reply.replace(RECORD_ID, "");
-    // Citations: only references verified against PubMed (or listed regulatory sources) survive.
-    reply = stripUnverifiedCitations(reply);
+      // Strip Markdown link syntax (frontend doesn't render Markdown)
+      reply = stripMarkdownLinks(reply);
 
-    // Strip Markdown link syntax (frontend doesn't render Markdown)
-    reply = stripMarkdownLinks(reply);
-
-    // Mineral spacing
-    if (detection.mentionsMineralSpacingTrigger(message)) {
-      reply = stripModelSpacingAdvice(reply);
-      reply = reply + "\n\n" + mineralSpacingNote();
-    }
-
-    // Single question enforcement
-    reply = enforceOneQuestion(reply);
-
-    // Optional decorators: a failure in one of these must never turn a
-    // finished answer into a 500 (a malformed KB entry once did exactly that).
-    try {
-      // Dose-over-limit warnings
-      reply = addDoseWarnings(reply, doses);
-
-      // Form-specific recommendations (e.g., "oxide → try glycinate for sleep")
-      for (const supp of (entities.supplements || [])) {
-        const formRec = getFormRecommendation(convoContext, supp, entities);
-        if (formRec) {
-          reply = reply + "\n\n" + formRec;
-          break; // One form rec per response to avoid clutter
-        }
+      // Mineral spacing
+      if (detection.mentionsMineralSpacingTrigger(message)) {
+        reply = stripModelSpacingAdvice(reply);
+        reply = reply + "\n\n" + mineralSpacingNote();
       }
-    } catch (decoratorError) {
-      console.warn("[POSTPROCESS] optional decorator failed:", decoratorError && decoratorError.message);
+
+      // Single question enforcement
+      reply = enforceOneQuestion(reply);
+
+      // Optional decorators: a failure in one of these must never turn a
+      // finished answer into a 500 (a malformed KB entry once did exactly that).
+      try {
+        // Dose-over-limit warnings
+        reply = addDoseWarnings(reply, doses);
+
+        // Form-specific recommendations (e.g., "oxide → try glycinate for sleep")
+        for (const supp of (entities.supplements || [])) {
+          const formRec = getFormRecommendation(convoContext, supp, entities);
+          if (formRec) {
+            reply = reply + "\n\n" + formRec;
+            break; // One form rec per response to avoid clutter
+          }
+        }
+      } catch (decoratorError) {
+        console.warn("[POSTPROCESS] optional decorator failed:", decoratorError && decoratorError.message);
+      }
+      return { reply, validation: validateResponse(reply, "llm", entities, null) };
+    };
+
+    let { reply, validation: llmValidation } = finishDraft(llmResult.text);
+
+    // A draft that broke a rule gets one rewrite with the reason spelled out, so a user asking an ordinary
+    // question gets an answer rather than the generic fallback. Only the second failure falls back.
+    // The rewrite spends what is left of the one chain budget, so the reply still beats the website proxy's
+    // 15 s limit; with too little left, the safe fallback is served instead.
+    const rewriteBudgetMs = CHAIN_DEADLINE_MS - (Date.now() - llmStart);
+    if (!llmValidation.safe && rewriteBudgetMs >= MIN_ATTEMPT_MS) {
+      const rules = (llmValidation.violations || []).filter((v) => !v.nonBlocking).map((v) => v.rule);
+      console.warn("[VALIDATOR] LLM draft rejected, rewriting once:", rules, "| message_length:", message.length);
+      const retry = await callWithFallback(
+        [...finalMessages, { role: "system", content: rewriteInstruction(rules) }],
+        { complexity, entities, kbHits, deadlineMs: rewriteBudgetMs, ...(mode === "fallback" ? { slimSystemPrompt: slimPrompt } : {}) }
+      );
+      // The retry's answer, provider and model are what the user is served (cache key, analytics, `model`).
+      if (!retry.degraded) {
+        llmResult = retry;
+        ({ reply, validation: llmValidation } = finishDraft(retry.text));
+      }
     }
 
     // Post-response safety validation. Two outcomes:
     //   • safe: replace `reply` with the sanitized version (URL strip
     //     + tidy artifacts) so the user sees a clean answer.
-    //   • unsafe: log the violations (always — not just dev) so we can
-    //     see what's failing in prod logs, then fall back to the
+    //   • unsafe after the rewrite: log the violations (always — not just dev)
+    //     so we can see what's failing in prod logs, then fall back to the
     //     generic safe reply.
-    const llmValidation = validateResponse(reply, "llm", entities, null);
     if (llmValidation.safe) {
       if (llmValidation.sanitizedReply && llmValidation.sanitizedReply !== reply) {
         reply = llmValidation.sanitizedReply;
@@ -448,6 +485,8 @@ module.exports = async function handler(req, res) {
         message.length
       );
       reply = llmValidation.fallback;
+      // The deterministic over-limit warning comes from the user's own numbers, not the rejected draft.
+      try { reply = addDoseWarnings(reply, doses); } catch { /* optional decorator */ }
     }
 
     // ── Cache store (only if safe and cacheable) ──
@@ -467,12 +506,13 @@ module.exports = async function handler(req, res) {
       unknownDosedCount: unknownDosed.length, missingFields: [],
     });
 
-    const { confidence: llmConf, label: llmConfLabel } = resolveConfidence("llm", kbHits, llmResult.provider);
-    const response = { reply, model: llmResult.modelId, confidence: llmConf, _state: conversationState };
+    // A canned fallback is grounded in nothing, like the degraded reply: it carries no basis.
+    const basis = llmValidation.safe ? resolveBasis({ pipelineRecords: pipelineRecords.length, kbHits }) : undefined;
+    const response = { reply, model: llmResult.modelId, ...(basis ? { basis } : {}), _state: conversationState };
     if (process.env.NODE_ENV === "development") {
       response.usage = llmResult.usage;
       response._validation = llmValidation;
-      response._confidence_label = llmConfLabel;
+      if (basis) response._basis_label = BASIS_LABELS[basis];
       response._kb_hits = kbHits;
       response._pipeline_records = pipelineRecords.map((r) => r.id);
       response._dose_summary = doseSummary;

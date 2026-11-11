@@ -1,13 +1,13 @@
 /**
  * Phase 1 tests — knowledge base, KB lookup, dose extractor,
- * confidence signal, and expanded session memory.
+ * answer basis, and expanded session memory.
  * Run: node test/knowledge.test.js
  */
 
 const { KNOWLEDGE_BASE, getKBEntry, getKBEntriesForEntities, getInteractionsBetween, getAllEntries } = require("../src/config/knowledgeBase");
 const { buildKBContext, buildAugmentedMessages } = require("../src/core/kbLookup");
 const { extractDoses, getDoseSummary } = require("../src/core/doseExtractor");
-const { resolveConfidence, CONFIDENCE_LABELS } = require("../src/core/confidence");
+const { resolveBasis, BASIS_LABELS } = require("../src/core/confidence");
 
 let pass = 0, fail = 0, total = 0;
 const failures = [];
@@ -314,33 +314,15 @@ function assert(condition, label) {
 })();
 
 // ═══════════════════════════════════════════════════
-//  1D. Confidence Signal
+//  1D. Answer basis: what grounded the answer, never the model or the cache
 // ═══════════════════════════════════════════════════
 
-(function testConfidenceGate() {
-  const result = resolveConfidence("gate", 0);
-  assert(result.confidence === "high", "gate → high confidence");
-  assert(result.label === CONFIDENCE_LABELS.high, "gate → correct label");
-})();
-
-(function testConfidenceCache() {
-  const result = resolveConfidence("cache", 0);
-  assert(result.confidence === "high", "cache → high confidence");
-})();
-
-(function testConfidenceLLMWithKB() {
-  const result = resolveConfidence("llm", 3);
-  assert(result.confidence === "moderate", "LLM + KB hits → moderate confidence");
-})();
-
-(function testConfidenceLLMNoKB() {
-  const result = resolveConfidence("llm", 0);
-  assert(result.confidence === "low", "LLM no KB → low confidence");
-})();
-
-(function testConfidenceDegraded() {
-  const result = resolveConfidence("degraded", 0);
-  assert(result.confidence === "low", "degraded → low confidence");
+(function testBasis() {
+  assert(resolveBasis({ gate: true }) === "pharmaguide_record", "curated gate → PharmaGuide record");
+  assert(resolveBasis({ pipelineRecords: 2, kbHits: 0 }) === "pharmaguide_record", "pipeline record → PharmaGuide record");
+  assert(resolveBasis({ pipelineRecords: 0, kbHits: 3 }) === "reference_data", "KB hits → reference data");
+  assert(resolveBasis({ pipelineRecords: 0, kbHits: 0 }) === "general_background", "nothing matched → general background");
+  assert(Object.keys(BASIS_LABELS).length === 3, "three labels");
 })();
 
 // ═══════════════════════════════════════════════════

@@ -52,7 +52,16 @@ function validateResponse(reply, route, entities, state) {
     violations.push({ rule: "no_empty_safety", detail: "Safety route produced empty reply" });
   }
 
-  // 8. No fabricated URLs, emails, or non-emergency phone numbers (LLM only).
+  // 8. Report, don't prescribe (LLM only; curated gate replies are reviewed text).
+  //    "Trials used 500 mg/day" is a report; "take 500 mg for your allergies" is an instruction.
+  if (route === "llm" && checkDirectiveDosing(lower)) {
+    violations.push({ rule: "no_directive_dosing", detail: "Reply tells the user to take a dose" });
+  }
+  if (route === "llm" && checkMedicationSubstitution(lower)) {
+    violations.push({ rule: "no_medication_substitution", detail: "Reply suggests replacing a medication" });
+  }
+
+  // 9. No fabricated URLs, emails, or non-emergency phone numbers (LLM only).
   let sanitizedReply = reply;
   if (route === "llm") {
     const stripped = stripFabricatedContactInfo(reply);
@@ -172,6 +181,59 @@ function checkPrescribingLanguage(lower) {
     /\bi recommend you take \d+\s*mg.{0,20}(daily|twice|three times).{0,20}for \d+ (days|weeks|months)\b/,
   ];
   return prescribingPatterns.some((p) => p.test(lower));
+}
+
+// An instruction to this user that carries a dose. Three shapes:
+//   • an imperative at the start of a sentence, bullet or clause ("Take 500 mg", "Aim for 2,000 IU");
+//   • a second-person or first-person lead ("you should be taking", "you need", "I'd go with");
+//   • a dose called a good choice ("500 mg daily is a good choice").
+// A gerund at the start of a sentence is the subject of a statement, not an order: "Taking 10 g of
+// niacin can damage the liver" is a warning and must pass (review of 87e994f). So are thresholds
+// ("under 400 mg", "400 mg or more") and timing ("4 hours apart from 500 mg calcium").
+const DOSE = String.raw`\d[\d,.]*(?:\s*[-–]\s*\d[\d,.]*)?\s*(?:mg|mcg|µg|g|iu|ml|grams?|milligrams?|micrograms?)\b`;
+const IMPERATIVE = String.raw`(?:take|start|begin|use(?! caution| care)|add|try|supplement with|aim for|go with|stick (?:with|to))`;
+const GERUND = String.raw`(?:take|taking|start|starting|begin|beginning|use|using|add|adding|try|trying|supplement(?:ing)? with)`;
+const LEAD = String.raw`\b(?:you should(?: be)?|you could|you can|you might|you may want to|you'll want to|you will want to|i(?: would|'d)? (?:recommend|suggest)|consider|try)\s+(?:be\s+)?${GERUND}`;
+const BARE_LEAD = String.raw`\b(?:(?:you need|you'll want|you will want)\s+(?:about\s+|around\s+)?(?=\d)|i'd go with|i would go with|my recommendation(?: is)?:?|a good (?:starting )?dose(?: for you)? is|(?:^|\n)\W*dose:)`;
+const DIRECTIVE_DOSE_RE = new RegExp(String.raw`(?:(?:^|[.!?\n•*:;,]\s*)${IMPERATIVE}\b|${LEAD}\b|${BARE_LEAD})([^.!?\n;:]{0,50}?)\b(${DOSE})([^.!?\n]{0,60})`, "g");
+const GOOD_CHOICE_RE = new RegExp(String.raw`\b${DOSE}[^.!?\n]{0,40}\b(?:is|would be|works as)\s+(?:a\s+)?(?:good|great|reasonable|solid|ideal|sensible)\s+(?:choice|option|start|starting point|dose|amount)`);
+// Only the words right before the amount (or right after it) make it a threshold.
+const CEILING_BEFORE = /(?:\b(?:no|not) more than|\bmore than|\bless than|\bfewer than|\bunder|\bbelow|\bbeyond|\bover|\babove|\bexceed(?:ing)?|\bat most|\bmax(?:imum)?(?: of)?)\s*(?:about\s+|around\s+)?$/;
+const CEILING_AFTER = /^\s*(?:\/\s*\w+\s*)?(?:or more|or higher|or above|or greater|and above|\+)/;
+const TIMING = /\bapart\b|\bhours? (?:after|before|from)\b|\bseparate/;
+// After the amount, timing exempts only a stated separation from a medicine ("500 mg at least 4 hours after
+// levothyroxine"). "300 mg 1 hour before bed" or "500 mg daily, separate from iron" is still a directive.
+const timingFromMedicine = (after) => TIMING_FROM_MED_RE.test(after);
+
+function checkDirectiveDosing(lower) {
+  let m;
+  DIRECTIVE_DOSE_RE.lastIndex = 0;
+  while ((m = DIRECTIVE_DOSE_RE.exec(lower)) !== null) {
+    const [, span, , after] = m;
+    if (CEILING_BEFORE.test(span) || CEILING_AFTER.test(after) || TIMING.test(span) || timingFromMedicine(after)) continue;
+    return true;
+  }
+  return GOOD_CHOICE_RE.test(lower);
+}
+
+// Swapping a prescription for a supplement is a treatment decision for the prescriber. The swap words
+// count when they reach a medicine within three words: a generic medicine word or a medicine the chat already
+// recognises (core/entities.js owns that list). "Do not use X instead of your metformin" and "Some sites
+// claim you can replace your metformin" protect or refute and pass; "instead of the morning" is timing.
+const { ENTITY_PATTERNS } = require("../core/entities");
+const MED_KEYS = ["antidepressants", "stimulantMeds", "benzodiazepines", "betaBlockers", "antihistamines", "medications", "pde5Inhibitors", "nitrates"];
+const MED_WORD = String.raw`(?:(?:prescribed\s+)?(?:medications?|medicines?|prescriptions?|drugs?|meds|pills?|statins?|blood thinners?|antidepressants?|insulin)\b|${MED_KEYS.map((k) => ENTITY_PATTERNS[k].source).join("|")})`;
+const SWAP = String.raw`(?:replace|replacing|swap|swapping|substitute|substituting|switch(?:ing)? (?:from|off)|come off|coming off|get off|instead of(?: taking)?|in place of|rather than(?: taking)?|(?:an |a natural |natural )?alternatives? to|(?:may|might|will|would) not need|won't need|wouldn't need|no longer need)`;
+// A stated interval ("4 hours after", "2 h apart from") or "apart from", then a medicine within two words.
+// "before discussing metformin" is not spacing between doses and does not count.
+const TIMING_FROM_MED_RE = new RegExp(String.raw`(?:\b\d[\d.]*(?:\s*[-–]\s*\d[\d.]*)?\s*(?:hours?|hrs?|h|minutes?|mins?)\s+(?:apart\s+from|after|before|from)|\bapart\s+from)\s+(?:[\w-]+\s+){0,2}?${MED_WORD}`);
+const SWAP_RE = new RegExp(String.raw`\b${SWAP}\s+(?:[\w-]+\s+){0,3}?${MED_WORD}`);
+const REFUTED_BEFORE = /\b(?:claim|claims|claimed|marketed|promoted|advertised|sold|myth|misconception)\W+(?:\w+\W+){0,4}$/;
+
+function checkMedicationSubstitution(lower) {
+  return hasUnneutralisedMatch(lower, SWAP_RE, {
+    beforeOk: { test: (prefix) => NEGATED_OR_PROTECTIVE_BEFORE.test(prefix) || REFUTED_BEFORE.test(prefix) },
+  });
 }
 
 function checkFabricatedContactInfo(reply) {

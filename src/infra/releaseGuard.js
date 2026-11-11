@@ -118,6 +118,20 @@ function checkClaimsCount() {
   return { valid: issues.length === 0, issues };
 }
 
+// The chat explains the pipeline's interaction records, so a bundle that falls far behind the pipeline
+// serves superseded management text (the 2026-09-22 bundle still offered "use other opioids" for
+// meperidine after the pipeline had corrected it). Resync with scripts/sync_pipeline.js.
+const MAX_PIPELINE_BUNDLE_AGE_DAYS = 90;
+
+function checkPipelineBundleAge(asOfDate) {
+  const manifest = require("../data/pipeline/MANIFEST.json");
+  const ageDays = (new Date(asOfDate) - new Date(manifest.built_at)) / 86400000;
+  if (Number.isNaN(ageDays)) return { valid: false, issues: [`MANIFEST.json built_at is not a date: ${manifest.built_at}`] };
+  return ageDays > MAX_PIPELINE_BUNDLE_AGE_DAYS
+    ? { valid: false, issues: [`pipeline bundle built ${manifest.built_at} is ${Math.floor(ageDays)} days old (limit ${MAX_PIPELINE_BUNDLE_AGE_DAYS}); run node scripts/sync_pipeline.js`] }
+    : { valid: true, issues: [] };
+}
+
 /**
  * Run all release checks. Returns { passed, failed, results[] }.
  */
@@ -130,6 +144,7 @@ function runAllChecks(options = {}) {
     { name: "claims_governance", fn: () => checkClaimsGovernance(asOfDate) },
     { name: "claims_count", fn: () => checkClaimsCount() },
     { name: "analytics_forbidden_keys", fn: () => checkAnalyticsForbiddenKeys() },
+    { name: "pipeline_bundle_age", fn: () => checkPipelineBundleAge(asOfDate) },
   ];
 
   let passed = 0;
@@ -157,5 +172,6 @@ module.exports = {
   checkAnalyticsForbiddenKeys,
   checkPolicyVersion,
   checkClaimsCount,
+  checkPipelineBundleAge,
   runAllChecks,
 };

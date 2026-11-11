@@ -2,9 +2,11 @@
 
 ## Overview
 
-The post-response safety validator (`src/postprocess/safetyValidator.js`) runs on **every response** — both deterministic gate replies and LLM-generated outputs. It is the last line of defense before a response reaches the user.
+The post-response safety validator (`src/postprocess/safetyValidator.js`) runs on **every response** — both deterministic gate replies and LLM-generated outputs. It is the last line of defense before a response reaches the user. Rules 1–7 apply to both; the two report-don't-prescribe rules apply to model answers only.
 
-If any rule is violated, the entire response is replaced with `SAFE_FALLBACK_REPLY`.
+What happens on a violation depends on the source:
+- **Gate reply:** the reply is replaced with `SAFE_FALLBACK_REPLY`.
+- **Model answer:** the draft is rewritten once with the broken rule named, inside what is left of the one provider time budget. If the rewrite also breaks a rule, or too little time is left to try, the reply is replaced with `SAFE_FALLBACK_REPLY`.
 
 ## Rules
 
@@ -93,6 +95,28 @@ Detects language that implies the system is prescribing medication.
 
 ---
 
+### Report, don't prescribe (model answers only)
+
+**IDs**: `no_directive_dosing`, `no_medication_substitution` (2026-11-10 regulatory review)
+
+PharmaGuide reports what sources found; the user and their prescriber decide. Curated gate replies are not checked by these two rules.
+
+**Blocked**:
+- An instruction to take a dose: "For your allergies, take quercetin 500 mg daily", "You should be taking 500 mg", "Aim for 2,000 IU", "I'd go with 300 mg", "500 mg daily is a good choice"
+- Replacing a prescription, worded any way that reaches a medicine: "replace metformin with berberine", "an alternative to your statin", "come off your statin", "you may not need your statin"
+
+**Allowed**:
+- Attributed amounts: "trials used 500–1000 mg/day", "NIH sets the upper limit at 350 mg/day"
+- Warnings about an amount: "Taking 10 g of niacin can damage the liver", "400 mg or more increases diarrhea risk" (a gerund at the start of a sentence is a subject, not an order)
+- Ceilings and timing: "keep caffeine under 400 mg", "take levothyroxine 4 hours apart from 500 mg calcium", "take calcium 500 mg at least 4 hours after levothyroxine". Timing written after the amount counts only when it states an interval or "apart from" before a medicine: "take 300 mg magnesium 1 hour before bed" and "take 500 mg quercetin daily, separate from iron" are still directives.
+- Protective or refuting wording: "do not use berberine instead of your metformin", "some sites claim you can replace your metformin; that is not supported"
+
+A model draft that breaks any blocking rule is rewritten once with the reason, and the served reply's provider and model are the retry's. The rewrite shares the first draft's 12 s chain budget (`CHAIN_DEADLINE_MS`), so the answer still returns inside the website proxy's 15 s limit; if less than `MIN_ATTEMPT_MS` remains, the rewrite is skipped. A second failure gets the safe fallback, which keeps the deterministic dose flag and carries no `basis`. The rewrite costs one more provider call, so a rejected draft roughly doubles that answer's latency.
+
+The rules are a backstop for the prompt, not a complete parser: a dose written in words or an unusual phrasing can still pass, so the prompt's report-don't-prescribe section stays the primary control.
+
+---
+
 ### Rule 6: Response Length Limit
 
 **ID**: `length_limit`
@@ -117,7 +141,7 @@ Safety-route responses (routes starting with `system:`) must not be empty.
 
 ## Fallback Response
 
-When any rule is violated, the response is replaced with:
+When a gate reply breaks a rule, or a model answer still breaks one after its rewrite, the response is replaced with:
 
 ```
 I want to make sure I give you accurate, safe information.
@@ -132,6 +156,7 @@ This fallback is safe, non-diagnostic, non-prescriptive, and guides the user to 
 
 ## Testing
 
-- **Unit tests**: `test/validator.test.js` (39 tests) — covers all 7 rules with positive/negative cases
-- **Integration**: `test/adversarial.test.js` (65 tests) — validates gate replies pass the validator and adversarial outputs are caught
-- **Gate reply integrity**: All 15 deterministic gate replies are validated against the validator in both test files
+- **Unit tests**: `test/validator.test.js` — positive and negative cases for rules 1–7
+- **Report, don't prescribe**: `test/report-not-prescribe.test.js` — the two model-only rules, the single rewrite, its time budget and the fallback
+- **Integration**: `test/adversarial.test.js` — gate replies pass the validator and adversarial outputs are caught
+- **Gate reply integrity**: `adversarial.test.js` section 15 runs a named set of deterministic gate replies (emergency, welcome, the main safety gates) through the validator; it does not cover every route in `ROUTE_REPLY_MAP`
