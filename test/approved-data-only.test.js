@@ -742,6 +742,12 @@ test("a removed time window takes the clause it conditions; independent clauses 
   assert.equal(first("Avoid alcohol; for 4 hours after levothyroxine, avoid calcium."), "Avoid alcohol.");
   assert.equal(first("Calcium blocks levothyroxine, when taken together, so separate them by 4 hours."), "Calcium blocks levothyroxine, when taken together.");
   assert.equal(first("Avoid calcium, for 4 hours after levothyroxine, and take iron at night."), "Take iron at night.");
+  // A condition between two clauses goes with the one it leads, unless it carries the spacing itself and may time
+  // either (PR #37 review).
+  assert.equal(first("Take calcium with food, if you also take levothyroxine, keep them 4 hours apart."), "Take calcium with food.");
+  assert.equal(applyTimingPolicy("Avoid calcium, for 4 hours after levothyroxine, take iron at night.", []), NO_TIMING_RECORD);
+  // An emergency instruction keeps its own condition; only the spacing between them goes (PR #37 review).
+  assert.equal(first("If you have trouble breathing, after taking calcium 4 hours after levothyroxine, call 911."), "If you have trouble breathing, call 911.");
   for (const line of [
     "Do not take calcium and levothyroxine at the same time.",
     "Call your doctor within 2 hours if the rash worsens.",

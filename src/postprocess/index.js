@@ -77,19 +77,21 @@ const CLAUSE_SPLIT = String.raw`(?<=[,;:])\s+|\s+(?=[—–]\s)|\s+(?=(?:so|then
 const SAFETY_CLAUSE_SPLIT = new RegExp(String.raw`${CLAUSE_SPLIT}|\s+(?=and\s+(?:${INSTRUCTION_VERB})\b)`, "i");
 // A clause that only sets the time or condition of a clause beside it ("For 4 hours after levothyroxine,", "If you
 // take calcium,", "…, for 4 hours after it"). It goes with the clause after it when it ends in a comma and that
-// clause does not open with "and", "or", "but", "so" or "then"; it goes with the clause before it when nothing
-// (a conjunction, a semicolon, a colon) separates them. A clause that opens with a conjunction stands on its own.
+// clause does not open with "and", "or", "but", "so" or "then"; otherwise it goes with the clause before it when
+// nothing (a conjunction, a semicolon, a colon) separates them. One between two clauses that carries the spacing
+// itself may time either, so it goes with both. A clause that opens with a conjunction stands on its own.
 const MODIFIER = /^(?:(and|or|but)\s+)?(?:for|within|after|before|until|till|during|while|when|whenever|once|if|unless|following|prior\s+to|in\s+the\s+(?:next|first))\b/i;
 const COORDINATED = /^(?:and|or|but|so|then)\b/i;
-function clauseGroups(clauses) {
+function clauseGroups(clauses, spacing) {
   let group = 0;
   let leading = false;
   return clauses.map((c, i) => {
     const s = c.trim();
     const m = s.match(MODIFIER);
-    const follows = Boolean(m) && !m[1] && i > 0 && !/[;:]$/.test(clauses[i - 1].trim());
+    const leads = Boolean(m) && /,$/.test(s) && i < clauses.length - 1 && !COORDINATED.test(clauses[i + 1].trim());
+    const follows = Boolean(m) && !m[1] && i > 0 && !/[;:]$/.test(clauses[i - 1].trim()) && (!leads || spacing[i]);
     const id = leading || follows ? group : ++group;
-    leading = Boolean(m) && /,$/.test(s) && i < clauses.length - 1 && !COORDINATED.test(clauses[i + 1].trim());
+    leading = leads;
     return id;
   });
 }
@@ -202,19 +204,22 @@ function timingKind(clause, { reply, safety, clock }) {
 // An emergency, maximum-dose or follow-up sentence is also split before "and" + an instruction, so its own
 // part stays word for word ("Call 911 if…; take zinc 2 hours after ciprofloxacin" keeps "Call 911 if…").
 // A clause and the time window or condition that goes with it (clauseGroups) go together: "For 4 hours after
-// levothyroxine, avoid calcium" leaves neither "Avoid calcium." nor a fragment. An emergency or maximum-dose
-// clause is never dropped that way.
+// levothyroxine, avoid calcium" leaves neither "Avoid calcium." nor a fragment. A group with an emergency or
+// maximum-dose clause loses only its spacing clause, so the safety clause keeps its own condition ("If you have
+// trouble breathing, after taking calcium 4 hours after levothyroxine, call 911." keeps "If you have trouble
+// breathing, call 911.").
 function scrubSentence(sentence, { reply = sentence, clock = false } = {}) {
   const safety = SAFETY_LINE.test(sentence);
   const clauses = sentence.split(safety || FOLLOW_UP.test(sentence) ? SAFETY_CLAUSE_SPLIT : new RegExp(CLAUSE_SPLIT, "i"));
-  const groups = clauseGroups(clauses);
   const spacing = clauses.map((c) => timingKind(c, { reply, safety, clock }) === "spacing");
-  const spacingGroups = new Set(groups.filter((g, i) => spacing[i]));
+  const groups = clauseGroups(clauses, spacing);
+  const safetyGroups = new Set(groups.filter((g, i) => SAFETY_LINE.test(clauses[i])));
+  const dropGroups = new Set(groups.filter((g, i) => spacing[i] && !safetyGroups.has(g)));
   const kept = [];
   let listOpen = false;
   for (const [i, c] of clauses.entries()) {
     const s = c.trim();
-    const remove = spacing[i] || (spacingGroups.has(groups[i]) && !SAFETY_LINE.test(c));
+    const remove = spacing[i] || dropGroups.has(groups[i]);
     // The rest of a removed clause's list goes with it ("…apart from milk, cheese and yogurt"); an
     // instruction or clause of its own after it stays ("…apart from levothyroxine, call your doctor").
     const tail = listOpen && !SAFETY_LINE.test(c) && !CLAUSE_OPENER.test(s) && s.split(/\s+/).length <= 4;
