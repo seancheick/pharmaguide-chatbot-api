@@ -90,8 +90,12 @@ function aliasesFor(name, id, type) {
   return [...out];
 }
 
+// A word-boundary matcher for a list of aliases. No aliases (a class id missing from drug_classes.json)
+// matches nothing: an empty alternation, \b(?:)\b, would match every text.
+const aliasMatcher = (aliases) => (aliases.length > 0 ? new RegExp(`\\b(?:${aliases.map(escapeRegex).join("|")})\\b`) : /(?!)/);
+
 /** One word-boundary matcher for an agent: the same aliases the interaction records use. */
-const agentMatcher = (name, id, type) => new RegExp(`\\b(?:${aliasesFor(name, id, type).map(escapeRegex).join("|")})\\b`);
+const agentMatcher = (name, id, type) => aliasMatcher(aliasesFor(name, id, type));
 
 // One matcher per agent id, built once per cold start. An id can appear under several names
 // ("Green Tea Extract", "Green Tea (polyphenols)"): every name contributes its aliases.
@@ -103,7 +107,7 @@ for (const r of INTERACTIONS) {
     const prev = AGENTS.get(id);
     const aliases = [...new Set([...(prev ? prev.aliases : []), ...aliasesFor(r[`${k}_name`], id, r[`${k}_type`])])];
     // Alcohol has one definition, shared with the gates (it knows "drink water" is not alcohol).
-    const re = id === "ref:alcohol" ? ALCOHOL : new RegExp(`\\b(?:${aliases.map(escapeRegex).join("|")})\\b`);
+    const re = id === "ref:alcohol" ? ALCOHOL : aliasMatcher(aliases);
     AGENTS.set(id, { id, aliases, re });
   }
 }
@@ -117,7 +121,7 @@ const NON_DRUG_WORDS = new Set([...AGENTS.values()].filter((a) => !["drug", "dru
 for (const agent of AGENTS.values()) {
   if (AGENT_TYPE.get(agent.id) !== "drug_class") continue;
   agent.aliases = agent.aliases.filter((alias) => !NON_DRUG_WORDS.has(alias));
-  agent.re = new RegExp(`\\b(?:${agent.aliases.map(escapeRegex).join("|")})\\b`);
+  agent.re = aliasMatcher(agent.aliases);
 }
 
 // Every word that names a medicine, for telling whether a question pairs a medicine with a supplement:
@@ -151,12 +155,23 @@ function agentsIn(text) {
   return new Set([...AGENTS.values()].filter((a) => a.re.test(t)).map((a) => a.id));
 }
 
-/** The verified records that join two agents named in the text, most severe first (at most 3). */
-function findInteractions(text) {
+/**
+ * The verified records that join two agents named in the text, most severe first (at most 3).
+ * With `focus` (the current message, when `text` is the whole conversation), only the records that
+ * share the most agents with it are kept: the pair it names, else the records touching what it names,
+ * else (a follow-up naming nothing, "how far apart?") those from earlier turns.
+ */
+function findInteractions(text, focus) {
   const named = agentsIn(text);
   if (named.size < 2) return [];
-  return INTERACTIONS
-    .filter((r) => r.agent1_id !== r.agent2_id && named.has(r.agent1_id) && named.has(r.agent2_id))
+  let found = INTERACTIONS.filter((r) => r.agent1_id !== r.agent2_id && named.has(r.agent1_id) && named.has(r.agent2_id));
+  if (focus !== undefined) {
+    const current = agentsIn(focus);
+    const shared = (r) => Number(current.has(r.agent1_id)) + Number(current.has(r.agent2_id));
+    const most = Math.max(0, ...found.map(shared));
+    found = found.filter((r) => shared(r) === most);
+  }
+  return found
     .sort((a, b) => (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9) || a.id.localeCompare(b.id))
     .slice(0, MAX_RECORDS);
 }

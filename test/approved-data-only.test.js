@@ -220,9 +220,13 @@ test("the PPI gate quotes the approved PPI notes only: no B12, magnesium or iron
   assert.ok(ppi.length > 0, "an approved PPI note exists");
   const { model, reply } = await ask("can I take iron with omeprazole?");
   assert.equal(model, "system:ppi-nutrient");
-  for (const e of ppi.flatMap((s) => s.entries)) assert.ok(reply.includes(e.alert_body), e.id);
   for (const line of claimLines(reply)) assert.doesNotMatch(line, /\bB12\b|magnesium|\biron\b/i, line);
   assert.equal(intervals(reply).size, 0, reply);
+  // A depletion question gets every approved PPI note; a "can I take" question only the asked nutrient's (review tests below).
+  const { reply: all } = await ask("what does omeprazole deplete?");
+  for (const e of ppi.flatMap((s) => s.entries)) assert.ok(all.includes(e.alert_body), e.id);
+  for (const line of claimLines(all)) assert.doesNotMatch(line, /\bB12\b|magnesium|\biron\b/i, line);
+  assert.equal(intervals(all).size, 0, all);
 });
 
 test("the statin gate quotes the approved CoQ10 note, without the amount the pipeline removed", () => {
@@ -244,10 +248,10 @@ const { clearCache, buildCacheKey } = require("../src/infra/responseCache");
 const { KNOWLEDGE_BASE } = require("../src/config/knowledgeBase");
 const { TEMPORAL_DATA } = require("../src/core/temporalContext");
 
-async function askWith(message, text) {
+async function askWith(message, text, history = []) {
   clearCache();
   stubText = text;
-  try { return await ask(message); } finally { stubText = "Stubbed answer."; }
+  try { return await ask(message, history); } finally { stubText = "Stubbed answer."; }
 }
 
 // Any stated interval, digits or words. Owned by this test, independent of the code under test.
@@ -365,7 +369,7 @@ test("the prompt sent for a thyroid medicine + multivitamin timing question carr
 });
 
 test("a depletion question about one nutrient answers for that nutrient, also when there is no approved note", async () => {
-  for (const [q, nutrient] of [["does Prilosec deplete magnesium?", "magnesium"], ["does Lasix deplete potassium?", "potassium"], ["Does omeprazole deplete vitamin B12?", "B12"]]) {
+  for (const [q, nutrient] of [["does Prilosec deplete magnesium?", "magnesium"], ["does Lasix deplete potassium?", "potassium"], ["Does omeprazole deplete vitamin B12?", "B12"], ["Does metformin deplete folate?", "folate"]]) {
     const { reply, askedModel } = await ask(q);
     assert.equal(askedModel, false, q);
     assert.match(reply, new RegExp(`no approved[^\\n]*${nutrient}`, "i"), `${q}:\n${reply}`);
@@ -409,4 +413,73 @@ test("small guards: no 'undefined' timing line, a non-string status fails, the f
   assert.equal(buildCacheKey("q", "h", "m"), buildCacheKey("q", "h", "m", bundle));
   assert.notEqual(buildCacheKey("q", "h", "m"), buildCacheKey("q", "h", "m", "another bundle"));
   assert.equal(normalizeText("Prilosec"), "omeprazole"); // brand spellings normalise before matching
+});
+
+// ── CodeRabbit review of dc550e9 (PR #35 threads), checked on 993c88a ──────
+test("a depletion question never takes a message from a risk gate or a verified interaction record", async () => {
+  for (const q of ["Does my medication deplete vitamins? Can I take potassium supplements with an ACE inhibitor?", "Does lisinopril deplete zinc? Can I take potassium supplements with it?"]) {
+    const { model, reply } = await ask(q);
+    assert.equal(model, "system:potassium-acei", `${q}\n${reply}`);
+  }
+  for (const [q, id] of [["Does warfarin deplete anything? I also take ginkgo.", "DSI_WAR_GINKGO"], ["Does omeprazole deplete B12? Can I take it with clopidogrel?", "DDI_CLOPIDOGREL_OMEPRAZOLE"]]) {
+    const { model, reply, askedModel } = await askWith(q, "Stubbed answer.");
+    assert.ok(!["system:depletion", "system:ppi-nutrient"].includes(model), `${q}: answered by the depletion gate\n${reply}`);
+    if (askedModel) assert.ok(sent.map((m) => m.content).join("\n").includes(RECORDS.find((r) => r.id === id).management), `${q}: ${id} not supplied`);
+  }
+  // Controls: a plain depletion question is still answered from the approved notes.
+  assert.equal((await ask("Does metformin deplete B12?")).model, "system:depletion");
+  assert.equal((await ask("Does my medication deplete vitamins?")).model, "system:depletion");
+});
+
+test("timing records are chosen for the current question; earlier turns fill in only what it leaves out", async () => {
+  const quote = (id) => RECORDS.find((r) => r.id === id).management;
+  const history = [{ role: "user", content: "Can I take iron with cipro?" }, { role: "assistant", content: "Iron can bind ciprofloxacin." }];
+  let { reply } = await askWith("What about zinc with doxycycline?", "Zinc can reduce doxycycline absorption.", history);
+  assert.ok(reply.includes(quote("DSI_TETRACYCLINES_ZINC")), `current pair not quoted:\n${reply}`);
+  for (const id of ["DSI_FLUOROQUINOLONES_IRON", "DSI_ZINC_FLUOROQUINOLONE", "DSI_TETRACYCLINES_IRON"]) assert.ok(!reply.includes(quote(id)), `${id} from another pair quoted:\n${reply}`);
+  // A follow-up that names nothing still gets the pair from the turn before.
+  ({ reply } = await askWith("How far apart should I take them?", "Separate them by 3 hours.", [{ role: "user", content: "Can I take zinc with doxycycline?" }, { role: "assistant", content: "Zinc can bind doxycycline." }]));
+  assert.ok(reply.includes(quote("DSI_TETRACYCLINES_ZINC")), reply);
+  assert.doesNotMatch(reply, /3 hours/);
+});
+
+test("a PPI + nutrient 'can I take' question gets a coverage statement and only that nutrient's notes", async () => {
+  const ppi = D.notes().find((s) => s.id === "class:proton_pump_inhibitors");
+  const calcium = ppi.entries.find((e) => /calcium/i.test(e.depleted_nutrient.standard_name));
+  for (const q of ["Can I take iron with omeprazole?", "Can I take my iron pill with Prilosec?"]) {
+    const { reply } = await askWith(q, "Stubbed answer.");
+    assert.ok(!reply.includes(calcium.alert_body), `${q}: answered with the calcium note\n${reply}`);
+    assert.match(reply, /no verified interaction or timing record[^\n]*iron/i, `${q}\n${reply}`);
+    assert.doesNotMatch(reply, /\bsafe\b|\d+\s*(?:hours?|h)\b/i, q);
+  }
+  const { reply } = await askWith("Can I take calcium with omeprazole?", "Stubbed answer.");
+  assert.ok(reply.includes(calcium.alert_body), reply);
+});
+
+test("an approved class is found by its displayed name; a generic-only medicine gets the coverage statement", async () => {
+  const cls = D.notes().find((s) => s.id === "class:enzyme_inducing_antiseizure_medications");
+  const note = cls.entries.find((e) => /calcium/i.test(e.depleted_nutrient.standard_name));
+  assert.ok(note, "the class has an approved calcium note");
+  let { reply } = await ask("Do enzyme-inducing antiseizure medications deplete calcium?");
+  assert.ok(reply.includes(note.alert_body), reply);
+  ({ reply } = await ask("What does cholestyramine deplete?"));
+  assert.match(reply, /no approved medication–nutrient note for cholestyramine/i, reply);
+  assert.doesNotMatch(reply, /Which medicine are you asking about/, reply);
+});
+
+test("a matcher with no aliases matches nothing", () => {
+  assert.equal(P.agentMatcher("Missing class", "class:not_in_drug_classes", "drug_class").test("what is the weather today"), false);
+  const notes = D.buildNotes({ depletions: [{ ...BUNDLE.depletions[0], drug_ref: { id: "class:not_in_drug_classes", type: "class", display_name: "" } }] });
+  assert.deepEqual(D.subjectsIn("what is the weather today", notes), []);
+});
+
+test("the timing scrub leaves a duration that is not spacing ('5 hours per night')", () => {
+  const text = "You reported sleeping 5 hours per night. Which magnesium product do you use?";
+  assert.equal(applyTimingPolicy(text, []), text);
+  assert.equal(applyTimingPolicy("I walk 2 hours a day and take zinc with my thyroid pill.", []), "I walk 2 hours a day and take zinc with my thyroid pill.");
+  assert.doesNotMatch(applyTimingPolicy("Take magnesium at night 4 hours after levothyroxine.", []), /4 hours/);
+  // A duration or a sleep word does not excuse a spacing instruction in the same clause.
+  for (const line of ["Separate them by 4 hours each day.", "For better sleep take magnesium 4 hours after levothyroxine."]) {
+    assert.doesNotMatch(applyTimingPolicy(line, []), /4 hours/, line);
+  }
 });

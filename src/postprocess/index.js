@@ -27,10 +27,13 @@ const DOSE_FREQUENCY_BEFORE = /\bevery\s+$/i;
 const ANCHORED_AFTER = /^\s*(?:before|after|prior\s+to|ahead\s+of|following)\s+(?:(?:a|an|your|the|first|each|any)\s+)*(?:bed\w*|sleep\w*|breakfast|lunch|dinner|supper|meals?|eating|food|exercise|workouts?|waking|you\s+wake|you\s+eat|blood\s+(?:draws?|tests?|work)|labs?|lab\s+tests?)\b/i;
 // A sentence about an emergency or a maximum dose is never touched.
 const SAFETY_LINE = /\b(?:911|emergency|poison\s+control|urgent\s+care|seek\s+(?:immediate\s+|urgent\s+)?(?:medical\s+)?(?:care|help|attention)|do\s+not\s+exceed|maximum\s+(?:daily\s+)?dose|no\s+more\s+than\s+[\d,.]+\s*(?:mg|mcg|g|iu|doses?|tablets?|capsules?|pills?|times))\b/i;
-// A clause about how a reaction or an effect runs ("symptoms usually start within 6 hours") is not spacing,
-// unless it also says to separate, wait or keep apart.
-const DESCRIBES_COURSE = /\b(?:symptoms?|signs?|onset|peaks?|peaking|lasts?|lasting|wears?\s+off|half[\s-]?life)\b/i;
-const SPACING_VERB = /\b(?:separat\w*|spac\w*|apart|wait\w*|gap|between|later|away\s+from|(?:before|after)\s+(?:taking|you\s+take))\b/i;
+// A clause about how a reaction or an effect runs ("symptoms usually start within 6 hours"), or about sleep,
+// is not spacing, unless it also says to separate, wait or keep apart.
+const DESCRIBES_COURSE = /\b(?:symptoms?|signs?|onset|peaks?|peaking|lasts?|lasting|wears?\s+off|half[\s-]?life|sleep\w*|slept)\b/i;
+// A duration per day or night ("5 hours per night", "2 hours a day") is how long something lasts, not spacing,
+// unless the clause also says to separate, wait, or take one before or after the other.
+const DURATION_AFTER = /^\s*(?:per|a|an|each|every)\s+(?:night|day|week)\b|^\s*of\s+sleep\b/i;
+const SPACING_VERB = /\b(?:separat\w*|spac\w*|apart|wait\w*|gap|between|later|away\s+from|before|after)\b/i;
 // A spacing instruction with no number ("separate them", "take them at different times") about a medicine
 // or mineral: the record, or the limit line, says how.
 const SPACING_ACTION = /\b(?:separat\w*|space\s+(?:them|it|these|those|out|apart)|spac(?:ed|ing)|absorption\s+conflict|at\s+(?:a\s+)?different\s+times?)\b/i;
@@ -42,7 +45,7 @@ function isSpacingInterval(clause, m) {
   const before = clause.slice(0, m.index);
   const after = clause.slice(m.index + m[0].length);
   if (DOSE_FREQUENCY_BEFORE.test(before) || ANCHORED_AFTER.test(after)) return false;
-  if (DESCRIBES_COURSE.test(clause) && !SPACING_VERB.test(clause)) return false;
+  if ((DURATION_AFTER.test(after) || DESCRIBES_COURSE.test(clause)) && !SPACING_VERB.test(clause)) return false;
   if (/hours?|hrs?|\bh\b/i.test(m[0])) {
     const first = m[0].match(/\d+(?:[.,]\d+)?|[a-z]+/i)[0].toLowerCase();
     const value = /\d/.test(first) ? parseFloat(first.replace(",", ".")) : WORD_VALUE[first];

@@ -26,6 +26,9 @@ const { logGate } = require("../src/infra/logger");
 const { applyTimingPolicy, inTimingScope, enforceOneQuestion, addDoseWarnings, stripMarkdownLinks, stripUnverifiedCitations } = require("../src/postprocess");
 const { validateResponse, SAFE_FALLBACK_REPLY } = require("../src/postprocess/safetyValidator");
 
+// Triage routes a depletion question may still take: no risk gate fired (the PPI route is itself a depletion route).
+const DEPLETION_MAY_ANSWER = new Set(["llm", "system:clarifier", "system:medical-condition", "system:ppi-nutrient"]);
+
 // What the rewrite is told, by rule. Report, don't prescribe: the information stays, the instruction goes.
 const REWRITE_REASONS = {
   no_directive_dosing: "It told the user to take a dose. Report doses instead: say what studies used or what a named authority (NIH, FDA, the label) sets, with the evidence grade, and that the user should check with their pharmacist whether it fits them.",
@@ -47,6 +50,7 @@ const { buildCacheKey, isCacheable, getCachedResponse, setCachedResponse } = req
 const { callWithFallback, scoreComplexity, CHAIN_DEADLINE_MS, MIN_ATTEMPT_MS } = require("../src/infra/providerRouter");
 const { buildAugmentedMessages } = require("../src/core/kbLookup");
 const { findInteractions, recordBlock, RECORD_ID } = require("../src/core/pipelineInteractions");
+const { nutrientsIn } = require("../src/core/depletions");
 const { extractDoses, getDoseSummary } = require("../src/core/doseExtractor");
 const { resolveBasis, BASIS_LABELS } = require("../src/core/confidence");
 const { detectAndRecordGaps } = require("../src/infra/topicTracker");
@@ -202,10 +206,22 @@ module.exports = async function handler(req, res) {
     const entities = mergeStateIntoEntities(rawEntities, conversationState);
     const doses = extractDoses(message);
     const doseSummary = getDoseSummary(doses);
-    // ── Depletion check (before triage): every depletion question is answered from the pipeline's
-    // approved medication–nutrient notes, or says which medicines they cover. The model never answers it.
-    if (detection.isDepletionQuestion(message)) {
-      const deplReply = depletionReply(convoContext, entities);
+    const scores = scoreRisks(entities, normalizeText(message), convoContext);
+    let triageRoute = routeByRisk(scores, entities, convoContext, message, hasConversation);
+
+    // ── Depletion check: a depletion question is answered from the pipeline's approved medication–nutrient
+    // notes, or says which medicines they cover; the model never answers it. It never takes a message from
+    // a risk gate or from a verified interaction record that the message names ("Does my medication deplete
+    // vitamins? Can I take potassium with an ACE inhibitor?" gets the potassium gate).
+    // A record about a nutrient the question asks is part of the depletion question ("does cipro deplete
+    // calcium?"); one about anything else, or any record when the message also asks about taking things
+    // together, belongs to the answer path, which quotes it.
+    const askedNutrients = nutrientsIn(message);
+    const recordTakesIt = findInteractions(message).some((r) => detection.asksAboutTakingTogether(message) ||
+      ![r.agent1_name, r.agent2_name].some((name) => nutrientsIn(name).some((n) => askedNutrients.includes(n))));
+    if (triageRoute === "system:ppi-nutrient" && recordTakesIt) triageRoute = "llm";
+    if (detection.isDepletionQuestion(message) && DEPLETION_MAY_ANSWER.has(triageRoute) && !recordTakesIt) {
+      const deplReply = depletionReply(convoContext, entities, message);
       if (deplReply) {
         logGate("system:depletion", message.length, hasConversation);
         return res.status(200).json({
@@ -216,9 +232,6 @@ module.exports = async function handler(req, res) {
         });
       }
     }
-
-    const scores = scoreRisks(entities, normalizeText(message), convoContext);
-    const triageRoute = routeByRisk(scores, entities, convoContext, message, hasConversation);
 
     // ── Unknown/misspelling detection (for analytics) ──
     const { corrections } = correctMisspellings(message);
@@ -296,7 +309,8 @@ module.exports = async function handler(req, res) {
 
     // Verified pipeline records for any two agents the conversation names (src/core/pipelineInteractions.js).
     const userText = [...safeHistory.filter((m) => m.role === "user").map((m) => m.content), message].join("\n");
-    const pipelineRecords = findInteractions(userText);
+    // Records for what this message names; earlier turns fill in only what it leaves out.
+    const pipelineRecords = findInteractions(userText, message);
 
     const { messages, kbHits } = buildAugmentedMessages(
       mode === "selective" ? slimPrompt : SYSTEM_PROMPT,

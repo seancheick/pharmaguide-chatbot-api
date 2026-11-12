@@ -648,13 +648,16 @@ function medicinesNamed(text, entities) {
   const t = normalizeText(text || "");
   const named = (entities && entities.meds) || require("../core/entities").extractEntities(t).meds;
   const out = named.map((m) => normalizeText(BRAND_TO_GENERIC[m] || m).trim());
+  // The brand table's brands and its generic names ("cholestyramine" is a medicine even without "Questran").
   for (const [brand, generic] of Object.entries(BRAND_TO_GENERIC)) {
-    if (new RegExp(`\\b${escapeRegex(normalizeText(brand).trim())}\\b`).test(t)) out.push(normalizeText(generic).trim());
+    for (const word of [brand, generic]) {
+      if (new RegExp(`\\b${escapeRegex(normalizeText(word).trim())}\\b`).test(t)) out.push(normalizeText(generic).trim());
+    }
   }
   return [...new Set(out.filter(Boolean))];
 }
 
-function depletionReply(convoContext, entities) {
+function depletionReply(convoContext, entities, message) {
   const subjects = depletions.subjectsIn(convoContext);
   const uncovered = medicinesNamed(convoContext, entities).filter((m) => !subjects.some((s) => s.re.test(m)));
 
@@ -665,11 +668,32 @@ function depletionReply(convoContext, entities) {
     ].join("\n");
   }
 
+  const lowerFirst = (s) => (/^[A-Z][a-z]/.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+  const list = (xs) => (xs.length < 3 ? xs.join(" or ") : `${xs.slice(0, -1).join(", ")} or ${xs[xs.length - 1]}`);
+  const advice = "A pharmacist or your prescriber can review your own situation; don't start, stop or change a medicine or supplement based on this chat.";
+  const closing = (quoted) => (quoted ? `These notes are not a complete list of what a medicine can do. ${advice}` : advice);
+
+  // Taking a nutrient with the medicine ("Can I take iron with omeprazole?"): no verified record joins
+  // them (one would have sent the question to the answer path), so the reply says so and quotes only the
+  // notes on that nutrient.
+  const together = message !== undefined && !detection.isDepletionQuestion(message) && detection.asksAboutTakingTogether(message);
+  const takenWith = together ? depletions.nutrientsIn(message) : [];
+  if (takenWith.length > 0) {
+    const lines = [`PharmaGuide has no verified interaction or timing record for ${list(takenWith.map((n) => lowerFirst(depletions.nutrientLabel(n))))} with ${list([...subjects.map((s) => s.label), ...uncovered])}. That is a limit of our reviewed data, not a finding that the combination is fine.`];
+    for (const s of subjects) {
+      const notes = s.entries.filter((e) => takenWith.includes(depletions.nutrientKey(e)));
+      if (notes.length === 0) continue;
+      if (lines.length === 1) lines.push("", "What PharmaGuide's reviewed medication–nutrient notes say on it:");
+      lines.push("", `**${s.label}**`);
+      for (const e of notes) lines.push(...noteLines(e));
+    }
+    lines.push("", closing(lines.length > 1));
+    return lines.join("\n");
+  }
+
   // A nutrient asked about that none of the named medicines' approved notes cover is said so, by name.
   const asked = depletions.nutrientsIn(convoContext);
   const missing = subjects.length > 0 ? asked.filter((n) => !subjects.some((s) => s.entries.some((e) => depletions.nutrientKey(e) === n))) : [];
-  const lowerFirst = (s) => (/^[A-Z][a-z]/.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
-  const list = (xs) => (xs.length < 3 ? xs.join(" or ") : `${xs.slice(0, -1).join(", ")} or ${xs[xs.length - 1]}`);
 
   const lines = [];
   if (missing.length > 0) {
@@ -688,7 +712,7 @@ function depletionReply(convoContext, entities) {
     if (lines.length > 0) lines.push("");
     lines.push(`PharmaGuide has no approved medication–nutrient note for ${m}. That is a limit of our reviewed data, not a finding that ${m} has no effect on nutrients.`);
   }
-  lines.push("", "These notes are not a complete list of what a medicine can do. A pharmacist or your prescriber can review your own situation; don't start, stop or change a medicine or supplement based on this chat.");
+  lines.push("", closing(subjects.length > 0));
   return lines.join("\n");
 }
 
@@ -925,7 +949,7 @@ const ROUTE_REPLY_MAP = {
   "system:lithium-nsaid": function() { return lithiumNSAIDReply(); },
   "system:metformin-alcohol": function() { return metforminAlcoholReply(); },
   "system:beta-blocker-stimulant": function() { return betaBlockerStimulantReply(); },
-  "system:ppi-nutrient": function(convoContext, message, entities) { return depletionReply(convoContext, entities); },
+  "system:ppi-nutrient": function(convoContext, message, entities) { return depletionReply(convoContext, entities, message); },
   "system:statin-myopathy": function() { return statinMyopathyReply(); },
   "system:benzo-alcohol": function() { return benzoAlcoholReply(); },
   "system:ginkgo-bleeding": function() { return ginkgoBleedingReply(); },
@@ -934,7 +958,7 @@ const ROUTE_REPLY_MAP = {
   "system:flirty-final": function() { return flirtyFinalReply(); },
   "system:what-is": function() { return whatIsReply(); },
   "system:privacy": function() { return privacyReply(); },
-  "system:depletion": function(convoContext, message, entities) { return depletionReply(convoContext, entities); },
+  "system:depletion": function(convoContext, message, entities) { return depletionReply(convoContext, entities, message); },
   "system:creator": function() { return creatorReply(); },
   "system:pet-question": function() { return petQuestionReply(); },
   "system:business-inquiry": function(convoContext, message) { return businessInquiryReply(message); },

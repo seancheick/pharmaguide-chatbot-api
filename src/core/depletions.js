@@ -76,7 +76,11 @@ function buildNotes(doc) {
     if (!subjects.has(ref.id)) {
       const type = ref.type === "class" ? "drug_class" : "drug";
       const name = type === "drug_class" ? ref.display_name : RXCUI_NAME.get(ref.id) || String(ref.display_name || "").replace(/\s*\(.*$/, "");
-      subjects.set(ref.id, { id: ref.id, type, name, label: ref.display_name, re: agentMatcher(name, ref.id, type), entries: [] });
+      // A class is also named by its displayed name ("Enzyme-inducing antiseizure medications", singular too).
+      const shown = type === "drug_class" ? normalizeText(String(ref.display_name || "").replace(/\s*\(.*$/, "")).trim() : "";
+      const members = agentMatcher(name, ref.id, type);
+      const re = shown.length >= 3 ? new RegExp(`${members.source}|\\b${escapeRegex(shown).replace(/s$/, "s?")}\\b`) : members;
+      subjects.set(ref.id, { id: ref.id, type, name, label: ref.display_name, re, entries: [] });
     }
     subjects.get(ref.id).entries.push(entry);
   }

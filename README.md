@@ -52,7 +52,7 @@ A production decision-and-explanation system for high-stakes supplement–medica
 |---|---:|
 | Deterministic response routes | 41 |
 | Declarative (data-driven) safety gates | 12 |
-| Detection functions | 60 |
+| Detection functions | 61 |
 | Clinical knowledge entries | 102 |
 | Curated source references | 31 |
 | Approved clinical claims (with review dates) | 21 |
