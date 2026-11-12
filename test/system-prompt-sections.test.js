@@ -19,8 +19,9 @@ const { MUST_ALWAYS_APPLY } = require("./prompt-rules");
 // as the edit, so the change is visible in review. Responses are cached on this hash and report it in
 // X-PG-Ruleset. 2026-10-06: split into sections. 2026-11-10: report, don't prescribe. 2026-11-11: the
 // medication-depletion table and every authored medicine/mineral spacing interval are gone (pipeline data only).
-const PRODUCTION_PROMPT_SHA256 = "a2d296623045e4751b7c24790d331195f13817ad2e71b6e62c8a2efb47ac2350";
-const PRODUCTION_PROMPT_LENGTH = 43706;
+// 2026-11-12: the iron + dairy/coffee lines keep the mechanism; spacing advice comes only from a supplied record.
+const PRODUCTION_PROMPT_SHA256 = "c8988d9c60a043c1588e9f82ebf355eec7b7b529719b595ca086f4a9f6115b0d";
+const PRODUCTION_PROMPT_LENGTH = 43610;
 
 const core = () => SECTIONS.filter((s) => s.kind === "core").map((s) => s.text).join("");
 

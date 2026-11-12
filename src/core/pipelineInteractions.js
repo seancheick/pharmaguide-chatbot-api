@@ -157,19 +157,26 @@ function agentsIn(text) {
 
 /**
  * The verified records that join two agents named in the text, most severe first (at most 3).
- * With `focus` (the current message, when `text` is the whole conversation), only the records that
- * share the most agents with it are kept: the pair it names, else the records touching what it names,
- * else (a follow-up naming nothing, "how far apart?") those from earlier turns.
+ * With `focus` (the current message, when `text` is the whole conversation), a record about another pair
+ * than the one the message names is dropped: one of its agents is not named in the message, and the message
+ * names something the record does not cover ("zinc with levothyroxine?" after "calcium with levothyroxine?").
+ * A follow-up naming one side ("what about calcium?") or nothing ("how far apart?") keeps the earlier pair.
  */
 function findInteractions(text, focus) {
   const named = agentsIn(text);
   if (named.size < 2) return [];
   let found = INTERACTIONS.filter((r) => r.agent1_id !== r.agent2_id && named.has(r.agent1_id) && named.has(r.agent2_id));
   if (focus !== undefined) {
-    const current = agentsIn(focus);
-    const shared = (r) => Number(current.has(r.agent1_id)) + Number(current.has(r.agent2_id));
-    const most = Math.max(0, ...found.map(shared));
-    found = found.filter((r) => shared(r) === most);
+    const t = normalizeText(String(focus || ""));
+    const current = agentsIn(t);
+    const anotherPair = (r) => {
+      const ids = [r.agent1_id, r.agent2_id];
+      if (ids.every((id) => current.has(id))) return false;
+      // What the message names beyond this record's agents (one word can name a drug and its class: "cipro").
+      const rest = ids.reduce((s, id) => s.replace(new RegExp(AGENTS.get(id).re.source, "g"), " "), t);
+      return agentsIn(rest).size > 0;
+    };
+    found = found.filter((r) => !anotherPair(r));
   }
   return found
     .sort((a, b) => (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9) || a.id.localeCompare(b.id))

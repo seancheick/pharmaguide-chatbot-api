@@ -658,8 +658,12 @@ function medicinesNamed(text, entities) {
 }
 
 function depletionReply(convoContext, entities, message) {
-  const subjects = depletions.subjectsIn(convoContext);
-  const uncovered = medicinesNamed(convoContext, entities).filter((m) => !subjects.some((s) => s.re.test(m)));
+  // The medicines the question names; earlier turns only when it names none ("does it deplete B12?").
+  const ownSubjects = message === undefined ? [] : depletions.subjectsIn(message);
+  const ownMedicines = message === undefined ? [] : medicinesNamed(message, null);
+  const ownTurn = ownSubjects.length > 0 || ownMedicines.length > 0;
+  const subjects = ownTurn ? ownSubjects : depletions.subjectsIn(convoContext);
+  const uncovered = (ownTurn ? ownMedicines : medicinesNamed(convoContext, entities)).filter((m) => !subjects.some((s) => s.re.test(m)));
 
   if (subjects.length === 0 && uncovered.length === 0) {
     return [
@@ -691,17 +695,27 @@ function depletionReply(convoContext, entities, message) {
     return lines.join("\n");
   }
 
-  // A nutrient asked about that none of the named medicines' approved notes cover is said so, by name.
-  const asked = depletions.nutrientsIn(convoContext);
-  const missing = subjects.length > 0 ? asked.filter((n) => !subjects.some((s) => s.entries.some((e) => depletions.nutrientKey(e) === n))) : [];
+  // The nutrients the question names. A depletion question naming none asks about every note ("what does
+  // metformin deplete?"); any other follow-up takes them from earlier turns ("what about omeprazole?").
+  const askedNow = message === undefined ? [] : depletions.nutrientsIn(message);
+  const asked = askedNow.length > 0 || (message !== undefined && detection.isDepletionQuestion(message)) ? askedNow : depletions.nutrientsIn(convoContext);
+  // Each medicine is checked on its own: one medicine's note does not cover another's gap.
+  const gaps = new Map();
+  for (const s of subjects) {
+    const missing = asked.filter((n) => !s.entries.some((e) => depletions.nutrientKey(e) === n));
+    if (missing.length === 0) continue;
+    const key = missing.join("|");
+    if (!gaps.has(key)) gaps.set(key, { missing, labels: [] });
+    gaps.get(key).labels.push(s.label);
+  }
 
   const lines = [];
-  if (missing.length > 0) {
-    lines.push(`PharmaGuide has no approved medication–nutrient note on ${list(missing.map((n) => lowerFirst(depletions.nutrientLabel(n))))} for ${list(subjects.map((s) => s.label))}. That is a limit of our reviewed data, not a finding that there is no effect.`);
+  for (const { missing, labels } of gaps.values()) {
+    lines.push(`PharmaGuide has no approved medication–nutrient note on ${list(missing.map((n) => lowerFirst(depletions.nutrientLabel(n))))} for ${list(labels)}. That is a limit of our reviewed data, not a finding that there is no effect.`);
   }
   if (subjects.length > 0) {
-    if (missing.length > 0) lines.push("");
-    lines.push(missing.length > 0 ? "What PharmaGuide's reviewed medication–nutrient notes do say:" : "Here is what PharmaGuide's reviewed medication–nutrient notes say:");
+    if (gaps.size > 0) lines.push("");
+    lines.push(gaps.size > 0 ? "What PharmaGuide's reviewed medication–nutrient notes do say:" : "Here is what PharmaGuide's reviewed medication–nutrient notes say:");
     const first = (e) => (asked.includes(depletions.nutrientKey(e)) ? 0 : 1);
     for (const s of subjects) {
       lines.push("", `**${s.label}**`);

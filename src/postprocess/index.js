@@ -34,9 +34,14 @@ const DESCRIBES_COURSE = /\b(?:symptoms?|signs?|onset|peaks?|peaking|lasts?|last
 // unless the clause also says to separate, wait, or take one before or after the other.
 const DURATION_AFTER = /^\s*(?:per|a|an|each|every)\s+(?:night|day|week)\b|^\s*of\s+sleep\b/i;
 const SPACING_VERB = /\b(?:separat\w*|spac\w*|apart|wait\w*|gap|between|later|away\s+from|before|after)\b/i;
-// A spacing instruction with no number ("separate them", "take them at different times") about a medicine
-// or mineral: the record, or the limit line, says how.
-const SPACING_ACTION = /\b(?:separat\w*|space\s+(?:them|it|these|those|out|apart)|spac(?:ed|ing)|absorption\s+conflict|at\s+(?:a\s+)?different\s+times?)\b/i;
+// A window of a day or more is spacing only when it is put between two products ("wait 24 hours between
+// calcium and levothyroxine"), not when it times an effect or an avoidance ("for 48 hours after the last dose").
+const LONG_SPACING_VERB = /\b(?:separat\w*|spac\w*|apart|between)\b/i;
+// "Symptoms usually start within 6 hours after a dose change" times a reaction to a change in the medicine.
+const AFTER_CHANGE = /^\s*(?:after|following)\s+(?:(?:a|the|any|each|your)\s+)?(?:dose\s+(?:change|increase|decrease|adjustment)s?|change\s+in\s+(?:the\s+|your\s+)?dose|starting|stopping|switching)\b/i;
+// A spacing instruction with no number ("separate them", "take iron apart from milk", "take them at different
+// times") about a medicine or mineral: the record, or the limit line, says how.
+const SPACING_ACTION = /\b(?:separat\w*|space\s+(?:them|it|these|those|out|apart)|spac(?:ed|ing)|(?:tak(?:e|en|ing)|keep(?:ing)?|kept)\b[^.;,]*?\bapart|absorption\s+conflict|at\s+(?:a\s+)?different\s+times?)\b/i;
 const SPACING_SUBJECT = /\b(?:thyroid|levothyroxine|tetracyclines?|fluoroquinolones?|quinolones?|antibiotics?|medications?|medicines?|meds|magnesium|iron|calcium|zinc|minerals?|them|it|both|the\s+two)\b/i;
 
 const WORD_VALUE = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, fifteen: 15, twenty: 20, thirty: 30, forty: 40, sixty: 60, ninety: 90 };
@@ -46,23 +51,38 @@ function isSpacingInterval(clause, m) {
   const after = clause.slice(m.index + m[0].length);
   if (DOSE_FREQUENCY_BEFORE.test(before) || ANCHORED_AFTER.test(after)) return false;
   if ((DURATION_AFTER.test(after) || DESCRIBES_COURSE.test(clause)) && !SPACING_VERB.test(clause)) return false;
+  if (DESCRIBES_COURSE.test(clause) && AFTER_CHANGE.test(after) && !LONG_SPACING_VERB.test(clause) && !/\bwait\w*|\bgap\b/i.test(clause)) return false;
   if (/hours?|hrs?|\bh\b/i.test(m[0])) {
     const first = m[0].match(/\d+(?:[.,]\d+)?|[a-z]+/i)[0].toLowerCase();
     const value = /\d/.test(first) ? parseFloat(first.replace(",", ".")) : WORD_VALUE[first];
-    if (value >= 24) return false;
+    if (value >= 24 && !LONG_SPACING_VERB.test(clause)) return false;
   }
   return true;
 }
 
 const statesSpacing = (clause) => [...clause.matchAll(new RegExp(INTERVAL_SOURCE, "gi"))].some((m) => isSpacingInterval(clause, m));
 const instructsSpacing = (clause) => SPACING_ACTION.test(clause) && SPACING_SUBJECT.test(clause);
+// A clause that puts time between two products ("take zinc 2 hours after ciprofloxacin").
+const spacesProducts = (clause) => instructsSpacing(clause) || (SPACING_VERB.test(clause) && statesSpacing(clause));
+// Words that start a clause of its own, not the tail of a list.
+const CLAUSE_OPENER = /^(?:[—–]|(?:so|but|then|which|while|because|if|as|since|though|although|unless|when|this|that|it|they|you|i|we|(?:and|or)\s+(?:stop|ask|talk|call|avoid|check|see|contact|seek|tell|do|don't|never|take))\b)/i;
 
 // One sentence: drop the clauses that state spacing, keep the rest ("Zinc may reduce levothyroxine
 // absorption, so separate them by 4 hours." keeps "Zinc may reduce levothyroxine absorption.").
+// In an emergency or maximum-dose sentence only a clause that spaces two products goes; the emergency
+// clause and any other stay ("Call 911 if…; take zinc 2 hours after ciprofloxacin" keeps "Call 911 if…").
 function scrubSentence(sentence) {
-  if (SAFETY_LINE.test(sentence)) return { text: sentence, removed: false };
+  const safety = SAFETY_LINE.test(sentence);
   const clauses = sentence.split(/(?<=[,;:])\s+|\s+(?=[—–]\s)|\s+(?=(?:so|then|but)\s)/i);
-  const kept = clauses.filter((c) => !statesSpacing(c) && !instructsSpacing(c));
+  const kept = [];
+  let dropping = false;
+  for (const c of clauses) {
+    const remove = safety ? !SAFETY_LINE.test(c) && spacesProducts(c) : statesSpacing(c) || instructsSpacing(c);
+    // The short list tail of a removed clause goes with it ("…apart from milk, cheese and yogurt").
+    const tail = dropping && !SAFETY_LINE.test(c) && !CLAUSE_OPENER.test(c.trim()) && c.trim().split(/\s+/).length <= 4;
+    dropping = remove || tail;
+    if (!dropping) kept.push(c);
+  }
   if (kept.length === clauses.length) return { text: sentence, removed: false };
   let text = kept.join(" ").trim()
     .replace(/[\s,;:—–-]+$/, "")

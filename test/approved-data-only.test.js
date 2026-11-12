@@ -483,3 +483,83 @@ test("the timing scrub leaves a duration that is not spacing ('5 hours per night
     assert.doesNotMatch(applyTimingPolicy(line, []), /4 hours/, line);
   }
 });
+
+// ── CodeRabbit review of d9169e0 (PR #35 threads), checked on d9169e0 ──────
+const turns = (...said) => said.flatMap((content) => [{ role: "user", content }, { role: "assistant", content: "OK." }]);
+const quoteOf = (id) => RECORDS.find((r) => r.id === id).management;
+const suppliedText = () => (sent || []).map((m) => m.content).join("\n");
+
+test("a depletion question is answered for the medicine and nutrient it names, each medicine checked on its own", async () => {
+  const metforminB12 = D.subjectsIn("metformin").flatMap((s) => s.entries).find((e) => /b12/i.test(e.depleted_nutrient.standard_name));
+  // An earlier medicine's note does not stand in for the one asked about now.
+  let { reply } = await ask("Does omeprazole deplete B12?", turns("I take metformin."));
+  assert.match(reply, /no approved[^\n]*b12[^\n]*proton pump/i, reply);
+  assert.ok(!reply.includes(metforminB12.alert_body), `metformin's note answered an omeprazole question:\n${reply}`);
+  // Two medicines in one question: the gap is stated for the one without a note.
+  ({ reply } = await ask("Do metformin or omeprazole deplete B12?"));
+  assert.match(reply, /no approved[^\n]*b12[^\n]*proton pump/i, reply);
+  assert.doesNotMatch(reply, /no approved[^\n]*b12[^\n]*metformin/i, reply);
+  assert.ok(reply.includes(metforminB12.alert_body), reply);
+  // The nutrient comes from the question; an earlier one is not reported again.
+  for (const q of ["Does metformin deplete B12?", "Does it deplete B12?"]) {
+    ({ reply } = await ask(q, turns("Does metformin deplete folate?")));
+    assert.doesNotMatch(reply, /folate/i, `${q}: the earlier nutrient was answered\n${reply}`);
+    assert.ok(reply.includes(metforminB12.alert_body), `${q}\n${reply}`);
+  }
+  // Controls: a follow-up that names no medicine still uses the one named before.
+  ({ reply } = await ask("Does it deplete B12?", turns("I take omeprazole.")));
+  assert.match(reply, /no approved[^\n]*b12[^\n]*proton pump/i, reply);
+});
+
+test("a record for a different pair is never supplied for the pair the question names", async () => {
+  const levoCalcium = quoteOf("DSI_LEVOTHYROXINE_CALCIUM");
+  const { reply } = await askWith("Can I take zinc with levothyroxine?", "Zinc may reduce levothyroxine absorption.", turns("Can I take calcium with levothyroxine?"));
+  assert.ok(!reply.includes(levoCalcium) && !suppliedText().includes(levoCalcium), `the calcium record answered a zinc question:\n${reply}`);
+  // Controls: a follow-up naming one side keeps the earlier pair, also when one word names a drug and its class.
+  await askWith("What about with calcium?", "Stubbed answer.", turns("I take levothyroxine."));
+  assert.ok(suppliedText().includes(levoCalcium), "one-sided follow-up lost its record");
+  await askWith("Can I take it with cipro?", "Stubbed answer.", turns("I take zinc."));
+  assert.ok(suppliedText().includes(quoteOf("DSI_ZINC_FLUOROQUINOLONE")), "cipro (drug and class) lost the zinc record");
+});
+
+test("the timing scrub: spacing goes from a safety sentence, a long interval between products and a number-free 'apart'", async () => {
+  // A spacing clause inside an emergency sentence goes; the emergency clause stays.
+  const mixed = applyTimingPolicy("Call 911 if you have severe symptoms; take zinc 2 hours after ciprofloxacin.", []);
+  assert.match(mixed, /Call 911 if you have severe symptoms/, mixed);
+  assert.doesNotMatch(mixed, /2 hours/, mixed);
+  // A 24-hour interval that spaces two products goes.
+  assert.doesNotMatch(applyTimingPolicy("Wait 24 hours between calcium and levothyroxine.", []), /24 hours/);
+  // "Take iron apart from milk" is a spacing instruction like "separate them".
+  const { reply } = await askWith("Can I take my iron pill with milk at the same time?", "Calcium in dairy blocks iron absorption. Take iron apart from milk, cheese and yogurt.");
+  assert.doesNotMatch(reply, /apart from milk|cheese and yogurt/i, `removed clause left its list behind:\n${reply}`);
+  assert.match(reply, /Calcium in dairy blocks iron absorption\./, reply);
+  // A clause of its own after the removed one stays.
+  assert.equal(applyTimingPolicy("Take iron apart from milk, then drink orange juice with it.", []).split("\n")[0], "Drink orange juice with it.");
+  assert.equal(applyTimingPolicy("Separate them by 2 hours, or stop the supplement.", []).split("\n")[0], "Stop the supplement.");
+  // Controls: an emergency window, an avoidance window and a safety line are not spacing.
+  for (const line of [
+    "Call poison control if a child swallows iron — an overdose can be fatal within 6 hours.",
+    "Avoid alcohol during treatment and for 48 hours after the last dose.",
+    "Keep iron supplements away from children.",
+    "Apart from iron, your multivitamin also has zinc.",
+  ]) assert.equal(applyTimingPolicy(line, []), line);
+  for (const line of ["Keep them apart.", "Iron is best taken apart from dairy."]) assert.equal(applyTimingPolicy(line, []).includes(line), false, line);
+});
+
+test("no prompt line or knowledge-base entry tells the model to take iron apart from a food", () => {
+  const found = [];
+  for (const s of SECTIONS) for (const line of s.text.split("\n")) if (/take iron apart/i.test(line)) found.push(`prompt ${s.id}: ${line}`);
+  for (const ix of KNOWLEDGE_BASE.iron.interactions) if (/\bapart\b/i.test(ix.mechanism)) found.push(`kb iron + ${ix.with}: ${ix.mechanism}`);
+  assert.deepEqual(found, []);
+});
+
+test("an onset statement in a follow-up is kept; a follow-up about the pair is still scrubbed", async () => {
+  let { reply } = await askWith("How soon would I notice symptoms?", "Symptoms usually start within 6 hours after a dose change. Ask your pharmacist.", turns("I take metformin and zinc."));
+  assert.match(reply, /Symptoms usually start within 6 hours after a dose change\./, reply);
+  assert.ok(!reply.includes(NO_TIMING_RECORD), reply);
+  assert.doesNotMatch(applyTimingPolicy("Take zinc 6 hours after a dose of ciprofloxacin.", []), /6 hours/);
+  // Control: a follow-up that names nothing about the earlier pair keeps the scrub and the record.
+  ({ reply } = await askWith("Should I worry?", "Not really, just take them 2 hours apart.", turns("Can I take calcium with levothyroxine?")));
+  assert.doesNotMatch(reply, /2 hours apart/, reply);
+  assert.ok(reply.includes(quoteOf("DSI_LEVOTHYROXINE_CALCIUM")), reply);
+});

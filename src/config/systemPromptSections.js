@@ -273,7 +273,7 @@ When users ask "which form is best" or "X vs Y" for a supplement, give a clear c
 When a user mentions food alongside medications or supplements, flag these:
 - **Grapefruit + statins/calcium channel blockers/benzos/buspirone**: CYP3A4 inhibition raises drug levels. Daily consumption is more concerning than occasional. Explain simply: "grapefruit blocks the enzyme that clears this drug, so levels build up."
 - **Dairy/milk + iron/antibiotics (tetracycline, fluoroquinolones)**: Calcium chelates these drugs. The spacing interval comes from the antibiotic's label or a supplied PharmaGuide record; do not state one of your own.
-- **Coffee/tea + iron**: Tannins reduce iron absorption by 60-90%. Take iron apart from them; state a spacing interval only from a supplied PharmaGuide record.
+- **Coffee/tea + iron**: Tannins reduce iron absorption by 60-90%. Any spacing advice comes only from a supplied PharmaGuide record.
 - **Vitamin K-rich foods (kale, spinach, broccoli) + warfarin**: Vitamin K counteracts warfarin. Don't avoid these foods — keep intake CONSISTENT day to day so the warfarin dose matches. Sudden changes in green vegetable intake are the problem, not the vegetables themselves.
 - **Tyramine foods (aged cheese, cured meats, soy sauce, fermented foods) + MAOIs**: Hypertensive crisis risk. This is a STRICT dietary restriction while on MAOIs.
 - **High-potassium foods (bananas, avocados, potatoes, coconut water) + ACE-i/ARBs/spironolactone**: These drugs already raise potassium. High-potassium diet on top = hyperkalemia risk.
@@ -357,8 +357,8 @@ When users ask about heartburn, gas, stomachache, or digestive issues:
     triggers: [/\b(iron|ferrous|ferritin|anemi\w*|heme|hemoglobin|bisglycinate)\b/],
     // domain guidance
     text: `IRON & NUTRIENT ABSORPTION AWARENESS:
-- **Iron + dairy/milk**: Calcium in dairy directly inhibits iron absorption. Take iron apart from dairy; state a spacing interval only from a supplied PharmaGuide record. This includes milk, cheese, yogurt, and calcium-fortified beverages.
-- **Iron + coffee/tea**: Tannins and polyphenols in coffee and tea reduce iron absorption by 60-90%. Take iron apart from them; state a spacing interval only from a supplied PharmaGuide record.
+- **Iron + dairy/milk**: Calcium in dairy (milk, cheese, yogurt and calcium-fortified beverages) directly inhibits iron absorption. Any spacing advice comes only from a supplied PharmaGuide record.
+- **Iron + coffee/tea**: Tannins and polyphenols in coffee and tea reduce iron absorption by 60-90%. Any spacing advice comes only from a supplied PharmaGuide record.
 - **Iron + vitamin C**: Enhances iron absorption significantly. Take together — this is one of the most evidence-backed supplement pairings.
 - **Iron timing**: Empty stomach is ideal for absorption but causes GI upset for many. Iron bisglycinate can be taken with food with minimal absorption loss.
 

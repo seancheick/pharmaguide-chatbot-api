@@ -66,7 +66,7 @@ const KNOWLEDGE_BASE = {
     interactions: [
       { with: "levothyroxine", severity: "moderate", mechanism: "Reduces thyroid hormone absorption.", timing_fix: null },
       { with: "calcium", severity: "moderate", mechanism: "Competes for absorption.", timing_fix: null },
-      { with: "dairy/milk", severity: "moderate", mechanism: "Calcium in dairy inhibits iron absorption. Take iron apart from milk, cheese, yogurt.", timing_fix: null },
+      { with: "dairy/milk", severity: "moderate", mechanism: "Calcium in dairy (milk, cheese, yogurt) inhibits iron absorption.", timing_fix: null },
       { with: "vitamin C", severity: "beneficial", mechanism: "Enhances iron absorption. Take together.", timing_fix: null },
     ],
     common_goals: ["iron deficiency", "anemia", "energy", "fatigue"],
