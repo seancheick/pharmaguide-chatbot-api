@@ -4,7 +4,7 @@
     "purpose": "depletion_checker",
     "schema_version": "5.3.0",
     "last_updated": "2026-07-30",
-    "total_entries": 80,
+    "total_entries": 20,
     "data_sources": [
       "NIH Office of Dietary Supplements",
       "Drug-Induced Nutrient Depletion Handbook (Pelton et al.)",

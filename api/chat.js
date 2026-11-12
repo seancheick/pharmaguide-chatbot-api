@@ -23,7 +23,7 @@ const { getFormRecommendation } = require("../src/core/formAdvisor");
 const { checkRateLimit } = require("../src/infra/rateLimit");
 const { isTrustedProxy, proxyEnforcement, forwardedClientIp } = require("../src/infra/proxyAuth");
 const { logGate } = require("../src/infra/logger");
-const { mineralSpacingNote, stripModelSpacingAdvice, enforceOneQuestion, addDoseWarnings, stripMarkdownLinks, stripUnverifiedCitations } = require("../src/postprocess");
+const { applyTimingPolicy, inTimingScope, enforceOneQuestion, addDoseWarnings, stripMarkdownLinks, stripUnverifiedCitations } = require("../src/postprocess");
 const { validateResponse, SAFE_FALLBACK_REPLY } = require("../src/postprocess/safetyValidator");
 
 // What the rewrite is told, by rule. Report, don't prescribe: the information stays, the instruction goes.
@@ -295,7 +295,8 @@ module.exports = async function handler(req, res) {
     const slimPrompt = mode === "full" ? null : buildSystemPrompt({ message, history: safeHistory, entities, mode: "selective" });
 
     // Verified pipeline records for any two agents the conversation names (src/core/pipelineInteractions.js).
-    const pipelineRecords = findInteractions([...safeHistory.filter((m) => m.role === "user").map((m) => m.content), message].join("\n"));
+    const userText = [...safeHistory.filter((m) => m.role === "user").map((m) => m.content), message].join("\n");
+    const pipelineRecords = findInteractions(userText);
 
     const { messages, kbHits } = buildAugmentedMessages(
       mode === "selective" ? slimPrompt : SYSTEM_PROMPT,
@@ -411,11 +412,10 @@ module.exports = async function handler(req, res) {
       // Strip Markdown link syntax (frontend doesn't render Markdown)
       reply = stripMarkdownLinks(reply);
 
-      // Mineral spacing: the model's timing lines go; the interval shown is the supplied record's, verbatim.
-      if (detection.mentionsMineralSpacingTrigger(message)) {
-        reply = stripModelSpacingAdvice(reply);
-        const note = mineralSpacingNote(pipelineRecords);
-        if (note) reply = reply + "\n\n" + note;
+      // Timing: for a medicine + supplement question (or one a supplied record covers), the model's own
+      // spacing goes and the supplied records' timing is quoted verbatim; with none, the reply says so.
+      if (inTimingScope({ message, userText, entities, records: pipelineRecords })) {
+        reply = applyTimingPolicy(reply, pipelineRecords);
       }
 
       // Single question enforcement

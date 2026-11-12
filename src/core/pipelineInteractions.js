@@ -120,6 +120,28 @@ for (const agent of AGENTS.values()) {
   agent.re = new RegExp(`\\b(?:${agent.aliases.map(escapeRegex).join("|")})\\b`);
 }
 
+// Every word that names a medicine, for telling whether a question pairs a medicine with a supplement:
+// the class lists' members (and their names without the salt), the everyday class words and the brand
+// table. A word a supplement or food agent owns, or that the entity lists call a supplement or mineral,
+// is not a medicine here (the class lists include glucosamine, melatonin and niacin).
+const { ENTITY_PATTERNS } = require("./entities");
+const SUPPLEMENT_WORD = new RegExp(`^(?:${ENTITY_PATTERNS.minerals.source}|${ENTITY_PATTERNS.supplements.source})$`);
+const MEDICINE_WORDS = (() => {
+  const out = new Set();
+  const add = (s) => { const n = normalizeText(String(s)).trim(); if (n.length >= 3) out.add(n); };
+  for (const c of Object.values(CLASSES)) for (const m of c.member_names || []) { add(m); add(m.replace(SALT, "")); }
+  for (const words of Object.values(CLASS_WORDS)) words.forEach(add);
+  for (const [brand, generic] of Object.entries(BRAND_TO_GENERIC)) { add(brand); add(generic); }
+  return [...out].filter((w) => !NON_DRUG_WORDS.has(w) && !SUPPLEMENT_WORD.test(w)).sort((a, b) => b.length - a.length);
+})();
+// With its salt, when named ("levothyroxine sodium"), so the salt is not read as a nutrient.
+const MEDICINE = new RegExp(`\\b(?:${MEDICINE_WORDS.map(escapeRegex).join("|")})(?:${SALT.source.replace(/\$$/, "")})?\\b`);
+
+/** Does the text name a medicine (any class member, brand or class word)? */
+function namesMedicine(text) {
+  return MEDICINE.test(normalizeText(String(text || "")));
+}
+
 const SEVERITY_RANK ={ contraindicated: 0, avoid: 1, caution: 2, monitor: 3 };
 const MAX_RECORDS = 3;
 
@@ -170,4 +192,4 @@ function coveredBy(records, a, b) {
 // Record ids look like DSI_WAR_GARLIC, SSI_IRON_GREENTEA, DDI_METFORMIN_ALCOHOL.
 const RECORD_ID = /\s*\*?\((?:DSI|SSI|DDI)_[A-Z0-9_]+\)\*?|\b(?:DSI|SSI|DDI)_[A-Z0-9_]+\b/g;
 
-module.exports = { RECORD_ID, coveredBy, findInteractions, agentsIn, agentMatcher, recordBlock, AGENTS, PIPELINE_VERSION: MANIFEST.db_version, MANIFEST };
+module.exports = { RECORD_ID, coveredBy, findInteractions, agentsIn, agentMatcher, namesMedicine, MEDICINE_NAME: MEDICINE, recordBlock, AGENTS, PIPELINE_VERSION: MANIFEST.db_version, MANIFEST };

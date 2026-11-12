@@ -346,7 +346,7 @@ function charcoalMedReply(text) {
 
   lines.push(
     "• Charcoal affects **most oral medications** — thyroid meds, antidepressants, blood pressure meds, and more.",
-    "• If you must take charcoal (e.g., prescribed for poisoning), separate it by at least **2 hours** from any medication. But daily \"detox\" use is not supported by evidence and carries real absorption risk.",
+    "• If charcoal is prescribed (for example, for a poisoning), the prescriber or a pharmacist sets the timing around your other medicines. Daily \"detox\" use is not supported by evidence and carries real absorption risk.",
     "",
     "**Which medications are you currently taking?** I can flag which ones are most affected."
   );
@@ -665,12 +665,23 @@ function depletionReply(convoContext, entities) {
     ].join("\n");
   }
 
+  // A nutrient asked about that none of the named medicines' approved notes cover is said so, by name.
+  const asked = depletions.nutrientsIn(convoContext);
+  const missing = subjects.length > 0 ? asked.filter((n) => !subjects.some((s) => s.entries.some((e) => depletions.nutrientKey(e) === n))) : [];
+  const lowerFirst = (s) => (/^[A-Z][a-z]/.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+  const list = (xs) => (xs.length < 3 ? xs.join(" or ") : `${xs.slice(0, -1).join(", ")} or ${xs[xs.length - 1]}`);
+
   const lines = [];
+  if (missing.length > 0) {
+    lines.push(`PharmaGuide has no approved medication–nutrient note on ${list(missing.map((n) => lowerFirst(depletions.nutrientLabel(n))))} for ${list(subjects.map((s) => s.label))}. That is a limit of our reviewed data, not a finding that there is no effect.`);
+  }
   if (subjects.length > 0) {
-    lines.push("Here is what PharmaGuide's reviewed medication–nutrient notes say:");
+    if (missing.length > 0) lines.push("");
+    lines.push(missing.length > 0 ? "What PharmaGuide's reviewed medication–nutrient notes do say:" : "Here is what PharmaGuide's reviewed medication–nutrient notes say:");
+    const first = (e) => (asked.includes(depletions.nutrientKey(e)) ? 0 : 1);
     for (const s of subjects) {
       lines.push("", `**${s.label}**`);
-      for (const e of s.entries) lines.push(...noteLines(e));
+      for (const e of [...s.entries].sort((a, b) => first(a) - first(b))) lines.push(...noteLines(e));
     }
   }
   for (const m of uncovered) {

@@ -273,15 +273,15 @@ When users ask "which form is best" or "X vs Y" for a supplement, give a clear c
 When a user mentions food alongside medications or supplements, flag these:
 - **Grapefruit + statins/calcium channel blockers/benzos/buspirone**: CYP3A4 inhibition raises drug levels. Daily consumption is more concerning than occasional. Explain simply: "grapefruit blocks the enzyme that clears this drug, so levels build up."
 - **Dairy/milk + iron/antibiotics (tetracycline, fluoroquinolones)**: Calcium chelates these drugs. The spacing interval comes from the antibiotic's label or a supplied PharmaGuide record; do not state one of your own.
-- **Coffee/tea + iron**: Tannins reduce iron absorption by 60-90%. Separate by 1-2 hours.
+- **Coffee/tea + iron**: Tannins reduce iron absorption by 60-90%. Take iron apart from them; state a spacing interval only from a supplied PharmaGuide record.
 - **Vitamin K-rich foods (kale, spinach, broccoli) + warfarin**: Vitamin K counteracts warfarin. Don't avoid these foods — keep intake CONSISTENT day to day so the warfarin dose matches. Sudden changes in green vegetable intake are the problem, not the vegetables themselves.
 - **Tyramine foods (aged cheese, cured meats, soy sauce, fermented foods) + MAOIs**: Hypertensive crisis risk. This is a STRICT dietary restriction while on MAOIs.
 - **High-potassium foods (bananas, avocados, potatoes, coconut water) + ACE-i/ARBs/spironolactone**: These drugs already raise potassium. High-potassium diet on top = hyperkalemia risk.
 - **Alcohol + acetaminophen**: Liver toxicity. Max 2000mg/day if drinking regularly.
 - **Alcohol + metformin**: Lactic acidosis risk increases.
 - **Alcohol + benzodiazepines/opioids**: CNS depression. Potentially fatal.
-- **Fiber supplements + all medications**: Fiber can bind and reduce absorption of many drugs. Take medications 1-2 hours before fiber.
-- **Calcium-fortified juice + levothyroxine**: Same as dairy — chelation. Separate by 4 hours.
+- **Fiber supplements + all medications**: Fiber can bind and reduce absorption of many drugs. The spacing comes from the medicine's label or a supplied PharmaGuide record; do not state one of your own.
+- **Calcium-fortified juice + levothyroxine**: Same as dairy — chelation. The spacing comes from the levothyroxine label or a supplied PharmaGuide record; do not state one of your own.
 - **Fruit juice (apple, orange, grapefruit) + fexofenadine (Allegra)**: Reduces absorption by 36%. Take with water, not juice.
 
 `,
@@ -316,10 +316,10 @@ When a user asks about interactions, complex stacks, or medication+supplement co
 When someone lists 4+ supplements/medications and asks about timing, provide a practical daily schedule:
 - **Morning (empty stomach)**: levothyroxine (alone, 30-60 min before food), iron (if tolerated)
 - **Morning (with breakfast)**: multivitamin, B-complex, vitamin D (with fat), CoQ10 (with fat), omega-3 (with fat)
-- **Afternoon (with lunch)**: magnesium (if taking iron in AM — separate by 2h), zinc (with food)
+- **Afternoon (with lunch)**: magnesium (apart from iron), zinc (with food)
 - **Evening (with dinner)**: calcium (separate from iron/zinc), turmeric (with fat + black pepper)
 - **Bedtime**: magnesium glycinate, melatonin, valerian, L-theanine
-- Key rules: separate iron from calcium/zinc/magnesium by 2h. Minerals and thyroid medicines or antibiotics: state a spacing interval only from a supplied PharmaGuide record or the medicine's label. Fat-soluble vitamins (A, D, E, K) with meals containing fat.
+- Key rules: minerals compete for absorption, so iron, calcium, zinc and magnesium go at different times of day. State a spacing interval (between minerals, or between a mineral and a medicine) only from a supplied PharmaGuide record or the medicine's label. Fat-soluble vitamins (A, D, E, K) with meals containing fat.
 
 `,
   },
@@ -357,8 +357,8 @@ When users ask about heartburn, gas, stomachache, or digestive issues:
     triggers: [/\b(iron|ferrous|ferritin|anemi\w*|heme|hemoglobin|bisglycinate)\b/],
     // domain guidance
     text: `IRON & NUTRIENT ABSORPTION AWARENESS:
-- **Iron + dairy/milk**: Calcium in dairy directly inhibits iron absorption. Separate by 2+ hours. This includes milk, cheese, yogurt, and calcium-fortified beverages.
-- **Iron + coffee/tea**: Tannins and polyphenols in coffee and tea reduce iron absorption by 60-90%. Separate by 1-2 hours.
+- **Iron + dairy/milk**: Calcium in dairy directly inhibits iron absorption. Take iron apart from dairy; state a spacing interval only from a supplied PharmaGuide record. This includes milk, cheese, yogurt, and calcium-fortified beverages.
+- **Iron + coffee/tea**: Tannins and polyphenols in coffee and tea reduce iron absorption by 60-90%. Take iron apart from them; state a spacing interval only from a supplied PharmaGuide record.
 - **Iron + vitamin C**: Enhances iron absorption significantly. Take together — this is one of the most evidence-backed supplement pairings.
 - **Iron timing**: Empty stomach is ideal for absorption but causes GI upset for many. Iron bisglycinate can be taken with food with minimal absorption loss.
 
@@ -444,7 +444,7 @@ When users ask about hormones and supplements, be evidence-graded and specific:
 - Iodine — CAUTION. Excess iodine worsens Hashimoto's. Only supplement if confirmed deficient.
 - Zinc (15-30mg) — supports thyroid hormone production
 - Ashwagandha — may stimulate thyroid. Good for hypothyroid, risky for hyperthyroid or Graves'.
-- **If on levothyroxine:** separate iron, calcium, magnesium by 4h. Coffee by 1h. These reduce absorption.
+- **If on levothyroxine:** iron, calcium, magnesium and coffee reduce its absorption. The spacing comes from the levothyroxine label or a supplied PharmaGuide record; do not state one of your own.
 
 `,
   },
@@ -487,7 +487,7 @@ When users ask about longevity stacks or mention Bryan Johnson:
 When a user pastes their full supplement/medication stack and asks "am I good?":
 1. **Scan for dangerous interactions first** (serotonin combos, bleeding risk, drug-nutrient conflicts)
 2. **Flag any dose concerns** (over upper limits, stacking fat-soluble vitamins)
-3. **Note timing conflicts** (minerals competing for absorption — separate iron/calcium/zinc/magnesium by 2h)
+3. **Note timing conflicts** (minerals competing for absorption; a spacing interval only from a supplied PharmaGuide record)
 4. **Identify redundancies** (multivitamin + standalone vitamins = potential stacking)
 5. **Note what the research covers** for their goals (if they mention a goal), as information
 6. **Grade each item**: 🟢 solid evidence, 🟡 moderate/emerging, 🔴 weak or risky
@@ -632,7 +632,7 @@ When a user mentions upcoming surgery or a procedure:
     group: "clinical-knowledge",
     triggers: [/\b(charcoal|detox|cleanse)\b/],
     // activated charcoal
-    text: `- **Activated charcoal**: Binds and reduces absorption of medications taken within 1–2 hours. This includes birth control pills, thyroid meds, and most oral drugs. Daily use is NOT a safe "detox" — it can cause contraceptive failure or medication underperformance. Flag 🔴 with any critical medication.
+    text: `- **Activated charcoal**: Binds and reduces absorption of medications taken close to it. This includes birth control pills, thyroid meds, and most oral drugs. Daily use is NOT a safe "detox" — it can cause contraceptive failure or medication underperformance. Flag 🔴 with any critical medication.
 `,
   },
   {
@@ -855,7 +855,7 @@ Always do all of these when answering a wellness goal:
   - Red yeast rice contains monacolin K (chemically lovastatin) — never combine with prescribed statins or fibrates.
   - L-arginine and L-citrulline are vasodilators — never combine with sildenafil, tadalafil, vardenafil, avanafil, or any nitrate (nitroglycerin, isosorbide) without clinician supervision.
   - High-dose niacin can cause flushing and liver enzyme elevation, and intensifies statin myopathy risk.
-  - Glucomannan and psyllium reduce absorption of oral medications — separate dosing by 1-2 hours.
+  - Glucomannan and psyllium reduce absorption of oral medications; the spacing comes from the medicine's label or a supplied PharmaGuide record.
 - Add ONE concise "Talk to your healthcare provider" line, especially if the user takes any prescription medication.
 - For sexual-health queries, disclose major cardiovascular-medication contraindications BEFORE listing supplements.
 - For weight-loss queries, name fiber/satiety supplements with realistic framing (adjunct to diet/exercise, not replacement).

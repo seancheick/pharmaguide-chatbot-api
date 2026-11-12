@@ -19,7 +19,7 @@
     },
     "medication_depletions.json": {
       "source": "scripts/data/medication_depletions.json",
-      "sha256": "a3a4d675ddae7a387347f876c6b97bf89ef236a729255de43ca7792d08c44a15",
+      "sha256": "475b930c207686b460c14b53a3b535e24c345506da6cd190c33db956570c2c5c",
       "bytes": 69711,
       "source_sha256": "c5f785f2020e67f40f3f853cb46e67b29674e1c4ee4fd829dc95ab1109011af1",
       "kept": 20,

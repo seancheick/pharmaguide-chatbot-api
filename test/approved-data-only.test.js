@@ -29,7 +29,7 @@ const handler = require("../api/chat");
 const D = require("../src/core/depletions");
 const P = require("../src/core/pipelineInteractions");
 const replies = require("../src/gates/replies");
-const { mineralSpacingNote } = require("../src/postprocess");
+const { recordTimingNote, applyTimingPolicy, NO_TIMING_RECORD } = require("../src/postprocess");
 const { SECTIONS } = require("../src/config/systemPromptSections");
 const { SYSTEM_PROMPT } = require("../src/config/systemPrompt");
 const MANIFEST = require("../src/data/pipeline/MANIFEST.json");
@@ -193,17 +193,17 @@ test("medicine + mineral: the reply states only the interval and action the sync
 test("cipro + zinc today quotes the class record; a drug-specific record, once synced, is quoted word for word", () => {
   const zinc = RECORDS.filter((r) => /zinc/i.test(r.agent2_name) && P.findInteractions("zinc with ciprofloxacin").some((x) => x.id === r.id));
   assert.ok(zinc.length > 0, "a synced record joins cipro and zinc");
-  for (const r of zinc) assert.ok(mineralSpacingNote(zinc).includes(r.management));
+  for (const r of zinc) assert.ok(recordTimingNote(zinc).includes(r.management));
   // The shape of the label-specific record in pipeline PR #452 (DSI_ZINC_CIPROFLOXACIN): no code change needed.
   const specific = {
     id: "DSI_ZINC_CIPROFLOXACIN", agent1_id: "2551", agent1_name: "Ciprofloxacin", agent1_type: "drug",
     agent2_id: "C0043481", agent2_name: "Zinc", agent2_type: "supplement",
     management: "Take ciprofloxacin tablets or liquid at least 2 hours before or 6 hours after zinc supplements or multivitamins that contain zinc, as the ciprofloxacin label directs.",
   };
-  const note = mineralSpacingNote([specific]);
+  const note = recordTimingNote([specific]);
   assert.ok(note.includes(specific.management));
   assert.deepEqual([...intervals(note)].sort(), ["2", "6"]);
-  assert.equal(mineralSpacingNote([]), null, "no record, no interval");
+  assert.equal(recordTimingNote([]), null, "no record, no interval");
 });
 
 test("the depletion reply for ciprofloxacin states no interval and no mineral claim", async () => {
@@ -231,4 +231,180 @@ test("the statin gate quotes the approved CoQ10 note, without the amount the pip
   assert.ok(coq10, "the approved statin CoQ10 note is bundled");
   assert.ok(reply.includes(coq10.alert_body) && reply.includes(coq10.recommendation));
   assert.doesNotMatch(reply, /\b100\s*[-–]\s*200\s*mg/i);
+});
+
+// ── Review of dc550e9 (2026-11-11) ─────────────────────────────────────────
+// An independent review found: an interval in words or minutes slipped through; the scrub ran only for
+// the old trigger list; an answer that was all interval came back empty; a dose limit or an emergency
+// line with "24 hours" was deleted; authored intervals were still in the prompt, the knowledge base and
+// the medicine notes; a depletion reply ignored the nutrient asked; brand names missed their notes.
+// Questions here are written the way people type them, never built from the bundle's own names.
+const { normalizeText } = require("../src/core/normalize");
+const { clearCache, buildCacheKey } = require("../src/infra/responseCache");
+const { KNOWLEDGE_BASE } = require("../src/config/knowledgeBase");
+const { TEMPORAL_DATA } = require("../src/core/temporalContext");
+
+async function askWith(message, text) {
+  clearCache();
+  stubText = text;
+  try { return await ask(message); } finally { stubText = "Stubbed answer."; }
+}
+
+// Any stated interval, digits or words. Owned by this test, independent of the code under test.
+const ANY_INTERVAL = /\b(?:\d+(?:[.,]\d+)?\s*[½¼¾]?|one|two|three|four|five|six|eight|twelve|thirty|sixty|ninety|an?|half an?|a few|a couple of|couple of|several)(?:\s*(?:-|–|to|or)\s*(?:\d+|two|three|four|six|more))?\+?\s*(?:hours?|hrs?|h|minutes?|mins?)\b/i;
+const MEDICINE_WORD = /\b(?:medications?|medicines?|meds|drugs?|antibiotics?|thyroid|levothyroxine|synthroid|bisphosphonates?|alendronate|levodopa|tetracyclines?|doxycycline|quinolones?|fluoroquinolones?|cipro\w*|ppis?|omeprazole|famotidine|warfarin|metronidazole|amoxicillin|dolutegravir)\b/i;
+const SUPPLEMENT_WORD = /\b(?:calcium|iron|magnesium|zinc|minerals?|multivitamins?|probiotics?|fiber|psyllium|glucomannan|charcoal|quercetin|carnitine|coffee|dairy|milk|juice|antacids?)\b/i;
+const authoredInterval = (s) => ANY_INTERVAL.test(s) && MEDICINE_WORD.test(s) && SUPPLEMENT_WORD.test(s);
+// Lines that pass that test without being a medicine + supplement spacing interval.
+const NOT_SPACING = [
+  "absolute zero alcohol during treatment and 48 hours after", // metronidazole + alcohol (drug–alcohol; see PR follow-ups)
+  "can affect some drugs for **24–72 hours**", // grapefruit: how long an effect lasts, not a spacing interval
+  "levothyroxine (alone, 30-60 min before food)", // anchored to food: levothyroxine's empty-stomach label direction
+];
+const spacingOffenders = (lines) => lines.filter((l) => authoredInterval(l) && !NOT_SPACING.some((n) => l.includes(n)));
+const timingRecords = (records) => records.filter((r) => r.management && (/supplement/.test(`${r.agent1_type} ${r.agent2_type}`) && SUPPLEMENT_WORD.test(`${r.agent1_name} ${r.agent2_name}`) || ANY_INTERVAL.test(r.management)));
+
+const INTERVAL_FORMS = [
+  "wait two hours before calcium", "give it 2 or more hours", "wait four hours after your thyroid pill",
+  "take it 120 minutes later", "leave a gap of a few hours between them", "then wait 2½ hours",
+  "wait half an hour after", "take them a couple of hours apart", "wait an hour after your dose",
+  "keep them 30–60 minutes apart", "take them two to four hours apart", "separate them by 4 hours",
+  "wait at least 2h before the mineral", "leave 4-6 h between them", "take the zinc 2 hrs later",
+  "leave a 4-hour gap", "leave a four-hour gap", "take them 2 hours apart for maximum absorption",
+  "leave 4-6 h between doses",
+];
+
+test("a medicine + mineral answer keeps none of the model's own intervals, in any form, and keeps the rest of what it said", async () => {
+  const q = "Can I take calcium with my levothyroxine?";
+  const records = timingRecords(P.findInteractions(q));
+  assert.ok(records.length > 0, "a synced record joins calcium and levothyroxine");
+  for (const phrase of INTERVAL_FORMS) {
+    const { reply, askedModel } = await askWith(q, `Calcium can block levothyroxine absorption, so ${phrase}.`);
+    assert.equal(askedModel, true, `${phrase}: expected the answer path`);
+    assert.ok(!reply.toLowerCase().includes(phrase.toLowerCase()), `kept "${phrase}":\n${reply}`);
+    assert.match(reply, /Calcium can block levothyroxine absorption/, `"${phrase}": the rest of the sentence was lost\n${reply}`);
+    for (const r of records) assert.ok(reply.includes(r.management), `"${phrase}": ${r.id} not quoted`);
+  }
+  // The reviewer's case: the model's "two hours" sat right above the record's "at least 4 hours".
+  const { reply } = await askWith("When should I take calcium with levothyroxine?", "Take levothyroxine first, then wait two hours before calcium.\nCalcium can block absorption.");
+  assert.doesNotMatch(reply, /two hours/i, reply);
+  assert.match(reply, /Calcium can block absorption\./);
+  for (const r of records) assert.ok(reply.includes(r.management), r.id);
+});
+
+test("the timing scrub keeps dose limits, emergency lines, label directions and plain statements", () => {
+  const keep = [
+    "Do not exceed 4,000 mg of acetaminophen in 24 hours.",
+    "If you have chest pain or trouble breathing, call 911 — symptoms within 24 hours need care.",
+    "Calcium binds levothyroxine and can block its absorption.",
+    "Never take iron at the same time as levothyroxine.",
+    "Take levothyroxine 30–60 minutes before breakfast, as its label directs.",
+    "Ibuprofen can be taken every 6 hours as needed.",
+    "Serotonin syndrome symptoms usually start within 6 hours of a dose change.",
+  ];
+  const out = applyTimingPolicy([...keep, "Separate them by 4 hours."].join("\n"), []);
+  for (const line of keep) assert.ok(out.includes(line), `dropped: ${line}\n${out}`);
+  assert.doesNotMatch(out, /Separate them by 4 hours/);
+});
+
+test("when the model's interval goes and no record carries one, the rest stays, the reply says so, and it is never empty", async () => {
+  const q = "When should I take zinc with levothyroxine?";
+  assert.equal(P.findInteractions(q).length, 0, "no synced record joins zinc and levothyroxine");
+  let { reply } = await askWith(q, "Zinc may reduce levothyroxine absorption, so separate them by 4 hours.");
+  assert.match(reply, /Zinc may reduce levothyroxine absorption/, reply);
+  assert.doesNotMatch(reply, /4 hours/, reply);
+  assert.ok(reply.includes(NO_TIMING_RECORD), reply);
+  ({ reply } = await askWith(q, "Separate them by 4 hours."));
+  assert.ok(reply.trim().length > 0, "empty reply");
+  assert.ok(reply.includes(NO_TIMING_RECORD), reply);
+  assert.doesNotMatch(reply, /\bsafe\b/i);
+});
+
+test("any medicine + supplement question gets the scrub and the record quote, not only the old trigger list", async () => {
+  const cases = [
+    ["Can I take magnesium with moxifloxacin?", "Yes, but separate them by 2 hours.\nMagnesium can bind the antibiotic.", "separate them by 2 hours"],
+    ["Can I take calcium with Fosamax?", "Separate calcium from alendronate by 2 hours.", "2 hours"],
+    ["Can I take magnesium with dolutegravir?", "Take magnesium 2 hours after dolutegravir.", "2 hours"],
+    ["Is it ok to take iron with my Tivicay?", "Wait two hours after the iron.", "two hours"],
+    ["Can I take probiotics with amoxicillin?", "Probiotics are fine. Take them 2 hours apart from the antibiotic.", "2 hours"],
+    ["I take Synthroid and a multivitamin, what time should I take each?", "Take Synthroid first thing, then wait 4 hours before the multivitamin.", "4 hours"],
+  ];
+  for (const [q, text, phrase] of cases) {
+    const { reply, askedModel } = await askWith(q, text);
+    assert.ok(!reply.includes(phrase), `${q}: kept "${phrase}"\n${reply}`);
+    if (!askedModel) { assert.doesNotMatch(reply, ANY_INTERVAL, `${q}: a gate stated an interval\n${reply}`); continue; }
+    const timed = timingRecords(P.findInteractions(q));
+    if (timed.length > 0) for (const r of timed) assert.ok(reply.includes(r.management), `${q}: ${r.id} not quoted`);
+    else assert.ok(reply.includes(NO_TIMING_RECORD), `${q}: no limit line\n${reply}`);
+  }
+});
+
+test("no prompt line, knowledge-base entry, medicine note or gate template authors a medicine + supplement interval", () => {
+  const found = [];
+  for (const s of SECTIONS) for (const line of spacingOffenders(s.text.split("\n"))) found.push(`prompt ${s.id}: ${line}`);
+  for (const [name, e] of Object.entries(KNOWLEDGE_BASE)) {
+    const t = e.timing || {};
+    for (const x of [t.best_time, ...(t.separate_from || [])].filter(Boolean)) if (spacingOffenders([`${name}: ${x}`]).length) found.push(`kb ${name} timing: ${x}`);
+    for (const ix of e.interactions || []) {
+      const line = `${name} + ${ix.with}: ${ix.mechanism} ${ix.timing_fix || ""}`;
+      if (spacingOffenders([line]).length) found.push(`kb ${line}`);
+    }
+  }
+  for (const [name, d] of Object.entries(TEMPORAL_DATA)) if (spacingOffenders([`${name}: ${d.notes || ""}`]).length) found.push(`temporal ${name}: ${d.notes}`);
+  const templates = fs.readFileSync(path.join(__dirname, "../src/gates/replies.js"), "utf8").split("\n");
+  for (const line of spacingOffenders(templates)) found.push(`template: ${line.trim()}`);
+  assert.deepEqual(found, []);
+});
+
+test("the prompt sent for a thyroid medicine + multivitamin timing question carries no authored interval", async () => {
+  const { askedModel } = await askWith("I take Synthroid and a multivitamin, what time should I take each?", "Stubbed answer.");
+  assert.equal(askedModel, true);
+  assert.deepEqual(spacingOffenders(sent.map((m) => m.content).join("\n").split("\n")), []);
+});
+
+test("a depletion question about one nutrient answers for that nutrient, also when there is no approved note", async () => {
+  for (const [q, nutrient] of [["does Prilosec deplete magnesium?", "magnesium"], ["does Lasix deplete potassium?", "potassium"], ["Does omeprazole deplete vitamin B12?", "B12"]]) {
+    const { reply, askedModel } = await ask(q);
+    assert.equal(askedModel, false, q);
+    assert.match(reply, new RegExp(`no approved[^\\n]*${nutrient}`, "i"), `${q}:\n${reply}`);
+    for (const line of claimLines(reply)) assert.doesNotMatch(line, new RegExp(nutrient, "i"), `${q}: ${line}`);
+    assert.doesNotMatch(reply, /\bsafe\b/i, q);
+  }
+  const { reply } = await ask("does metformin deplete b12?");
+  const b12 = D.subjectsIn("metformin").flatMap((s) => s.entries).find((e) => /b12/i.test(e.depleted_nutrient.standard_name));
+  assert.ok(reply.includes(b12.alert_body), reply);
+  assert.doesNotMatch(reply, /no approved[^\n]*b12/i, reply);
+  // A medicine's salt or class name is part of the medicine, not a nutrient asked about.
+  for (const [q, want] of [["I take levothyroxine sodium, does it lower my iron?", ["iron"]], ["does naproxen sodium deplete anything?", []],
+    ["I'm on losartan potassium, does it affect magnesium?", ["magnesium"]], ["is a calcium channel blocker bad for potassium?", ["potassium"]]]) {
+    assert.deepEqual(D.nutrientsIn(q), want, q);
+  }
+});
+
+test("brand names reach the approved notes for their medicine", async () => {
+  const cases = [
+    ["does Depakote deplete carnitine?", "class:valproate", /carnitine/i],
+    ["does Tegretol deplete vitamin d?", "2002", /vitamin d/i],
+    ["I take Xenical, does it deplete vitamin E?", "37925", /vitamin e/i],
+    ["does Azulfidine deplete folic acid?", "9524", /folate/i],
+    ["does Colcrys deplete B12?", "2683", /b12/i],
+  ];
+  for (const [q, id, nutrient] of cases) {
+    const { reply, askedModel } = await ask(q);
+    assert.equal(askedModel, false, q);
+    const entry = D.notes().find((s) => s.id === id).entries.find((e) => nutrient.test(e.depleted_nutrient.standard_name));
+    assert.ok(entry, `${id}: no approved ${nutrient} note`);
+    assert.ok(reply.includes(entry.alert_body), `${q}:\n${reply}`);
+    assert.doesNotMatch(reply, /Which medicine are you asking about/, q);
+  }
+});
+
+test("small guards: no 'undefined' timing line, a non-string status fails, the filtered count matches, the cache key carries the bundle", () => {
+  assert.equal(recordTimingNote([{ agent1_name: "Levothyroxine", agent1_type: "drug", agent2_name: "Calcium", agent2_type: "supplement" }]), null);
+  assert.equal(D.isApproved({ citation_review_status: ["verified"], b1_clinical_approval_status: ["approved_for_controlled_beta"] }), false);
+  assert.equal(BUNDLE._metadata.total_entries, BUNDLE.depletions.length);
+  const bundle = Object.values(MANIFEST.files).map((f) => f.sha256).join(",");
+  assert.equal(buildCacheKey("q", "h", "m"), buildCacheKey("q", "h", "m", bundle));
+  assert.notEqual(buildCacheKey("q", "h", "m"), buildCacheKey("q", "h", "m", "another bundle"));
+  assert.equal(normalizeText("Prilosec"), "omeprazole"); // brand spellings normalise before matching
 });

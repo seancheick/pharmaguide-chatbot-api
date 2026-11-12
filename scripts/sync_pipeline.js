@@ -44,6 +44,7 @@ for (const [name, rel] of Object.entries(FILES)) {
     // and are listed so the review backlog stays visible.
     const withheld = doc.depletions.filter((e) => !isApproved(e));
     doc.depletions = doc.depletions.filter(isApproved);
+    if (doc._metadata) doc._metadata.total_entries = doc.depletions.length; // the count of what this file holds
     buf = Buffer.from(JSON.stringify(doc, null, 2) + "\n");
     extra = {
       source_sha256: sha256(src),
