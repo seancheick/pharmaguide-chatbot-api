@@ -174,7 +174,6 @@ const PROBES = {
   "gi-digestive-otc": ["heartburn at night", "I get bloated after protein"],
   "vaginal-health": ["recurrent yeast infections", "does cranberry help with a UTI"],
   "iron-absorption": ["does coffee block iron", "my ferritin is low"],
-  "nutrient-depletion": ["what does omeprazole deplete", "do statins lower coq10"],
   "vertigo-dizziness": ["I get vertigo when I turn over in bed", "room spinning dizziness", "I have Ménière’s disease", "Meniere disease and supplements", "menière"],
   "hormone-support": ["how to raise testosterone naturally", "supplements for menopause"],
   "peptides": ["what is bpc-157", "is ipamorelin legal"],
@@ -202,7 +201,7 @@ test("each name in a section's own bold headings selects that section; each item
   const SKIP = /^(key message|what it does|dosing|forms|timing|water|women|teenagers|vegetarians\/vegans|key context|tier \d.*|if on levothyroxine.*)$/i;
   const firstBold = (text) => (text.match(/\*\*([^*\n]{2,60})\*\*/) || [])[1];
   const clean = (t) => t.replace(/[:()]+$/, "").trim();
-  for (const id of ["clinical-knowledge", "supplement-form-guide", "nutrient-depletion", "seasonal-allergy", "food-drug-interactions", "peptides", "vaginal-health"]) {
+  for (const id of ["clinical-knowledge", "supplement-form-guide", "seasonal-allergy", "food-drug-interactions", "peptides", "vaginal-health"]) {
     const items = SECTIONS.filter((s) => s.group === id && !s.groupHeader);
     if (items.length) {
       assert.ok(items.length >= 9, `${id}: expected a header plus several items`);
@@ -256,9 +255,6 @@ const ITEM_PROBES = {
   "supplement-form-guide:coq10": "ubiquinol or ubiquinone", "supplement-form-guide:vitamin-c": "is liposomal vitamin c worth it", "supplement-form-guide:calcium": "calcium citrate or carbonate",
   "hormone-support:testosterone": "does tongkat ali raise testosterone", "hormone-support:estrogen-womens-balance": "does black cohosh help hot flashes",
   "hormone-support:cortisol-stress-adrenal": "does rhodiola lower cortisol", "hormone-support:thyroid-support": "is selenium good for hashimoto's",
-  "nutrient-depletion:metformin": "does metformin lower b12", "nutrient-depletion:ppis": "what does omeprazole use up", "nutrient-depletion:statins": "do statins cause low coq10",
-  "nutrient-depletion:diuretics": "water pills and potassium", "nutrient-depletion:ssris": "can my zoloft lower my sodium", "nutrient-depletion:birth-control-pills": "supplements for women on the pill",
-  "nutrient-depletion:corticosteroids": "I'm on prednisone, what do I need", "nutrient-depletion:ace-inhibitors": "lisinopril and potassium supplements", "nutrient-depletion:antibiotics": "probiotics after amoxicillin",
 };
 
 test("every item of every split section is reachable by a plain question about it", () => {
@@ -278,7 +274,7 @@ test("a question about one supplement gets that block of the form guide, not the
 
 test("a group's header comes with any selected item of its group, and is never sent alone", () => {
   const groups = [...new Set(SECTIONS.filter((s) => s.group).map((s) => s.group))];
-  assert.deepEqual(groups.sort(), ["clinical-knowledge", "hormone-support", "nutrient-depletion", "supplement-form-guide"]);
+  assert.deepEqual(groups.sort(), ["clinical-knowledge", "hormone-support", "supplement-form-guide"]);
   for (const message of [...QUESTIONS, "which form of magnesium is best", "does metformin deplete b12", "kava and the liver", "testosterone and zinc"]) {
     const ids = selectedFor(message).map((s) => s.id);
     for (const g of groups) {
@@ -296,9 +292,9 @@ test("detected populations select the elderly and pregnancy items even when the 
   assert.ok(forPopulation("pregnancy").includes("clinical-knowledge:melatonin-in-pregnancy"));
 });
 
-test("a generic 'deplete' or 'hormone' question gets every item of that guide, as before the split", () => {
-  const depletion = itemIds("what does my medication deplete").filter((id) => id.startsWith("nutrient-depletion:") && !id.endsWith(":header"));
-  assert.equal(depletion.length, 9);
+test("a generic 'hormone' question gets every item of that guide; a depletion question selects no depletion table", () => {
+  // Depletion questions are answered from the pipeline's approved notes (system:depletion), never the prompt.
+  assert.equal(itemIds("what does my medication deplete").filter((id) => id.startsWith("nutrient-depletion:")).length, 0);
   const hormones = itemIds("tell me about hormones and supplements").filter((id) => id.startsWith("hormone-support:") && !id.endsWith(":header"));
   assert.equal(hormones.length, 4);
 });

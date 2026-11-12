@@ -321,7 +321,7 @@ const TEMPORAL_DATA = {
     half_life_hours: 2,
     washout_days: 1,
     onset_days: { min: 0, max: 0 },
-    notes: "Loop diuretic. Onset 30-60 min oral. Can cause electrolyte depletion (K, Mg, Ca).",
+    notes: "Loop diuretic. Onset 30-60 min oral.",
     category: "diuretic",
   },
   hydrochlorothiazide: {
@@ -339,7 +339,7 @@ const TEMPORAL_DATA = {
     half_life_hours: 1,
     washout_days: 1,
     onset_days: { min: 0, max: 1 },
-    notes: "Short half-life. Complete the full course. Take probiotics 2h apart.",
+    notes: "Short half-life. Complete the full course.",
     category: "antibiotic",
   },
   azithromycin: {
@@ -355,7 +355,7 @@ const TEMPORAL_DATA = {
     half_life_hours: 18,
     washout_days: 4,
     onset_days: { min: 0, max: 1 },
-    notes: "Chelated by divalent cations (Ca, Mg, Fe, Zn). Separate from minerals by 2-3 hours.",
+    notes: "Chelated by divalent cations (Ca, Mg, Fe, Zn).",
     category: "antibiotic",
   },
 

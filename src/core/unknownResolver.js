@@ -29,6 +29,14 @@ const BRAND_TO_GENERIC = {
   "lopid": "gemfibrozil", "questran": "cholestyramine", "zofran": "ondansetron", "cipro": "ciprofloxacin",
   "levaquin": "levofloxacin", "trexall": "methotrexate", "demerol": "meperidine", "imitrex": "sumatriptan",
   "fosamax": "alendronate", "medrol": "methylprednisolone", "deltasone": "prednisone", "elavil": "amitriptyline",
+  // Brands of medicines with a pipeline medication–nutrient note, or with mineral-spacing label directions
+  // (each checked against RxNorm, 2026-11-11: the brand's ingredient)
+  "depakote": "valproate", "tegretol": "carbamazepine", "carbatrol": "carbamazepine", "epitol": "carbamazepine",
+  "equetro": "carbamazepine", "mysoline": "primidone", "xenical": "orlistat", "alli": "orlistat",
+  "azulfidine": "sulfasalazine", "colcrys": "colchicine", "mitigare": "colchicine", "dyrenium": "triamterene",
+  "bumex": "bumetanide", "otrexup": "methotrexate", "rasuvo": "methotrexate", "aciphex": "rabeprazole",
+  "dexilant": "dexlansoprazole", "livalo": "pitavastatin", "tivicay": "dolutegravir", "isentress": "raltegravir",
+  "avelox": "moxifloxacin", "actonel": "risedronate", "boniva": "ibandronate",
   // Antidepressants / psych meds
   "desyrel": "trazodone",
   "remeron": "mirtazapine",

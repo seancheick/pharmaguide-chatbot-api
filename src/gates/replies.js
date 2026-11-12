@@ -1,4 +1,4 @@
-const { normalizeText } = require("../core/normalize");
+const { normalizeText, escapeRegex } = require("../core/normalize");
 const detection = require("./detection");
 const { getSafeItemClarification, getRenalFormNote, getFormGuidance } = require("../core/formAdvisor");
 
@@ -346,7 +346,7 @@ function charcoalMedReply(text) {
 
   lines.push(
     "• Charcoal affects **most oral medications** — thyroid meds, antidepressants, blood pressure meds, and more.",
-    "• If you must take charcoal (e.g., prescribed for poisoning), separate it by at least **2 hours** from any medication. But daily \"detox\" use is not supported by evidence and carries real absorption risk.",
+    "• If charcoal is prescribed (for example, for a poisoning), the prescriber or a pharmacist sets the timing around your other medicines. Daily \"detox\" use is not supported by evidence and carries real absorption risk.",
     "",
     "**Which medications are you currently taking?** I can flag which ones are most affected."
   );
@@ -632,101 +632,102 @@ function privacyReply() {
   ].join("\n");
 }
 
-// ── Nutrient Depletion Map ──
-// Structured data so depletion answers are always grounded and consistent. `discuss` is what to raise
-// with the prescriber: a report, never a self-dosing instruction (2026-11-10 regulatory review).
-const PPI_DISCUSS = "B12 and magnesium levels with long-term use. Calcium citrate absorbs without stomach acid (carbonate needs it). Iron is usually separated by 2h.";
-const STATIN_DISCUSS = "CoQ10 is often asked about for statin-related muscle aches; trials (100-200 mg/day) show mixed results.";
-const SSRI_DISCUSS = "No routine supplementation. Monitor sodium if elderly, on diuretics, or experiencing confusion/weakness.";
-const PROBIOTIC_DISCUSS = "Probiotics (S. boulardii, L. rhamnosus) have been studied for antibiotic-associated diarrhea, taken 2h apart from the antibiotic dose and for 1-2 weeks after the course.";
-const DEPLETION_MAP = {
-  metformin:         { depletes: ["B12 (10-30% reduced absorption)", "Folate (less common)"], discuss: "A periodic B12 level check. Oral or sublingual B12 are the forms usually discussed.", severity: "🟡" },
-  omeprazole:        { depletes: ["B12", "Magnesium", "Calcium", "Iron"], discuss: PPI_DISCUSS, severity: "🟡" },
-  pantoprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], discuss: PPI_DISCUSS, severity: "🟡" },
-  esomeprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], discuss: PPI_DISCUSS, severity: "🟡" },
-  lansoprazole:      { depletes: ["B12", "Magnesium", "Calcium", "Iron"], discuss: PPI_DISCUSS, severity: "🟡" },
-  atorvastatin:      { depletes: ["CoQ10"], discuss: STATIN_DISCUSS, severity: "🟡" },
-  simvastatin:       { depletes: ["CoQ10"], discuss: STATIN_DISCUSS, severity: "🟡" },
-  rosuvastatin:      { depletes: ["CoQ10"], discuss: STATIN_DISCUSS, severity: "🟡" },
-  pravastatin:       { depletes: ["CoQ10"], discuss: STATIN_DISCUSS, severity: "🟡" },
-  lovastatin:        { depletes: ["CoQ10"], discuss: STATIN_DISCUSS, severity: "🟡" },
-  furosemide:        { depletes: ["Potassium", "Magnesium", "Calcium", "Zinc", "B1 (Thiamine)"], discuss: "Electrolyte monitoring, including magnesium. Potassium — only supplement under provider supervision.", severity: "🔴" },
-  hydrochlorothiazide: { depletes: ["Potassium", "Magnesium", "Zinc", "B vitamins"], discuss: "An electrolyte panel, including magnesium and zinc. Potassium — monitor, don't self-supplement.", severity: "🟡" },
-  prednisone:        { depletes: ["Calcium", "Vitamin D", "Potassium", "Magnesium", "Vitamin C"], discuss: "Calcium and vitamin D intake for bone protection. Monitor bone density with long-term use.", severity: "🔴" },
-  "birth control":   { depletes: ["B6", "B12", "Folate", "Magnesium", "Zinc", "Vitamin C", "Vitamin E"], discuss: "Whether a B-complex or magnesium makes sense for you. Especially important: folate if you plan to conceive after stopping.", severity: "🟡" },
-  sertraline:        { depletes: ["Sodium (hyponatremia — especially in elderly)"], discuss: SSRI_DISCUSS, severity: "🟢" },
-  fluoxetine:        { depletes: ["Sodium (hyponatremia risk)"], discuss: SSRI_DISCUSS, severity: "🟢" },
-  escitalopram:      { depletes: ["Sodium (hyponatremia risk)"], discuss: SSRI_DISCUSS, severity: "🟢" },
-  levothyroxine:     { depletes: [], discuss: "Levothyroxine doesn't deplete nutrients, but many nutrients interfere with its ABSORPTION: iron, calcium, magnesium (separate by 4h), coffee (separate by 1h).", severity: "🟢" },
-  amoxicillin:       { depletes: ["Gut microbiome (beneficial bacteria)"], discuss: PROBIOTIC_DISCUSS, severity: "🟡" },
-  azithromycin:      { depletes: ["Gut microbiome"], discuss: PROBIOTIC_DISCUSS, severity: "🟡" },
-  doxycycline:       { depletes: ["Gut microbiome", "Calcium/Iron/Zinc (chelation)"], discuss: "Probiotics 2h apart. Separate minerals by 2-3h.", severity: "🟡" },
-  ciprofloxacin:     { depletes: ["Gut microbiome", "Calcium/Magnesium/Iron (chelation)"], discuss: "Probiotics 2h apart. Separate minerals by 2h.", severity: "🟡" },
-  lisinopril:        { depletes: [], discuss: "ACE inhibitors don't deplete — they INCREASE potassium. Do NOT supplement potassium without monitoring.", severity: "🟢" },
-  losartan:          { depletes: [], discuss: "ARBs don't deplete — they INCREASE potassium. Do NOT supplement potassium without monitoring.", severity: "🟢" },
-  gabapentin:        { depletes: ["Calcium (long-term, bone density concern)"], discuss: "Calcium and vitamin D intake for long-term users. Monitor bone density.", severity: "🟡" },
-  warfarin:          { depletes: [], discuss: "Warfarin doesn't deplete, but vitamin K intake must be CONSISTENT (not avoided). Sudden changes in green vegetables alter INR.", severity: "🟢" },
-};
-
-// Aliases that map to depletion entries: exact brand pairs from their one owner
-// (unknownResolver.BRAND_TO_GENERIC) for the drugs DEPLETION_MAP covers, plus local groupings.
+// ── Medication–nutrient notes ──
+// Quoted from the pipeline's approved notes (src/core/depletions.js, synced by scripts/sync_pipeline.js):
+// the nutrient, alert_body and recommendation, verbatim. No depletion, interval or amount is written here.
+const depletions = require("../core/depletions");
 const { BRAND_TO_GENERIC } = require("../core/unknownResolver");
-const DEPLETION_ALIASES = {
-  ...Object.fromEntries(Object.entries(BRAND_TO_GENERIC).filter(([, generic]) => DEPLETION_MAP[generic])),
-  hctz: "hydrochlorothiazide", prednisolone: "prednisone", "oral contraceptive": "birth control",
+
+const noteLines = (e) => {
+  const source = (e.sources || [])[0];
+  return [`• **${e.depleted_nutrient.standard_name}:** ${e.alert_body} ${e.recommendation}`, ...(source && source.label ? [`  Source: ${source.label}`] : [])];
 };
 
-function depletionReply(convoContext) {
-  const t = (convoContext || "").toLowerCase();
-
-  // Find which medications the user mentioned
-  const allMeds = Object.keys(DEPLETION_MAP);
-  const allAliases = Object.keys(DEPLETION_ALIASES);
-  const found = [];
-
-  for (const med of allMeds) {
-    if (t.includes(med)) found.push(med);
-  }
-  for (const alias of allAliases) {
-    if (t.includes(alias) && !found.includes(DEPLETION_ALIASES[alias])) {
-      found.push(DEPLETION_ALIASES[alias]);
+// Medicines the conversation names, brands as their generic name (to say plainly which have no note).
+function medicinesNamed(text, entities) {
+  const t = normalizeText(text || "");
+  const named = (entities && entities.meds) || require("../core/entities").extractEntities(t).meds;
+  const out = named.map((m) => normalizeText(BRAND_TO_GENERIC[m] || m).trim());
+  // The brand table's brands and its generic names ("cholestyramine" is a medicine even without "Questran").
+  for (const [brand, generic] of Object.entries(BRAND_TO_GENERIC)) {
+    for (const word of [brand, generic]) {
+      if (new RegExp(`\\b${escapeRegex(normalizeText(word).trim())}\\b`).test(t)) out.push(normalizeText(generic).trim());
     }
   }
+  return [...new Set(out.filter(Boolean))];
+}
 
-  // Also check drug class mentions
-  if (/\b(ppi|proton pump|acid blocker)\b/.test(t) && !found.includes("omeprazole")) found.push("omeprazole");
-  if (/\bstatin\b/.test(t) && !found.includes("atorvastatin")) found.push("atorvastatin");
-  if (/\b(ssri|antidepressant)\b/.test(t) && !found.includes("sertraline")) found.push("sertraline");
-  if (/\bdiuretic\b/.test(t) && !found.includes("furosemide")) found.push("furosemide");
-  if (/\b(antibiotic)\b/.test(t) && !found.includes("amoxicillin")) found.push("amoxicillin");
-  if (/\b(ace inhibitor|acei)\b/.test(t) && !found.includes("lisinopril")) found.push("lisinopril");
-  if (/\b(arb)\b/.test(t) && !found.includes("losartan")) found.push("losartan");
-  if (/\b(steroid|corticosteroid)\b/.test(t) && !found.includes("prednisone")) found.push("prednisone");
+function depletionReply(convoContext, entities, message) {
+  // The medicines the question names; earlier turns only when it names none ("does it deplete B12?").
+  const ownSubjects = message === undefined ? [] : depletions.subjectsIn(message);
+  const ownMedicines = message === undefined ? [] : medicinesNamed(message, null);
+  const ownTurn = ownSubjects.length > 0 || ownMedicines.length > 0;
+  const subjects = ownTurn ? ownSubjects : depletions.subjectsIn(convoContext);
+  const uncovered = (ownTurn ? ownMedicines : medicinesNamed(convoContext, entities)).filter((m) => !subjects.some((s) => s.re.test(m)));
 
-  if (found.length === 0) {
-    return null; // No specific med found — let LLM handle
+  if (subjects.length === 0 && uncovered.length === 0) {
+    return [
+      "Which medicine are you asking about? I can share PharmaGuide's reviewed medication–nutrient notes, and they cover a limited list:",
+      depletions.notes().map((s) => s.label).join("; ") + ".",
+    ].join("\n");
+  }
+
+  const lowerFirst = (s) => (/^[A-Z][a-z]/.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+  const list = (xs) => (xs.length < 3 ? xs.join(" or ") : `${xs.slice(0, -1).join(", ")} or ${xs[xs.length - 1]}`);
+  const advice = "A pharmacist or your prescriber can review your own situation; don't start, stop or change a medicine or supplement based on this chat.";
+  const closing = (quoted) => (quoted ? `These notes are not a complete list of what a medicine can do. ${advice}` : advice);
+
+  // Taking a nutrient with the medicine ("Can I take iron with omeprazole?"): no verified record joins
+  // them (one would have sent the question to the answer path), so the reply says so and quotes only the
+  // notes on that nutrient.
+  const together = message !== undefined && !detection.isDepletionQuestion(message) && detection.asksAboutTakingTogether(message);
+  const takenWith = together ? depletions.nutrientsIn(message) : [];
+  if (takenWith.length > 0) {
+    const lines = [`PharmaGuide has no verified interaction or timing record for ${list(takenWith.map((n) => lowerFirst(depletions.nutrientLabel(n))))} with ${list([...subjects.map((s) => s.label), ...uncovered])}. That is a limit of our reviewed data, not a finding that the combination is fine.`];
+    for (const s of subjects) {
+      const notes = s.entries.filter((e) => takenWith.includes(depletions.nutrientKey(e)));
+      if (notes.length === 0) continue;
+      if (lines.length === 1) lines.push("", "What PharmaGuide's reviewed medication–nutrient notes say on it:");
+      lines.push("", `**${s.label}**`);
+      for (const e of notes) lines.push(...noteLines(e));
+    }
+    lines.push("", closing(lines.length > 1));
+    return lines.join("\n");
+  }
+
+  // The nutrients the question names. A depletion question naming none asks about every note ("what does
+  // metformin deplete?"); any other follow-up takes them from earlier turns ("what about omeprazole?").
+  const askedNow = message === undefined ? [] : depletions.nutrientsIn(message);
+  const asked = askedNow.length > 0 || (message !== undefined && detection.isDepletionQuestion(message)) ? askedNow : depletions.nutrientsIn(convoContext);
+  // Each medicine is checked on its own: one medicine's note does not cover another's gap.
+  const gaps = new Map();
+  for (const s of subjects) {
+    const missing = asked.filter((n) => !s.entries.some((e) => depletions.nutrientKey(e) === n));
+    if (missing.length === 0) continue;
+    const key = missing.join("|");
+    if (!gaps.has(key)) gaps.set(key, { missing, labels: [] });
+    gaps.get(key).labels.push(s.label);
   }
 
   const lines = [];
-  lines.push("Here's what your medication(s) may deplete and what to raise with your prescriber:");
-  lines.push("");
-
-  for (const med of found) {
-    const data = DEPLETION_MAP[med];
-    if (!data) continue;
-    const name = med.charAt(0).toUpperCase() + med.slice(1);
-    if (data.depletes.length === 0) {
-      lines.push(`${data.severity} **${name}**: ${data.discuss}`);
-    } else {
-      lines.push(`${data.severity} **${name}** may deplete: ${data.depletes.join(", ")}`);
-      lines.push(`  Ask your prescriber about: ${data.discuss}`);
-    }
-    lines.push("");
+  for (const { missing, labels } of gaps.values()) {
+    lines.push(`PharmaGuide has no approved medication–nutrient note on ${list(missing.map((n) => lowerFirst(depletions.nutrientLabel(n))))} for ${list(labels)}. That is a limit of our reviewed data, not a finding that there is no effect.`);
   }
-
-  lines.push("**What to tell your prescriber:** \"Could any of my medications be lowering a nutrient, and is a level check worth doing?\"");
-
-  return lines.join("\n").trim();
+  if (subjects.length > 0) {
+    if (gaps.size > 0) lines.push("");
+    lines.push(gaps.size > 0 ? "What PharmaGuide's reviewed medication–nutrient notes do say:" : "Here is what PharmaGuide's reviewed medication–nutrient notes say:");
+    const first = (e) => (asked.includes(depletions.nutrientKey(e)) ? 0 : 1);
+    for (const s of subjects) {
+      lines.push("", `**${s.label}**`);
+      for (const e of [...s.entries].sort((a, b) => first(a) - first(b))) lines.push(...noteLines(e));
+    }
+  }
+  for (const m of uncovered) {
+    if (lines.length > 0) lines.push("");
+    lines.push(`PharmaGuide has no approved medication–nutrient note for ${m}. That is a limit of our reviewed data, not a finding that ${m} has no effect on nutrients.`);
+  }
+  lines.push("", closing(subjects.length > 0));
+  return lines.join("\n");
 }
 
 function creatorReply() {
@@ -845,18 +846,10 @@ function betaBlockerStimulantReply() {
   ].join("\n");
 }
 
-function ppiNutrientReply() {
-  return [
-    "**🟡 Long-term PPI use can reduce absorption of key nutrients.**",
-    "",
-    "PPIs (omeprazole, pantoprazole, etc.) suppress stomach acid, which your body needs to absorb certain nutrients:",
-    "• **B12** — reduced acid = reduced B12 absorption. Consider sublingual B12 (it bypasses the stomach).",
-    "• **Magnesium** — long-term PPI use (>1 year) linked to low magnesium. Monitor levels.",
-    "• **Calcium** — acid helps dissolve calcium carbonate. If on a PPI, calcium citrate is the better form (doesn't need acid).",
-    "• **Iron** — acid helps convert iron to its absorbable form. Separate iron from PPI by 2+ hours.",
-    "",
-    "If you've been on a PPI for more than a year, it's worth asking your provider about checking B12 and magnesium levels.",
-  ].join("\n");
+// The approved statin–CoQ10 note, quoted; nothing when the bundle has none.
+function statinCoq10Note() {
+  const note = depletions.subjectsIn("statin").flatMap((s) => s.entries).find((e) => e.depleted_nutrient.canonical_id === "coq10");
+  return note ? [`• **CoQ10**: ${note.alert_body} ${note.recommendation}`, ""] : [];
 }
 
 function statinMyopathyReply() {
@@ -869,8 +862,7 @@ function statinMyopathyReply() {
     "• **Red yeast rice** — contains a natural statin (monacolin K). Taking it with a prescription statin is essentially doubling the dose 🔴.",
     "• **Grapefruit** — inhibits the enzyme (CYP3A4) that clears simvastatin and atorvastatin, raising blood levels.",
     "",
-    "• **CoQ10**: trials for statin-related muscle aches used 100–200 mg/day, with mixed results. Ask your prescriber before adding it.",
-    "",
+    ...statinCoq10Note(),
     "Are you experiencing muscle symptoms, or looking to prevent them?",
   ].join("\n");
 }
@@ -971,7 +963,7 @@ const ROUTE_REPLY_MAP = {
   "system:lithium-nsaid": function() { return lithiumNSAIDReply(); },
   "system:metformin-alcohol": function() { return metforminAlcoholReply(); },
   "system:beta-blocker-stimulant": function() { return betaBlockerStimulantReply(); },
-  "system:ppi-nutrient": function() { return ppiNutrientReply(); },
+  "system:ppi-nutrient": function(convoContext, message, entities) { return depletionReply(convoContext, entities, message); },
   "system:statin-myopathy": function() { return statinMyopathyReply(); },
   "system:benzo-alcohol": function() { return benzoAlcoholReply(); },
   "system:ginkgo-bleeding": function() { return ginkgoBleedingReply(); },
@@ -980,7 +972,7 @@ const ROUTE_REPLY_MAP = {
   "system:flirty-final": function() { return flirtyFinalReply(); },
   "system:what-is": function() { return whatIsReply(); },
   "system:privacy": function() { return privacyReply(); },
-  "system:depletion": function(convoContext) { return depletionReply(convoContext); },
+  "system:depletion": function(convoContext, message, entities) { return depletionReply(convoContext, entities, message); },
   "system:creator": function() { return creatorReply(); },
   "system:pet-question": function() { return petQuestionReply(); },
   "system:business-inquiry": function(convoContext, message) { return businessInquiryReply(message); },
@@ -1031,7 +1023,6 @@ module.exports = {
   whatIsReply,
   privacyReply,
   depletionReply,
-  DEPLETION_MAP,
   creatorReply,
   petQuestionReply,
   businessInquiryReply,
@@ -1039,7 +1030,6 @@ module.exports = {
   medInducedTinnitusReply,
   chronicNSAIDReply,
   betaBlockerStimulantReply,
-  ppiNutrientReply,
   statinMyopathyReply,
   benzoAlcoholReply,
   ginkgoBleedingReply,

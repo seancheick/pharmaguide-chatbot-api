@@ -28,10 +28,13 @@ const PERSONAL_PATTERN = /\b(my labs|my results|my doctor said|my prescriber)\b/
 /**
  * Build a cache key from all versioned components.
  */
-function buildCacheKey(message, systemPromptHash, modelId) {
+// The synced pipeline bundle an answer was grounded in: a re-sync must not serve an answer built on the old data.
+const PIPELINE_BUNDLE = Object.values(require("../data/pipeline/MANIFEST.json").files || {}).map((f) => f.sha256).join(",");
+
+function buildCacheKey(message, systemPromptHash, modelId, pipelineBundle = PIPELINE_BUNDLE) {
   const normalized = normalizeText(message);
   const policyVersion = getPolicyVersion();
-  const input = [normalized, policyVersion, systemPromptHash || "", modelId || ""].join("|");
+  const input = [normalized, policyVersion, systemPromptHash || "", modelId || "", pipelineBundle].join("|");
   return crypto.createHash("sha256").update(input).digest("hex");
 }
 

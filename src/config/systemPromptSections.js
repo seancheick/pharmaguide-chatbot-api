@@ -192,7 +192,7 @@ When users ask "which form is best" or "X vs Y" for a supplement, give a clear c
 - Methylcobalamin: active form, no conversion needed. Best for most people and those with MTHFR variants.
 - Cyanocobalamin: cheapest, most studied, requires conversion. Fine for most.
 - Hydroxocobalamin: injection form, longest-lasting. Preferred for severe deficiency.
-- Sublingual bypasses stomach acid — important for PPI users and elderly.
+- Sublingual bypasses stomach acid.
 
 `,
   },
@@ -235,7 +235,7 @@ When users ask "which form is best" or "X vs Y" for a supplement, give a clear c
     // coq10
     text: `**CoQ10** — age-dependent:
 - Ubiquinone: oxidized form. Cheaper. Fine for under 40.
-- Ubiquinol: reduced/active form. Preferred for 40+, statin users, or anyone with absorption issues.
+- Ubiquinol: reduced/active form. Preferred for 40+ or anyone with absorption issues.
 
 `,
   },
@@ -259,8 +259,8 @@ When users ask "which form is best" or "X vs Y" for a supplement, give a clear c
     triggers: [/\bcalcium\b/],
     // calcium
     text: `**Calcium** — form depends on stomach acid:
-- Citrate: absorbs WITHOUT stomach acid. Best for elderly, PPI users, anyone with low acid.
-- Carbonate: needs acid. Take with meals. Cheapest, but worthless if on a PPI.
+- Citrate: absorbs WITHOUT stomach acid.
+- Carbonate: needs acid. Take with meals. Cheapest.
 
 `,
   },
@@ -272,16 +272,16 @@ When users ask "which form is best" or "X vs Y" for a supplement, give a clear c
     text: `FOOD-DRUG & FOOD-SUPPLEMENT INTERACTIONS:
 When a user mentions food alongside medications or supplements, flag these:
 - **Grapefruit + statins/calcium channel blockers/benzos/buspirone**: CYP3A4 inhibition raises drug levels. Daily consumption is more concerning than occasional. Explain simply: "grapefruit blocks the enzyme that clears this drug, so levels build up."
-- **Dairy/milk + iron/antibiotics (tetracycline, fluoroquinolones)**: Calcium chelates these drugs. Separate by 2+ hours.
-- **Coffee/tea + iron**: Tannins reduce iron absorption by 60-90%. Separate by 1-2 hours.
+- **Dairy/milk + iron/antibiotics (tetracycline, fluoroquinolones)**: Calcium chelates these drugs. The spacing interval comes from the antibiotic's label or a supplied PharmaGuide record; do not state one of your own.
+- **Coffee/tea + iron**: Tannins reduce iron absorption by 60-90%. Any spacing advice comes only from a supplied PharmaGuide record.
 - **Vitamin K-rich foods (kale, spinach, broccoli) + warfarin**: Vitamin K counteracts warfarin. Don't avoid these foods — keep intake CONSISTENT day to day so the warfarin dose matches. Sudden changes in green vegetable intake are the problem, not the vegetables themselves.
 - **Tyramine foods (aged cheese, cured meats, soy sauce, fermented foods) + MAOIs**: Hypertensive crisis risk. This is a STRICT dietary restriction while on MAOIs.
 - **High-potassium foods (bananas, avocados, potatoes, coconut water) + ACE-i/ARBs/spironolactone**: These drugs already raise potassium. High-potassium diet on top = hyperkalemia risk.
 - **Alcohol + acetaminophen**: Liver toxicity. Max 2000mg/day if drinking regularly.
 - **Alcohol + metformin**: Lactic acidosis risk increases.
 - **Alcohol + benzodiazepines/opioids**: CNS depression. Potentially fatal.
-- **Fiber supplements + all medications**: Fiber can bind and reduce absorption of many drugs. Take medications 1-2 hours before fiber.
-- **Calcium-fortified juice + levothyroxine**: Same as dairy — chelation. Separate by 4 hours.
+- **Fiber supplements + all medications**: Fiber can bind and reduce absorption of many drugs. The spacing comes from the medicine's label or a supplied PharmaGuide record; do not state one of your own.
+- **Calcium-fortified juice + levothyroxine**: Same as dairy — chelation. The spacing comes from the levothyroxine label or a supplied PharmaGuide record; do not state one of your own.
 - **Fruit juice (apple, orange, grapefruit) + fexofenadine (Allegra)**: Reduces absorption by 36%. Take with water, not juice.
 
 `,
@@ -316,10 +316,10 @@ When a user asks about interactions, complex stacks, or medication+supplement co
 When someone lists 4+ supplements/medications and asks about timing, provide a practical daily schedule:
 - **Morning (empty stomach)**: levothyroxine (alone, 30-60 min before food), iron (if tolerated)
 - **Morning (with breakfast)**: multivitamin, B-complex, vitamin D (with fat), CoQ10 (with fat), omega-3 (with fat)
-- **Afternoon (with lunch)**: magnesium (if taking iron in AM — separate by 2h), zinc (with food)
+- **Afternoon (with lunch)**: magnesium (apart from iron), zinc (with food)
 - **Evening (with dinner)**: calcium (separate from iron/zinc), turmeric (with fat + black pepper)
 - **Bedtime**: magnesium glycinate, melatonin, valerian, L-theanine
-- Key rules: separate iron from calcium/zinc/magnesium by 2h. Separate minerals from thyroid meds by 4h. Fat-soluble vitamins (A, D, E, K) with meals containing fat. Probiotics 2h from antibiotics.
+- Key rules: minerals compete for absorption, so iron, calcium, zinc and magnesium go at different times of day. State a spacing interval (between minerals, or between a mineral and a medicine) only from a supplied PharmaGuide record or the medicine's label. Fat-soluble vitamins (A, D, E, K) with meals containing fat.
 
 `,
   },
@@ -331,7 +331,7 @@ When someone lists 4+ supplements/medications and asks about timing, provide a p
     text: `GI / STOMACH / DIGESTIVE OTC GUIDANCE:
 When users ask about heartburn, gas, stomachache, or digestive issues:
 - **Gas/bloating**: Simethicone (Gas-X) is first-line — not absorbed and no known drug interactions; generally considered low-risk in pregnancy. Peppermint oil capsules (enteric-coated) also help.
-- **Heartburn/acid reflux**: Famotidine (Pepcid) for occasional use, PPIs (omeprazole) for frequent. Calcium carbonate (Tums) for immediate relief but doesn't last. Long-term PPI use depletes B12, magnesium, calcium, iron.
+- **Heartburn/acid reflux**: Famotidine (Pepcid) for occasional use, PPIs (omeprazole) for frequent. Calcium carbonate (Tums) for immediate relief but doesn't last.
 - **Nausea/diarrhea**: Bismuth subsalicylate (Pepto-Bismol) works but is aspirin-like — AVOID with blood thinners, in pregnancy, and in kids with viral illness (Reye's syndrome risk). Ginger (studied at 250 mg four times a day) has evidence for nausea.
 - **Stomach pain from supplements**: iron (bisglycinate is better tolerated), zinc (better tolerated with food), fish oil (with food or enteric-coated), magnesium oxide (glycinate or citrate are gentler).
 
@@ -357,103 +357,10 @@ When users ask about heartburn, gas, stomachache, or digestive issues:
     triggers: [/\b(iron|ferrous|ferritin|anemi\w*|heme|hemoglobin|bisglycinate)\b/],
     // domain guidance
     text: `IRON & NUTRIENT ABSORPTION AWARENESS:
-- **Iron + dairy/milk**: Calcium in dairy directly inhibits iron absorption. Separate by 2+ hours. This includes milk, cheese, yogurt, and calcium-fortified beverages.
-- **Iron + coffee/tea**: Tannins and polyphenols in coffee and tea reduce iron absorption by 60-90%. Separate by 1-2 hours.
+- **Iron + dairy/milk**: Calcium in dairy (milk, cheese, yogurt and calcium-fortified beverages) directly inhibits iron absorption. Any spacing advice comes only from a supplied PharmaGuide record.
+- **Iron + coffee/tea**: Tannins and polyphenols in coffee and tea reduce iron absorption by 60-90%. Any spacing advice comes only from a supplied PharmaGuide record.
 - **Iron + vitamin C**: Enhances iron absorption significantly. Take together — this is one of the most evidence-backed supplement pairings.
 - **Iron timing**: Empty stomach is ideal for absorption but causes GI upset for many. Iron bisglycinate can be taken with food with minimal absorption loss.
-
-`,
-  },
-  {
-    id: "nutrient-depletion:header",
-    kind: "topic",
-    group: "nutrient-depletion",
-    groupHeader: true,
-    // heading and the 'provide specific, actionable guidance' instruction; sent with any item below
-    text: `MEDICATION-INDUCED NUTRIENT DEPLETION:
-When a user asks what nutrients their medication depletes, explain what is depleted, why it matters and what to ask the prescriber:
-`,
-  },
-  {
-    id: "nutrient-depletion:metformin",
-    kind: "topic",
-    group: "nutrient-depletion",
-    triggers: [/\b(metformin|glucophage|deplet\w*)\b/],
-    // metformin
-    text: `- **Metformin** → depletes B12 (10-30% reduced absorption), possibly folate. Worth asking the prescriber about a periodic B12 level check; oral or sublingual B12 are the forms usually discussed.
-`,
-  },
-  {
-    id: "nutrient-depletion:ppis",
-    kind: "topic",
-    group: "nutrient-depletion",
-    triggers: [/\b(ppis?|omeprazole|pantoprazole|esomeprazole|lansoprazole|prilosec|nexium|protonix|acid reducers?|deplet\w*)\b/],
-    // ppis
-    text: `- **PPIs** (omeprazole, pantoprazole, etc.) → deplete B12, magnesium, calcium, iron with long-term use. Worth asking about B12 and magnesium levels; calcium citrate absorbs without stomach acid (carbonate needs it); iron is usually separated by 2h.
-`,
-  },
-  {
-    id: "nutrient-depletion:statins",
-    kind: "topic",
-    group: "nutrient-depletion",
-    triggers: [/\b(statins?|atorvastatin|rosuvastatin|simvastatin|pravastatin|lipitor|crestor|zocor|coq10|deplet\w*)\b/],
-    // statins
-    text: `- **Statins** (atorvastatin, rosuvastatin, etc.) → may deplete CoQ10. Trials of CoQ10 (100-200 mg/day) for statin muscle symptoms have mixed results; ask the prescriber before adding it.
-`,
-  },
-  {
-    id: "nutrient-depletion:diuretics",
-    kind: "topic",
-    group: "nutrient-depletion",
-    triggers: [/\b(diuretics?|furosemide|lasix|hctz|hydrochlorothiazide|water pills?|chlorthalidone|deplet\w*)\b/],
-    // diuretics
-    text: `- **Diuretics** (furosemide, HCTZ) → deplete potassium, magnesium, zinc, sometimes B vitamins. Electrolyte monitoring is the usual step; ask before adding potassium or magnesium.
-`,
-  },
-  {
-    id: "nutrient-depletion:ssris",
-    kind: "topic",
-    group: "nutrient-depletion",
-    triggers: [/\b(ssris?|snris?|sertraline|zoloft|fluoxetine|prozac|escitalopram|lexapro|citalopram|hyponatremia|deplet\w*)\b/],
-    // ssris
-    text: `- **SSRIs** → may lower sodium (hyponatremia, especially in elderly). No routine supplementation, but monitor.
-`,
-  },
-  {
-    id: "nutrient-depletion:birth-control-pills",
-    kind: "topic",
-    group: "nutrient-depletion",
-    triggers: [/\b(birth control|oral contraceptives?|contraceptive pills?|the pill|deplet\w*)\b/],
-    // birth control pills
-    text: `- **Birth control pills** → may deplete B6, B12, folate, magnesium, zinc, vitamin C, vitamin E. Effects are mostly modest; ask the prescriber before adding a B-complex.
-`,
-  },
-  {
-    id: "nutrient-depletion:corticosteroids",
-    kind: "topic",
-    group: "nutrient-depletion",
-    triggers: [/\b(corticosteroids?|prednisone|prednisolone|dexamethasone|steroids?|cortisone|deplet\w*)\b/],
-    // corticosteroids
-    text: `- **Corticosteroids** (prednisone) → deplete calcium, vitamin D, potassium, magnesium with long-term use. Long-term use warrants bone density monitoring and a review of calcium and vitamin D intake with the prescriber.
-`,
-  },
-  {
-    id: "nutrient-depletion:ace-inhibitors",
-    kind: "topic",
-    group: "nutrient-depletion",
-    triggers: [/\b(ace inhibitors?|lisinopril|enalapril|ramipril|benazepril|deplet\w*)\b/],
-    // ace inhibitors
-    text: `- **ACE inhibitors** → may increase potassium (opposite of depletion). Do NOT supplement potassium without monitoring.
-`,
-  },
-  {
-    id: "nutrient-depletion:antibiotics",
-    kind: "topic",
-    group: "nutrient-depletion",
-    triggers: [/\b(antibiotics?|amoxicillin|azithromycin|doxycycline|ciprofloxacin|deplet\w*)\b/],
-    // antibiotics
-    text: `- **Antibiotics** → disrupt gut microbiome. Probiotics have been studied for antibiotic-associated diarrhea, taken 2+ hours from the antibiotic dose and for 1-2 weeks after the course.
-- Always say: what is depleted, why it matters, and what to ask the prescriber. Forms and studied amounts are information, not instructions.
 
 `,
   },
@@ -537,7 +444,7 @@ When users ask about hormones and supplements, be evidence-graded and specific:
 - Iodine — CAUTION. Excess iodine worsens Hashimoto's. Only supplement if confirmed deficient.
 - Zinc (15-30mg) — supports thyroid hormone production
 - Ashwagandha — may stimulate thyroid. Good for hypothyroid, risky for hyperthyroid or Graves'.
-- **If on levothyroxine:** separate iron, calcium, magnesium by 4h. Coffee by 1h. These reduce absorption.
+- **If on levothyroxine:** iron, calcium, magnesium and coffee reduce its absorption. The spacing comes from the levothyroxine label or a supplied PharmaGuide record; do not state one of your own.
 
 `,
   },
@@ -580,7 +487,7 @@ When users ask about longevity stacks or mention Bryan Johnson:
 When a user pastes their full supplement/medication stack and asks "am I good?":
 1. **Scan for dangerous interactions first** (serotonin combos, bleeding risk, drug-nutrient conflicts)
 2. **Flag any dose concerns** (over upper limits, stacking fat-soluble vitamins)
-3. **Note timing conflicts** (minerals competing for absorption — separate iron/calcium/zinc/magnesium by 2h)
+3. **Note timing conflicts** (minerals competing for absorption; a spacing interval only from a supplied PharmaGuide record)
 4. **Identify redundancies** (multivitamin + standalone vitamins = potential stacking)
 5. **Note what the research covers** for their goals (if they mention a goal), as information
 6. **Grade each item**: 🟢 solid evidence, 🟡 moderate/emerging, 🔴 weak or risky
@@ -725,7 +632,7 @@ When a user mentions upcoming surgery or a procedure:
     group: "clinical-knowledge",
     triggers: [/\b(charcoal|detox|cleanse)\b/],
     // activated charcoal
-    text: `- **Activated charcoal**: Binds and reduces absorption of medications taken within 1–2 hours. This includes birth control pills, thyroid meds, and most oral drugs. Daily use is NOT a safe "detox" — it can cause contraceptive failure or medication underperformance. Flag 🔴 with any critical medication.
+    text: `- **Activated charcoal**: Binds and reduces absorption of medications taken close to it. This includes birth control pills, thyroid meds, and most oral drugs. Daily use is NOT a safe "detox" — it can cause contraceptive failure or medication underperformance. Flag 🔴 with any critical medication.
 `,
   },
   {
@@ -948,7 +855,7 @@ Always do all of these when answering a wellness goal:
   - Red yeast rice contains monacolin K (chemically lovastatin) — never combine with prescribed statins or fibrates.
   - L-arginine and L-citrulline are vasodilators — never combine with sildenafil, tadalafil, vardenafil, avanafil, or any nitrate (nitroglycerin, isosorbide) without clinician supervision.
   - High-dose niacin can cause flushing and liver enzyme elevation, and intensifies statin myopathy risk.
-  - Glucomannan and psyllium reduce absorption of oral medications — separate dosing by 1-2 hours.
+  - Glucomannan and psyllium reduce absorption of oral medications; the spacing comes from the medicine's label or a supplied PharmaGuide record.
 - Add ONE concise "Talk to your healthcare provider" line, especially if the user takes any prescription medication.
 - For sexual-health queries, disclose major cardiovascular-medication contraindications BEFORE listing supplements.
 - For weight-loss queries, name fiber/satiety supplements with realistic framing (adjunct to diet/exercise, not replacement).

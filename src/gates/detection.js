@@ -163,6 +163,11 @@ function isPrivacyQuestion(text) {
   return /\b(is my (data|health data|info|information) (safe|private|secure|stored|saved|collected)|do you (store|save|collect|keep|track|record|share|sell) (my|any|user) (data|info|information|messages?|conversations?|health|history)|privacy|data (privacy|protection|security|collection)|are (my|our) conversations? (private|secure|saved|stored|recorded)|hipaa|gdpr|what (data|info) do you (collect|store|keep|save)|who (can|has) access (to )?(my|the) (data|info|conversation))\b/.test(t);
 }
 
+// Asks about taking two things together ("Can I take iron with omeprazole?", "how far apart?").
+function asksAboutTakingTogether(text) {
+  return /\b(?:can i take|safe to take|ok(?:ay)? to take|take .{1,40}\bwith\b|together|same time|combine|mix|apart|separate|space|when should i take|what time)\b/.test(normalizeText(text));
+}
+
 function isDepletionQuestion(text) {
   const t = normalizeText(text);
   return /\b(deplet(e|es|ion|ing|ed)|what (does|do|can|nutrients?|vitamins?).{0,30}(deplet|lose|strip|drain|rob)|nutrient.{0,10}(deplet|loss|deficien)|vitamin.{0,10}(deplet|loss|drain)|am i (losing|missing).{0,15}(nutrient|vitamin|mineral)|medication.{0,10}(deplet|strip|drain|rob))\b/.test(t);
@@ -768,6 +773,7 @@ module.exports = {
   isWhatIsQuestion,
   isPrivacyQuestion,
   isDepletionQuestion,
+  asksAboutTakingTogether,
   isFoodInteractionQuestion,
   isPetQuestion,
   isBusinessInquiry,

@@ -36,7 +36,10 @@ const CLASS_WORDS = {
   "class:diabetes_meds": ["diabetes medication", "diabetes meds", "diabetes pills"],
   "class:diuretics": ["diuretic", "diuretics", "water pill", "water pills"],
   "class:potassium_sparing_diuretics": ["potassium sparing diuretic", "potassium sparing diuretics"],
-  "class:fluoroquinolones": ["fluoroquinolone", "fluoroquinolones", "cipro"],
+  "class:fluoroquinolones": ["fluoroquinolone", "fluoroquinolones", "quinolone", "quinolones", "cipro"],
+  "class:proton_pump_inhibitors": ["ppi", "ppis", "proton pump inhibitor", "proton pump inhibitors"],
+  "class:loop_diuretics": ["loop diuretic", "loop diuretics"],
+  "class:thiazide_diuretics": ["thiazide", "thiazides", "thiazide diuretic", "thiazide diuretics", "hctz"],
   "class:tetracycline_antibiotics": ["tetracycline", "tetracyclines"],
   "class:oral_contraceptives": ["birth control", "oral contraceptive", "oral contraceptives"],
   "class:corticosteroids": ["steroid", "steroids", "corticosteroid", "corticosteroids"],
@@ -87,6 +90,13 @@ function aliasesFor(name, id, type) {
   return [...out];
 }
 
+// A word-boundary matcher for a list of aliases. No aliases (a class id missing from drug_classes.json)
+// matches nothing: an empty alternation, \b(?:)\b, would match every text.
+const aliasMatcher = (aliases) => (aliases.length > 0 ? new RegExp(`\\b(?:${aliases.map(escapeRegex).join("|")})\\b`) : /(?!)/);
+
+/** One word-boundary matcher for an agent: the same aliases the interaction records use. */
+const agentMatcher = (name, id, type) => aliasMatcher(aliasesFor(name, id, type));
+
 // One matcher per agent id, built once per cold start. An id can appear under several names
 // ("Green Tea Extract", "Green Tea (polyphenols)"): every name contributes its aliases.
 const AGENTS = new Map();
@@ -97,7 +107,7 @@ for (const r of INTERACTIONS) {
     const prev = AGENTS.get(id);
     const aliases = [...new Set([...(prev ? prev.aliases : []), ...aliasesFor(r[`${k}_name`], id, r[`${k}_type`])])];
     // Alcohol has one definition, shared with the gates (it knows "drink water" is not alcohol).
-    const re = id === "ref:alcohol" ? ALCOHOL : new RegExp(`\\b(?:${aliases.map(escapeRegex).join("|")})\\b`);
+    const re = id === "ref:alcohol" ? ALCOHOL : aliasMatcher(aliases);
     AGENTS.set(id, { id, aliases, re });
   }
 }
@@ -111,7 +121,29 @@ const NON_DRUG_WORDS = new Set([...AGENTS.values()].filter((a) => !["drug", "dru
 for (const agent of AGENTS.values()) {
   if (AGENT_TYPE.get(agent.id) !== "drug_class") continue;
   agent.aliases = agent.aliases.filter((alias) => !NON_DRUG_WORDS.has(alias));
-  agent.re = new RegExp(`\\b(?:${agent.aliases.map(escapeRegex).join("|")})\\b`);
+  agent.re = aliasMatcher(agent.aliases);
+}
+
+// Every word that names a medicine, for telling whether a question pairs a medicine with a supplement:
+// the class lists' members (and their names without the salt), the everyday class words and the brand
+// table. A word a supplement or food agent owns, or that the entity lists call a supplement or mineral,
+// is not a medicine here (the class lists include glucosamine, melatonin and niacin).
+const { ENTITY_PATTERNS } = require("./entities");
+const SUPPLEMENT_WORD = new RegExp(`^(?:${ENTITY_PATTERNS.minerals.source}|${ENTITY_PATTERNS.supplements.source})$`);
+const MEDICINE_WORDS = (() => {
+  const out = new Set();
+  const add = (s) => { const n = normalizeText(String(s)).trim(); if (n.length >= 3) out.add(n); };
+  for (const c of Object.values(CLASSES)) for (const m of c.member_names || []) { add(m); add(m.replace(SALT, "")); }
+  for (const words of Object.values(CLASS_WORDS)) words.forEach(add);
+  for (const [brand, generic] of Object.entries(BRAND_TO_GENERIC)) { add(brand); add(generic); }
+  return [...out].filter((w) => !NON_DRUG_WORDS.has(w) && !SUPPLEMENT_WORD.test(w)).sort((a, b) => b.length - a.length);
+})();
+// With its salt, when named ("levothyroxine sodium"), so the salt is not read as a nutrient.
+const MEDICINE = new RegExp(`\\b(?:${MEDICINE_WORDS.map(escapeRegex).join("|")})(?:${SALT.source.replace(/\$$/, "")})?\\b`);
+
+/** Does the text name a medicine (any class member, brand or class word)? */
+function namesMedicine(text) {
+  return MEDICINE.test(normalizeText(String(text || "")));
 }
 
 const SEVERITY_RANK ={ contraindicated: 0, avoid: 1, caution: 2, monitor: 3 };
@@ -123,12 +155,30 @@ function agentsIn(text) {
   return new Set([...AGENTS.values()].filter((a) => a.re.test(t)).map((a) => a.id));
 }
 
-/** The verified records that join two agents named in the text, most severe first (at most 3). */
-function findInteractions(text) {
+/**
+ * The verified records that join two agents named in the text, most severe first (at most 3).
+ * With `focus` (the current message, when `text` is the whole conversation), a record about another pair
+ * than the one the message names is dropped: one of its agents is not named in the message, and the message
+ * names something the record does not cover ("zinc with levothyroxine?" after "calcium with levothyroxine?").
+ * A follow-up naming one side ("what about calcium?") or nothing ("how far apart?") keeps the earlier pair.
+ */
+function findInteractions(text, focus) {
   const named = agentsIn(text);
   if (named.size < 2) return [];
-  return INTERACTIONS
-    .filter((r) => r.agent1_id !== r.agent2_id && named.has(r.agent1_id) && named.has(r.agent2_id))
+  let found = INTERACTIONS.filter((r) => r.agent1_id !== r.agent2_id && named.has(r.agent1_id) && named.has(r.agent2_id));
+  if (focus !== undefined) {
+    const t = normalizeText(String(focus || ""));
+    const current = agentsIn(t);
+    const anotherPair = (r) => {
+      const ids = [r.agent1_id, r.agent2_id];
+      if (ids.every((id) => current.has(id))) return false;
+      // What the message names beyond this record's agents (one word can name a drug and its class: "cipro").
+      const rest = ids.reduce((s, id) => s.replace(new RegExp(AGENTS.get(id).re.source, "g"), " "), t);
+      return agentsIn(rest).size > 0;
+    };
+    found = found.filter((r) => !anotherPair(r));
+  }
+  return found
     .sort((a, b) => (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9) || a.id.localeCompare(b.id))
     .slice(0, MAX_RECORDS);
 }
@@ -164,4 +214,4 @@ function coveredBy(records, a, b) {
 // Record ids look like DSI_WAR_GARLIC, SSI_IRON_GREENTEA, DDI_METFORMIN_ALCOHOL.
 const RECORD_ID = /\s*\*?\((?:DSI|SSI|DDI)_[A-Z0-9_]+\)\*?|\b(?:DSI|SSI|DDI)_[A-Z0-9_]+\b/g;
 
-module.exports = { RECORD_ID, coveredBy, findInteractions, agentsIn, recordBlock, AGENTS, PIPELINE_VERSION: MANIFEST.db_version, MANIFEST };
+module.exports = { RECORD_ID, coveredBy, findInteractions, agentsIn, agentMatcher, namesMedicine, MEDICINE_NAME: MEDICINE, recordBlock, AGENTS, PIPELINE_VERSION: MANIFEST.db_version, MANIFEST };
