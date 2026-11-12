@@ -643,6 +643,8 @@ test("an interval between doses of the one medicine the clause names is kept, al
     "Magnesium is fine with acetaminophen. Wait at least 4 hours between acetaminophen doses.",
     "Leave 6 hours between your ibuprofen doses.",
     "Calcium does not change this: wait 4 hours between doses of acetaminophen.",
+    "Wait 4 hours after your last dose of acetaminophen before the next dose.",
+    "Magnesium is fine with acetaminophen. Wait 4 hours after your last dose of acetaminophen before the next dose.",
   ]) assert.equal(applyTimingPolicy(line, []), line);
   // Controls: doses with no owner in a two-product reply, doses of two products, and a generic owner still go.
   for (const line of [
@@ -651,6 +653,8 @@ test("an interval between doses of the one medicine the clause names is kept, al
     "Leave 4 hours between levothyroxine doses and calcium.",
     "Calcium can block levothyroxine. Leave 4 hours between supplement doses.",
     "Wait 4 hours after your levothyroxine dose.",
+    // "After the last dose" with no next dose of the same product may be spacing from the other one.
+    "Calcium can block levothyroxine. Wait 4 hours after your last dose of levothyroxine.",
   ]) assert.doesNotMatch(applyTimingPolicy(line, []), /4 hours/, line);
 });
 
@@ -673,8 +677,10 @@ test("a deadline for clinical follow-up is kept; spacing joined to it still goes
     "Ask your pharmacist about calcium within 2 hours of levothyroxine."]) {
     assert.doesNotMatch(applyTimingPolicy(line, []), /2 hours/, line);
   }
-  // A deadline for the call does not carry a spacing interval that follows it.
-  assert.doesNotMatch(applyTimingPolicy("Call your doctor within 2 hours if you took calcium 1 hour after levothyroxine.", []), /1 hour/);
+  // A deadline for the call does not carry a spacing interval that follows it. When that interval is the call's
+  // condition, the clause goes whole: keeping the call alone would make it unconditional, and the scrub never
+  // rewrites inside a clause.
+  assert.equal(applyTimingPolicy("Call your doctor within 2 hours if you took calcium 1 hour after levothyroxine.", []), NO_TIMING_RECORD);
 });
 
 test("clock times that place two products apart are spacing; one product's clock times are not", async () => {
@@ -685,6 +691,7 @@ test("clock times that place two products apart are spacing; one product's clock
     "- Take levothyroxine at 6 AM.\n- Take the zinc at 10 AM.",
     "Take levothyroxine at 8 am. Call your doctor about taking calcium at 9 am.",
     "Take magnesium at midnight and acetaminophen at 12 pm.",
+    "Take levothyroxine at 7 am. Take calcium at 11 am and 3 pm.",
   ]) {
     const out = applyTimingPolicy(line, []);
     assert.doesNotMatch(out, /\d\s*(?:a\.?m|p\.?m)|noon/i, `${line}\n${out}`);
@@ -704,5 +711,7 @@ test("clock times that place two products apart are spacing; one product's clock
     "Take magnesium at noon and acetaminophen at 12 pm.",
     "Take magnesium at 8 am and acetaminophen at 08:00.",
     "Take levothyroxine at 8 am. Call your doctor at 9 am about calcium.",
+    "Take acetaminophen at 8 am and 2 pm. Take magnesium at 8 am.",
+    "Take acetaminophen at 8 am. Take acetaminophen again at 2 pm.",
   ]) assert.equal(applyTimingPolicy(line, []), line);
 });

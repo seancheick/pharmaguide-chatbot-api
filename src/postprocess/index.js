@@ -87,6 +87,9 @@ const DOSE_OWNER = /\b([\w'-]+)(?=\s+doses?\b)|\bdoses?\s+of\s+(?:(?:your|the|my
 // A generic word ("supplement doses") names no owner.
 const namesOwner = (clause) => [...clause.matchAll(DOSE_OWNER)].some((m) => agentsIn(m[1] || m[2]).size > 0 || namesMedicine(m[1] || m[2]));
 const AFTER_LAST_DOSE = /\bafter\s+(?:the|your|its)\s+(?:last|previous|prior)\s+dose\b/i;
+// The other end of a dose interval ("…before the next dose"). A named product's last dose is its own dose
+// interval only with it; "wait 4 hours after your last dose of levothyroxine" may be spacing from calcium.
+const NEXT_DOSE = /\b(?:next|another|following)\s+dose\b/i;
 function productCount(text) {
   let t = normalizeText(String(text || ""));
   let n = 0;
@@ -111,8 +114,9 @@ function dosesOneProduct(clause, reply) {
   if (TWO_IN_DOSES.test(clause)) return false;
   const named = productCount(clause);
   const unnamedOneProduct = named === 0 && productCount(reply) <= 1;
-  return (BETWEEN_DOSES.test(clause) && (unnamedOneProduct || (named === 1 && namesOwner(clause)))) ||
-    (unnamedOneProduct && AFTER_LAST_DOSE.test(clause) && !takesAnother(clause));
+  const ownedByOne = named === 1 && namesOwner(clause);
+  return (BETWEEN_DOSES.test(clause) && (unnamedOneProduct || ownedByOne)) ||
+    (AFTER_LAST_DOSE.test(clause) && !takesAnother(clause) && (unnamedOneProduct || (ownedByOne && NEXT_DOSE.test(clause))));
 }
 
 const FOLLOW_UP = /\b(?:call|contact|see|tell|notify|ask|consult|page|message|seek|get|go\s+to|visit)\s+(?:(?:your|a|an|the|medical|immediate|urgent|prompt|health\s*care)\s+)*(?:doctors?|prescribers?|pharmacists?|providers?|clinicians?|physicians?|nurses?|care\s+team|clinic|care|help|attention|hospital|er|emergency\s+room)\b|\b(?:check|recheck|monitor|measure)\s+(?:your\s+)?(?:blood\s+(?:sugar|glucose|pressure)|glucose|temperature|pulse|heart\s+rate)\b/i;
@@ -150,12 +154,15 @@ function withoutCareTimes(clause) {
 
 const SENTENCE_SPLIT = /(?<=[.!?])(?<!\b(?:St|Dr|Mr|Mrs|Ms|Jr|Sr|vs|No)\.)\s+(?=[\p{Lu}*"(])/u;
 // Does the reply place two products at different clock times ("levothyroxine at 8 am and calcium at 9 am",
-// on one line or several)? Only clauses that name a product count, so one medicine's dose times stay.
+// on one line or several)? Only clauses that name a product count, so one medicine's dose times stay. Two
+// products are apart when one clause times both at two times, or two clauses time them and share no time;
+// "acetaminophen at 8 am and 2 pm" beside "magnesium at 8 am" takes them together at 8 am.
 function schedulesProducts(reply) {
   const timed = String(reply || "").split("\n").flatMap((l) => l.split(SENTENCE_SPLIT)).flatMap((s) => s.split(new RegExp(CLAUSE_SPLIT, "i")))
-    .map(withoutCareTimes).filter((c) => CLOCK.test(c) && productCount(c) > 0);
-  const times = new Set(timed.flatMap((c) => c.match(new RegExp(CLOCK.source, "gi")).map(clockMinutes)));
-  return times.size >= 2 && productCount(timed.join(" ")) >= 2;
+    .map(withoutCareTimes).filter((c) => CLOCK.test(c) && productCount(c) > 0)
+    .map((c) => ({ c, times: new Set(c.match(new RegExp(CLOCK.source, "gi")).map(clockMinutes)) }));
+  return timed.some((a, i) => (a.times.size >= 2 && productCount(a.c) >= 2) ||
+    timed.slice(i + 1).some((b) => ![...a.times].some((t) => b.times.has(t)) && productCount(`${a.c} ${b.c}`) >= 2));
 }
 
 // What a clause's stated time is. Three cases: spacing between two products (removed; only a supplied record
