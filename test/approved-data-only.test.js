@@ -607,3 +607,29 @@ test("a do-not-combine warning ('not at the same time') is kept: it is not spaci
     "Don't take SAMe and your SSRI at the same time; the combination can cause serotonin syndrome.",
   ]) assert.equal(applyTimingPolicy(line, []), line);
 });
+
+// Reported on fde79f6: a minimum interval between doses of one product is dosing, not spacing.
+test("an interval between doses of one product is kept; one between two products still goes", () => {
+  for (const line of [
+    "Do not exceed the maximum daily dose and wait at least 4 hours between doses.",
+    "Do not exceed 4,000 mg a day and keep doses at least 4 hours apart.",
+    "Do not take more than 6 tablets in 24 hours, and wait 4 hours between doses.",
+    "Wait 4 hours between doses.",
+    "Take the next dose 4 hours after the last dose.",
+    "Wait 4 hours between doses of acetaminophen and do not exceed 4,000 mg a day.",
+    "Wait 4 hours after the last dose before taking another.",
+  ]) assert.equal(applyTimingPolicy(line, []), line);
+  const first = (line) => applyTimingPolicy(line, []).split("\n")[0];
+  assert.equal(first("Do not exceed the maximum daily dose and separate calcium from levothyroxine by 2 hours."), "Do not exceed the maximum daily dose.");
+  // "Doses" of two products named on the same line, or a dose followed by a second product, are spacing.
+  for (const line of ["Calcium can block levothyroxine. Leave 4 hours between doses.", "Wait 4 hours after the last dose before taking calcium.",
+    "- Calcium can block levothyroxine.\n- Leave 4 hours between doses.",
+    "Space your iron and thyroid doses 4 hours apart.", "Leave 4 hours between doses of both.",
+    // Products the matchers do not know are read from the clause's shape.
+    "Leave 4 hours between doses of psyllium and levothyroxine.", "Leave 4 hours between doses of fiber and your other supplements.",
+    "Keep doses of psyllium 4 hours apart from levothyroxine.", "Take psyllium 4 hours after the last dose."]) {
+    assert.doesNotMatch(applyTimingPolicy(line, []), /4 hours/, line);
+  }
+  // "St." does not end the sentence, so the whole clause goes and no "John's wort…" fragment is left behind.
+  assert.equal(applyTimingPolicy("Leave 2 hours between doses of St. John's wort and your birth control.", []), NO_TIMING_RECORD);
+});

@@ -1,6 +1,6 @@
 const { normalizeText, escapeRegex } = require("../core/normalize");
 const { mentionsMineralSpacingTrigger } = require("../gates/detection");
-const { namesMedicine } = require("../core/pipelineInteractions");
+const { namesMedicine, agentsIn, AGENTS } = require("../core/pipelineInteractions");
 
 // ── Timing: a spacing interval comes from a supplied verified record, never from the model ──────────
 //
@@ -22,7 +22,7 @@ const INTERVAL = new RegExp(INTERVAL_SOURCE, "i");
 // What an interval can be other than spacing between two products: a dose frequency ("every 6 hours"),
 // a time anchored to a meal, bed or a lab draw (a label direction such as "30–60 minutes before
 // breakfast"), or a window of a day or more ("in 24 hours", "within 24 hours"). "4 hours between doses"
-// stays spacing: the doses may be the two products'.
+// is dosing only in a reply that names at most one product (see dosesOneProduct).
 const DOSE_FREQUENCY_BEFORE = /\bevery\s+$/i;
 const ANCHORED_AFTER = /^\s*(?:before|after|prior\s+to|ahead\s+of|following)\s+(?:(?:a|an|your|the|first|each|any)\s+)*(?:bed\w*|sleep\w*|breakfast|lunch|dinner|supper|meals?|eating|food|exercise|workouts?|waking|you\s+wake|you\s+eat|blood\s+(?:draws?|tests?|work)|labs?|lab\s+tests?)\b/i;
 // A sentence about an emergency or a maximum dose is never touched.
@@ -76,18 +76,47 @@ const CLAUSE_SPLIT = String.raw`(?<=[,;:])\s+|\s+(?=[—–]\s)|\s+(?=(?:so|then
 // ("Do not exceed the maximum daily dose and separate them by 2 hours" keeps "Do not exceed the maximum daily dose").
 const SAFETY_CLAUSE_SPLIT = new RegExp(String.raw`${CLAUSE_SPLIT}|\s+(?=and\s+(?:${INSTRUCTION_VERB})\b)`, "i");
 
+// A minimum interval between doses of one product is dosing, not spacing between two ("wait 4 hours between
+// doses", "keep doses 4 hours apart", "take the next dose 4 hours after the last dose"). In a reply that names
+// two products, on any line, the doses may be theirs ("Calcium can block levothyroxine. Leave 4 hours between doses."), and a
+// clause naming a product after "the last dose" spaces it from the medicine ("…before taking calcium").
+const BETWEEN_DOSES = /\bbetween\s+(?:(?:each|your|the|its)\s+)?doses?\b|\bdoses?\b[^.;,]*?\bapart\b/i;
+const AFTER_LAST_DOSE = /\bafter\s+(?:the|your|its)\s+(?:last|previous|prior)\s+dose\b/i;
+function productCount(text) {
+  let t = normalizeText(String(text || ""));
+  let n = 0;
+  for (const id of agentsIn(t)) {
+    const re = new RegExp(AGENTS.get(id).re.source, "g");
+    if (!re.test(t)) continue; // already counted under another name ("cipro" is a drug and its class)
+    n += 1;
+    t = t.replace(re, " ");
+  }
+  return n + Number(namesMedicine(t) || MEDICINE_WORD.test(t)) + Number(PAIRED_WITH_MEDICINE.test(t) || MINERAL.test(t));
+}
+const MEDICINE_WORD = /\b(?:thyroid|tetracyclines?|fluoroquinolones?|quinolones?|antibiotics?|medications?|medicines?|meds|pills?|prescriptions?)\b/i;
+// Not every product is a known name ("psyllium", "St. John's wort"), so two of them are also read from the
+// clause's shape: "doses of psyllium and levothyroxine", "your antacid and iron doses", "doses … apart from
+// levothyroxine", a reference to both, or something other than the next dose taken ("take psyllium 4 hours
+// after the last dose").
+const NOT_A_PRODUCT = String.raw`(?:${INSTRUCTION_VERB}|split|divide|spread|two|three|all)\b`;
+const TWO_IN_DOSES = new RegExp(String.raw`\bdoses?\s+of\s+[^;,]*?\s(?:and|or|plus|with|from)\s+(?!${NOT_A_PRODUCT})|\b(?:and|or|plus)\s+(?:(?:your|the|my)\s+)?(?!${NOT_A_PRODUCT})\S+(?:\s+\S+)?\s+doses?\b|\b(?:apart|away)\s+from\b|\b(?:both|the\s+two|each\s+other|them)\b`, "i");
+const TAKES = /\b(?:tak(?:e|es|ing)|hav(?:e|ing)|us(?:e|ing))\s+((?:\S+\s*){1,3})/gi;
+const takesAnother = (clause) => [...clause.matchAll(TAKES)].some((m) => !/\b(?:doses?|another|more|one|tablets?|capsules?)\b/i.test(m[1]));
+const dosesOneProduct = (clause, reply) => productCount(reply) <= 1 && !TWO_IN_DOSES.test(clause) &&
+  (BETWEEN_DOSES.test(clause) || (AFTER_LAST_DOSE.test(clause) && productCount(clause) === 0 && !takesAnother(clause)));
+
 // One sentence: drop the clauses that state spacing, keep the rest ("Zinc may reduce levothyroxine
 // absorption, so separate them by 4 hours." keeps "Zinc may reduce levothyroxine absorption.").
 // In an emergency or maximum-dose sentence only a clause that spaces two products goes; the emergency
 // clause and any other stay ("Call 911 if…; take zinc 2 hours after ciprofloxacin" keeps "Call 911 if…").
-function scrubSentence(sentence) {
+function scrubSentence(sentence, reply = sentence) {
   const safety = SAFETY_LINE.test(sentence);
   const clauses = sentence.split(safety ? SAFETY_CLAUSE_SPLIT : new RegExp(CLAUSE_SPLIT, "i"));
   const kept = [];
   let listOpen = false;
   for (const c of clauses) {
     const s = c.trim();
-    const remove = safety ? !SAFETY_LINE.test(c) && spacesProducts(c) : statesSpacing(c) || instructsSpacing(c);
+    const remove = !dosesOneProduct(c, reply) && (safety ? !SAFETY_LINE.test(c) && spacesProducts(c) : statesSpacing(c) || instructsSpacing(c));
     // The rest of a removed clause's list goes with it ("…apart from milk, cheese and yogurt"); an
     // instruction or clause of its own after it stays ("…apart from levothyroxine, call your doctor").
     const tail = listOpen && !SAFETY_LINE.test(c) && !CLAUSE_OPENER.test(s) && s.split(/\s+/).length <= 4;
@@ -118,7 +147,8 @@ function scrubSpacing(reply) {
   const lines = [];
   for (const line of String(reply || "").split("\n")) {
     const [, prefix = "", body] = line.match(/^(\s*(?:[-*•]|\d+[.)])\s+)?(.*)$/);
-    const sentences = body.split(/(?<=[.!?])\s+(?=[\p{Lu}*"(])/u).map(scrubSentence);
+    // "St. John's wort" and "Dr. Smith" are one sentence.
+    const sentences = body.split(/(?<=[.!?])(?<!\b(?:St|Dr|Mr|Mrs|Ms|Jr|Sr|vs|No)\.)\s+(?=[\p{Lu}*"(])/u).map((s) => scrubSentence(s, reply));
     if (!sentences.some((s) => s.removed)) { lines.push(line); continue; }
     removed = true;
     const text = sentences.map((s) => s.text).filter(Boolean).join(" ");
