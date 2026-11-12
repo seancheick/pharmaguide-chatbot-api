@@ -716,8 +716,9 @@ test("clock times that place two products apart are spacing; one product's clock
   ]) assert.equal(applyTimingPolicy(line, []), line);
 });
 
-// Reported by Sean on 2026-11-12 (follow-up to PR #36): a removed clause that sets the time or condition of the clause
-// beside it takes that clause with it, so the scrub never leaves an unconditional order or a dangling fragment.
+// Found by integrator probe on 2026-11-12 (follow-up to PR #36); fix approved by Sean. A removed clause that sets the
+// time or condition of the clause beside it takes that clause with it, so the scrub never leaves an unconditional order
+// or a dangling fragment.
 test("a removed time window takes the clause it conditions; independent clauses stay", () => {
   for (const line of [
     "For 4 hours after levothyroxine, avoid calcium and iron.",
