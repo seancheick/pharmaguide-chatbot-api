@@ -75,6 +75,24 @@ const CLAUSE_SPLIT = String.raw`(?<=[,;:])\s+|\s+(?=[—–]\s)|\s+(?=(?:so|then
 // A safety sentence is also split before "and" + an instruction, so the safety part is kept word for word
 // ("Do not exceed the maximum daily dose and separate them by 2 hours" keeps "Do not exceed the maximum daily dose").
 const SAFETY_CLAUSE_SPLIT = new RegExp(String.raw`${CLAUSE_SPLIT}|\s+(?=and\s+(?:${INSTRUCTION_VERB})\b)`, "i");
+// A clause that only sets the time or condition of a clause beside it ("For 4 hours after levothyroxine,", "If you
+// take calcium,", "…, for 4 hours after it"). It goes with the clause after it when it ends in a comma and that
+// clause does not open with "and", "or", "but", "so" or "then"; it goes with the clause before it when nothing
+// (a conjunction, a semicolon, a colon) separates them. A clause that opens with a conjunction stands on its own.
+const MODIFIER = /^(?:(and|or|but)\s+)?(?:for|within|after|before|until|till|during|while|when|whenever|once|if|unless|following|prior\s+to|in\s+the\s+(?:next|first))\b/i;
+const COORDINATED = /^(?:and|or|but|so|then)\b/i;
+function clauseGroups(clauses) {
+  let group = 0;
+  let leading = false;
+  return clauses.map((c, i) => {
+    const s = c.trim();
+    const m = s.match(MODIFIER);
+    const follows = Boolean(m) && !m[1] && i > 0 && !/[;:]$/.test(clauses[i - 1].trim());
+    const id = leading || follows ? group : ++group;
+    leading = Boolean(m) && /,$/.test(s) && i < clauses.length - 1 && !COORDINATED.test(clauses[i + 1].trim());
+    return id;
+  });
+}
 
 // A minimum interval between doses of one product is dosing, not spacing between two ("wait 4 hours between
 // doses", "keep doses 4 hours apart", "take the next dose 4 hours after the last dose"). Whose doses: the one
@@ -183,14 +201,20 @@ function timingKind(clause, { reply, safety, clock }) {
 // absorption, so separate them by 4 hours." keeps "Zinc may reduce levothyroxine absorption.").
 // An emergency, maximum-dose or follow-up sentence is also split before "and" + an instruction, so its own
 // part stays word for word ("Call 911 if…; take zinc 2 hours after ciprofloxacin" keeps "Call 911 if…").
+// A clause and the time window or condition that goes with it (clauseGroups) go together: "For 4 hours after
+// levothyroxine, avoid calcium" leaves neither "Avoid calcium." nor a fragment. An emergency or maximum-dose
+// clause is never dropped that way.
 function scrubSentence(sentence, { reply = sentence, clock = false } = {}) {
   const safety = SAFETY_LINE.test(sentence);
   const clauses = sentence.split(safety || FOLLOW_UP.test(sentence) ? SAFETY_CLAUSE_SPLIT : new RegExp(CLAUSE_SPLIT, "i"));
+  const groups = clauseGroups(clauses);
+  const spacing = clauses.map((c) => timingKind(c, { reply, safety, clock }) === "spacing");
+  const spacingGroups = new Set(groups.filter((g, i) => spacing[i]));
   const kept = [];
   let listOpen = false;
-  for (const c of clauses) {
+  for (const [i, c] of clauses.entries()) {
     const s = c.trim();
-    const remove = timingKind(c, { reply, safety, clock }) === "spacing";
+    const remove = spacing[i] || (spacingGroups.has(groups[i]) && !SAFETY_LINE.test(c));
     // The rest of a removed clause's list goes with it ("…apart from milk, cheese and yogurt"); an
     // instruction or clause of its own after it stays ("…apart from levothyroxine, call your doctor").
     const tail = listOpen && !SAFETY_LINE.test(c) && !CLAUSE_OPENER.test(s) && s.split(/\s+/).length <= 4;
