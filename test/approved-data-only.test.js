@@ -583,3 +583,27 @@ test("a removed spacing clause takes only the rest of its own list, never the ne
   assert.equal(first("Take iron apart from milk, cheese and yogurt."), NO_TIMING_RECORD.split("\n")[0]);
   assert.equal(first("Take iron apart from milk, cheese, yogurt, and calcium-fortified juice."), NO_TIMING_RECORD.split("\n")[0]);
 });
+
+// CodeRabbit review of 2f4cf70 (PR #35 threads 4546766897, 4546766892).
+test("a safety sentence keeps its safety part word for word and loses only the interval joined to it by 'and'", () => {
+  const first = (line) => applyTimingPolicy(line, []).split("\n")[0];
+  assert.equal(first("Do not exceed the maximum daily dose and separate calcium from levothyroxine by 2 hours."), "Do not exceed the maximum daily dose.");
+  assert.equal(first("Call 911 if you have chest pain and take zinc 2 hours after ciprofloxacin."), "Call 911 if you have chest pain.");
+  assert.equal(first("Do not exceed 2 tablets a day and take them 4 hours apart from calcium, or call your doctor."), "Do not exceed 2 tablets a day, or call your doctor.");
+  for (const line of [
+    "Do not exceed 4,000 mg of acetaminophen in 24 hours.",
+    "If you have chest pain or trouble breathing, call 911 — symptoms within 24 hours need care.",
+    "Do not combine them, and do not exceed the maximum daily dose.",
+    "Wait 48 hours after the last dose before starting the new medicine.",
+    "Call 911 if you have chest pain and shortness of breath.",
+  ]) assert.equal(applyTimingPolicy(line, []), line);
+  // A leftover that is only a negated time phrase goes with the clause it qualified.
+  assert.equal(first("Space them 2 hours apart, not at night."), NO_TIMING_RECORD.split("\n")[0]);
+});
+
+test("a do-not-combine warning ('not at the same time') is kept: it is not spacing and states no interval", () => {
+  for (const line of [
+    "Do not take sildenafil at the same time as nitrate medications.",
+    "Don't take SAMe and your SSRI at the same time; the combination can cause serotonin syndrome.",
+  ]) assert.equal(applyTimingPolicy(line, []), line);
+});

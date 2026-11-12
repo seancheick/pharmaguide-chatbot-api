@@ -67,8 +67,14 @@ const spacesProducts = (clause) => instructsSpacing(clause) || (SPACING_VERB.tes
 // A removed clause that ends on a list ("…apart from milk,"): only the short segments after it that carry
 // on that list ("cheese and yogurt") go with it.
 const ENDS_ON_LIST = /\b(?:from|with|like|including|such\s+as|containing)\s+[^,;:]+,$/i;
+// Verbs that start an instruction of its own.
+const INSTRUCTION_VERB = String.raw`avoid|stop|tell|see|call|monitor|get|check|ask|keep|take|don'?t|do|never|talk|contact|seek|consult|use|drink|eat|let|watch|report|go|speak|follow|discuss|limit|skip|wait|try|consider|space|separate|leave|give|allow|make|have|hold|start|restart|continue|switch|read`;
 // Words that start a clause or an instruction of its own, never the rest of a list.
-const CLAUSE_OPENER = /^(?:[—–]|(?:(?:and|or)\s+)?(?:please\s+)?(?:so|but|then|which|while|because|if|as|since|though|although|unless|when|otherwise|this|that|it|they|you|i|we|avoid|stop|tell|see|call|monitor|get|check|ask|keep|take|don'?t|do|never|talk|contact|seek|consult|use|drink|eat|let|watch|report|go|speak|follow|discuss|limit|skip|wait|try|consider|space|separate|make|have|hold|start|restart|continue|switch|read)\b)/i;
+const CLAUSE_OPENER = new RegExp(String.raw`^(?:[—–]|(?:(?:and|or)\s+)?(?:please\s+)?(?:so|but|then|which|while|because|if|as|since|though|although|unless|when|otherwise|this|that|it|they|you|i|we|${INSTRUCTION_VERB})\b)`, "i");
+const CLAUSE_SPLIT = String.raw`(?<=[,;:])\s+|\s+(?=[—–]\s)|\s+(?=(?:so|then|but)\s)`;
+// A safety sentence is also split before "and" + an instruction, so the safety part is kept word for word
+// ("Do not exceed the maximum daily dose and separate them by 2 hours" keeps "Do not exceed the maximum daily dose").
+const SAFETY_CLAUSE_SPLIT = new RegExp(String.raw`${CLAUSE_SPLIT}|\s+(?=and\s+(?:${INSTRUCTION_VERB})\b)`, "i");
 
 // One sentence: drop the clauses that state spacing, keep the rest ("Zinc may reduce levothyroxine
 // absorption, so separate them by 4 hours." keeps "Zinc may reduce levothyroxine absorption.").
@@ -76,7 +82,7 @@ const CLAUSE_OPENER = /^(?:[—–]|(?:(?:and|or)\s+)?(?:please\s+)?(?:so|but|th
 // clause and any other stay ("Call 911 if…; take zinc 2 hours after ciprofloxacin" keeps "Call 911 if…").
 function scrubSentence(sentence) {
   const safety = SAFETY_LINE.test(sentence);
-  const clauses = sentence.split(/(?<=[,;:])\s+|\s+(?=[—–]\s)|\s+(?=(?:so|then|but)\s)/i);
+  const clauses = sentence.split(safety ? SAFETY_CLAUSE_SPLIT : new RegExp(CLAUSE_SPLIT, "i"));
   const kept = [];
   let listOpen = false;
   for (const c of clauses) {
@@ -87,6 +93,9 @@ function scrubSentence(sentence) {
     const tail = listOpen && !SAFETY_LINE.test(c) && !CLAUSE_OPENER.test(s) && s.split(/\s+/).length <= 4;
     const dropped = remove || tail;
     listOpen = dropped && /,$/.test(s) && (tail || ENDS_ON_LIST.test(s));
+    // A removed clause's closing comma or semicolon still separates what is kept around it.
+    const last = kept.length - 1;
+    if (dropped && last >= 0 && /[,;]$/.test(s) && !/[,;:]$/.test(kept[last].trim())) kept[last] = kept[last].trimEnd() + s.slice(-1);
     if (!dropped) kept.push(c);
   }
   if (kept.length === clauses.length) return { text: sentence, removed: false };
@@ -95,8 +104,9 @@ function scrubSentence(sentence) {
     .replace(/\s+(?:so|and|but|then|or)$/i, "")
     .replace(/^(?:[—–-]\s*)?(?:so|and|but|then|or)\s+/i, "");
   if (!/[\p{L}\p{N}]/u.test(text.replace(/\*\*[^*]*\*\*/g, ""))) return { text: "", removed: true };
-  // A bare yes was conditional on the spacing just removed ("Yes, but separate them…"): it goes too.
-  if (/^(?:yes|yeah|yep|sure|okay|ok|absolutely|of\s+course)$/i.test(text.replace(/[\s,.!*]+/g, " ").trim())) return { text: "", removed: true };
+  // A bare yes was conditional on the spacing just removed ("Yes, but separate them…"): it goes too. So does a
+  // leftover that only qualified it with a negated time ("Space them 2 hours apart, not at night").
+  if (/^(?:yes|yeah|yep|sure|okay|ok|absolutely|of\s+course|not\s+(?:(?:at|in|during|before|after|with|on)\s+)?(?:the\s+|a\s+)?(?:night|nighttime|bedtime|bed|morning|evening|afternoon|meals?|food|breakfast|lunch|dinner|once|together|same\s+time))$/i.test(text.replace(/[\s,.!*]+/g, " ").trim())) return { text: "", removed: true };
   text = text.charAt(0).toUpperCase() + text.slice(1);
   const end = sentence.trim().match(/[.!?]$/);
   if (end && !/[.!?]$/.test(text)) text += end[0];
