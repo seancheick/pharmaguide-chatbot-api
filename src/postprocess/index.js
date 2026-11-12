@@ -115,39 +115,61 @@ function dosesOneProduct(clause, reply) {
     (unnamedOneProduct && AFTER_LAST_DOSE.test(clause) && !takesAnother(clause));
 }
 
-// A deadline for clinical follow-up ("call your doctor within 2 hours if the rash worsens", "check your blood sugar
-// within 30 minutes"): the time bounds getting care or checking the body, not the gap between two products. Every
-// time in the clause must be such a deadline ("within", "in the next"), so "ask your pharmacist whether 2 hours is
-// enough" or "call your doctor if you take calcium within 4 hours of levothyroxine" are still spacing.
-const DEADLINE_BEFORE = /\b(?:within|in)\s+(?:the\s+next\s+)?$/i;
-const onlyDeadlines = (clause) => [...clause.matchAll(new RegExp(INTERVAL_SOURCE, "gi"))].every((m) => DEADLINE_BEFORE.test(clause.slice(0, m.index)));
 const FOLLOW_UP = /\b(?:call|contact|see|tell|notify|ask|consult|page|message|seek|get|go\s+to|visit)\s+(?:(?:your|a|an|the|medical|immediate|urgent|prompt|health\s*care)\s+)*(?:doctors?|prescribers?|pharmacists?|providers?|clinicians?|physicians?|nurses?|care\s+team|clinic|care|help|attention|hospital|er|emergency\s+room)\b|\b(?:check|recheck|monitor|measure)\s+(?:your\s+)?(?:blood\s+(?:sugar|glucose|pressure)|glucose|temperature|pulse|heart\s+rate)\b/i;
 
 // A clock time ("8 am", "7:30 a.m.", "14:00", "noon"). Two products at two clock times are spaced apart by them.
 const CLOCK = /\b(?:(?:1[0-2]|0?[1-9])(?::[0-5]\d)?\s*[ap]\.?\s?m\b|(?:[01]?\d|2[0-3]):[0-5]\d|noon|midnight)/i;
-const clockValue = (t) => t.toLowerCase().replace(/[\s.]/g, "").replace(/:00(?=[ap]m)/, "");
+// Minutes after midnight, so "noon", "12 pm" and "12:00" are one time.
+function clockMinutes(t) {
+  const s = t.toLowerCase().replace(/[\s.]/g, "");
+  if (s === "noon") return 720;
+  if (s === "midnight") return 0;
+  const [, h, m = "0", ap] = s.match(/^(\d+)(?::(\d+))?([ap]m)?$/);
+  return (ap ? (+h % 12) + (ap === "pm" ? 12 : 0) : +h) * 60 + +m;
+}
+
+// A time that bounds getting care or checking the body, not a product: a deadline ("within 2 hours", "in the next
+// hour") or a clock time ("at 9 am") after a care phrase ("call your doctor", "check your blood sugar"), with no
+// product and no dose verb between them. So "call your doctor within 2 hours if you take calcium with
+// levothyroxine" times the call, while "call your doctor if you take calcium within 2 hours of levothyroxine" and
+// "ask your pharmacist about calcium within 2 hours of levothyroxine" time the calcium.
+const CARE_TIME = new RegExp(String.raw`\b(?:(?:within|in)\s+(?:the\s+next\s+)?(?:${INTERVAL_SOURCE})|(?:at|by)\s+(?:${CLOCK.source}))`, "gi");
+const DOSE_VERB = /\b(?:tak(?:e|es|en|ing)|took|us(?:e|es|ed|ing)|swallow\w*|giv(?:e|es|en|ing)|gave)\b/i;
+function withoutCareTimes(clause) {
+  let rest = "";
+  let from = 0;
+  for (const m of clause.matchAll(CARE_TIME)) {
+    const care = [...clause.slice(0, m.index).matchAll(new RegExp(FOLLOW_UP.source, "gi"))].pop();
+    const between = care && clause.slice(care.index + care[0].length, m.index);
+    if (!care || productCount(between) > 0 || DOSE_VERB.test(between)) continue;
+    rest += clause.slice(from, m.index);
+    from = m.index + m[0].length;
+  }
+  return rest + clause.slice(from);
+}
+
 const SENTENCE_SPLIT = /(?<=[.!?])(?<!\b(?:St|Dr|Mr|Mrs|Ms|Jr|Sr|vs|No)\.)\s+(?=[\p{Lu}*"(])/u;
 // Does the reply place two products at different clock times ("levothyroxine at 8 am and calcium at 9 am",
 // on one line or several)? Only clauses that name a product count, so one medicine's dose times stay.
 function schedulesProducts(reply) {
   const timed = String(reply || "").split("\n").flatMap((l) => l.split(SENTENCE_SPLIT)).flatMap((s) => s.split(new RegExp(CLAUSE_SPLIT, "i")))
-    .filter((c) => CLOCK.test(c) && productCount(c) > 0);
-  const times = new Set(timed.flatMap((c) => c.match(new RegExp(CLOCK.source, "gi")).map(clockValue)));
+    .map(withoutCareTimes).filter((c) => CLOCK.test(c) && productCount(c) > 0);
+  const times = new Set(timed.flatMap((c) => c.match(new RegExp(CLOCK.source, "gi")).map(clockMinutes)));
   return times.size >= 2 && productCount(timed.join(" ")) >= 2;
 }
 
 // What a clause's stated time is. Three cases: spacing between two products (removed; only a supplied record
-// may give it), an interval between doses of one medicine, or a deadline for clinical follow-up (both kept).
-// Null when the clause states no timing. In an emergency or maximum-dose sentence only a clause that puts time
-// between two products counts, and the emergency clause itself never does.
+// may give it), an interval between doses of one medicine, or a time for clinical follow-up (both kept). The
+// follow-up time is set aside first, and the rest of the clause is sorted on its own. Null when the clause
+// states no timing. In an emergency or maximum-dose sentence only a clause that puts time between two products
+// counts, and the emergency clause itself never does.
 function timingKind(clause, { reply, safety, clock }) {
-  const byClock = clock && CLOCK.test(clause) && productCount(clause) > 0;
-  const betweenProducts = byClock || spacesProducts(clause);
-  const states = safety ? !SAFETY_LINE.test(clause) && betweenProducts : betweenProducts || statesSpacing(clause) || instructsSpacing(clause);
-  if (!states) return null;
-  if (dosesOneProduct(clause, reply)) return "dose interval";
-  if (!betweenProducts && FOLLOW_UP.test(clause) && productCount(clause) <= 1 && onlyDeadlines(clause)) return "follow-up";
-  return "spacing";
+  const rest = withoutCareTimes(clause);
+  const byClock = clock && CLOCK.test(rest) && productCount(rest) > 0;
+  const betweenProducts = byClock || spacesProducts(rest);
+  const states = safety ? !SAFETY_LINE.test(clause) && betweenProducts : betweenProducts || statesSpacing(rest) || instructsSpacing(rest);
+  if (states) return dosesOneProduct(rest, reply) ? "dose interval" : "spacing";
+  return rest === clause ? null : "follow-up";
 }
 
 // One sentence: drop the clauses that state spacing, keep the rest ("Zinc may reduce levothyroxine
