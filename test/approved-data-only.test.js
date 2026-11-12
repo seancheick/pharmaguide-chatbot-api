@@ -633,3 +633,85 @@ test("an interval between doses of one product is kept; one between two products
   // "St." does not end the sentence, so the whole clause goes and no "John's wort…" fragment is left behind.
   assert.equal(applyTimingPolicy("Leave 2 hours between doses of St. John's wort and your birth control.", []), NO_TIMING_RECORD);
 });
+
+// Reported by Sean on 2026-11-12 (dsld_clean scripts/audits/clinical_review_20261111/DR_PHAM_ANSWERS_20261112.md,
+// Part B 3A): the scrub sorts a stated time into three cases. Spacing between two products goes unless a
+// record supplies it; an interval between doses of one medicine and a deadline for clinical follow-up stay.
+test("an interval between doses of the one medicine the clause names is kept, also in a reply naming two products", () => {
+  for (const line of [
+    "Wait at least 4 hours between acetaminophen doses.",
+    "Magnesium is fine with acetaminophen. Wait at least 4 hours between acetaminophen doses.",
+    "Leave 6 hours between your ibuprofen doses.",
+    "Calcium does not change this: wait 4 hours between doses of acetaminophen.",
+    "Wait 4 hours after your last dose of acetaminophen before the next dose.",
+    "Magnesium is fine with acetaminophen. Wait 4 hours after your last dose of acetaminophen before the next dose.",
+  ]) assert.equal(applyTimingPolicy(line, []), line);
+  // Controls: doses with no owner in a two-product reply, doses of two products, and a generic owner still go.
+  for (const line of [
+    "Calcium can block levothyroxine. Leave 4 hours between doses.",
+    "Leave 4 hours between calcium and levothyroxine doses.",
+    "Leave 4 hours between levothyroxine doses and calcium.",
+    "Calcium can block levothyroxine. Leave 4 hours between supplement doses.",
+    "Wait 4 hours after your levothyroxine dose.",
+    // "After the last dose" with no next dose of the same product may be spacing from the other one.
+    "Calcium can block levothyroxine. Wait 4 hours after your last dose of levothyroxine.",
+  ]) assert.doesNotMatch(applyTimingPolicy(line, []), /4 hours/, line);
+});
+
+test("a deadline for clinical follow-up is kept; spacing joined to it still goes", () => {
+  for (const line of [
+    "Call your doctor within 2 hours if the rash worsens.",
+    "If the swelling spreads, contact your prescriber within an hour.",
+    "Check your blood sugar within 30 minutes if you feel shaky.",
+    // The deadline bounds the call, whatever the rest of the clause names (PR #36 review).
+    "Call your doctor within 2 hours if you take calcium with levothyroxine.",
+    "Call your doctor within 2 hours after taking magnesium.",
+    "Call your doctor or pharmacist within 2 hours if the rash worsens.",
+  ]) assert.equal(applyTimingPolicy(line, []), line);
+  const first = (line) => applyTimingPolicy(line, []).split("\n")[0];
+  assert.equal(first("Call your doctor and take zinc 2 hours after ciprofloxacin."), "Call your doctor.");
+  // A time that is not a deadline, or a deadline measured between two products, is still spacing.
+  for (const line of ["Tell your doctor you take them 2 hours apart.", "Ask your pharmacist about taking them 2 hours apart.",
+    "Call your doctor if you need to take calcium 2 hours after levothyroxine.", "Ask your pharmacist whether 2 hours is enough.",
+    "Call your doctor if you take calcium within 2 hours of levothyroxine.",
+    "Ask your pharmacist about calcium within 2 hours of levothyroxine."]) {
+    assert.doesNotMatch(applyTimingPolicy(line, []), /2 hours/, line);
+  }
+  // A deadline for the call does not carry a spacing interval that follows it. When that interval is the call's
+  // condition, the clause goes whole: keeping the call alone would make it unconditional, and the scrub never
+  // rewrites inside a clause.
+  assert.equal(applyTimingPolicy("Call your doctor within 2 hours if you took calcium 1 hour after levothyroxine.", []), NO_TIMING_RECORD);
+});
+
+test("clock times that place two products apart are spacing; one product's clock times are not", async () => {
+  for (const line of [
+    "Take levothyroxine at 8 am and calcium at 9 am.",
+    "Take levothyroxine at 8 am. Take calcium at 9 am.",
+    "Take levothyroxine at 7:00 a.m., and your calcium at noon.",
+    "- Take levothyroxine at 6 AM.\n- Take the zinc at 10 AM.",
+    "Take levothyroxine at 8 am. Call your doctor about taking calcium at 9 am.",
+    "Take magnesium at midnight and acetaminophen at 12 pm.",
+    "Take levothyroxine at 7 am. Take calcium at 11 am and 3 pm.",
+  ]) {
+    const out = applyTimingPolicy(line, []);
+    assert.doesNotMatch(out, /\d\s*(?:a\.?m|p\.?m)|noon/i, `${line}\n${out}`);
+    assert.ok(out.includes(NO_TIMING_RECORD), out);
+  }
+  // With a record for the pair, the record's interval replaces the model's schedule.
+  const { reply } = await askWith("When should I take calcium with levothyroxine?", "Take levothyroxine at 8 am and calcium at 9 am. Calcium can block absorption.");
+  assert.doesNotMatch(reply, /9 am/, reply);
+  assert.match(reply, /Calcium can block absorption\./, reply);
+  assert.ok(reply.includes(quoteOf("DSI_LEVOTHYROXINE_CALCIUM")), reply);
+  // Controls: one product at several times, one timed product beside an untimed one, two products at one time
+  // however it is written, and a time for calling the doctor.
+  for (const line of [
+    "Take acetaminophen at 8 am and 2 pm.",
+    "Take levothyroxine at 7 am on an empty stomach. Calcium can block its absorption.",
+    "Take acetaminophen at 8 am and 2 pm; magnesium does not interact with it.",
+    "Take magnesium at noon and acetaminophen at 12 pm.",
+    "Take magnesium at 8 am and acetaminophen at 08:00.",
+    "Take levothyroxine at 8 am. Call your doctor at 9 am about calcium.",
+    "Take acetaminophen at 8 am and 2 pm. Take magnesium at 8 am.",
+    "Take acetaminophen at 8 am. Take acetaminophen again at 2 pm.",
+  ]) assert.equal(applyTimingPolicy(line, []), line);
+});

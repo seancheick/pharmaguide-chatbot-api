@@ -22,7 +22,7 @@ const INTERVAL = new RegExp(INTERVAL_SOURCE, "i");
 // What an interval can be other than spacing between two products: a dose frequency ("every 6 hours"),
 // a time anchored to a meal, bed or a lab draw (a label direction such as "30–60 minutes before
 // breakfast"), or a window of a day or more ("in 24 hours", "within 24 hours"). "4 hours between doses"
-// is dosing only in a reply that names at most one product (see dosesOneProduct).
+// is dosing only when the doses are one product's (see dosesOneProduct); timingKind sorts the rest.
 const DOSE_FREQUENCY_BEFORE = /\bevery\s+$/i;
 const ANCHORED_AFTER = /^\s*(?:before|after|prior\s+to|ahead\s+of|following)\s+(?:(?:a|an|your|the|first|each|any)\s+)*(?:bed\w*|sleep\w*|breakfast|lunch|dinner|supper|meals?|eating|food|exercise|workouts?|waking|you\s+wake|you\s+eat|blood\s+(?:draws?|tests?|work)|labs?|lab\s+tests?)\b/i;
 // A sentence about an emergency or a maximum dose is never touched.
@@ -77,11 +77,19 @@ const CLAUSE_SPLIT = String.raw`(?<=[,;:])\s+|\s+(?=[—–]\s)|\s+(?=(?:so|then
 const SAFETY_CLAUSE_SPLIT = new RegExp(String.raw`${CLAUSE_SPLIT}|\s+(?=and\s+(?:${INSTRUCTION_VERB})\b)`, "i");
 
 // A minimum interval between doses of one product is dosing, not spacing between two ("wait 4 hours between
-// doses", "keep doses 4 hours apart", "take the next dose 4 hours after the last dose"). In a reply that names
-// two products, on any line, the doses may be theirs ("Calcium can block levothyroxine. Leave 4 hours between doses."), and a
-// clause naming a product after "the last dose" spaces it from the medicine ("…before taking calcium").
-const BETWEEN_DOSES = /\bbetween\s+(?:(?:each|your|the|its)\s+)?doses?\b|\bdoses?\b[^.;,]*?\bapart\b/i;
+// doses", "keep doses 4 hours apart", "take the next dose 4 hours after the last dose"). Whose doses: the one
+// product named next to "doses" ("between acetaminophen doses", "doses of acetaminophen") when the clause names
+// no other; with no name there, the reply's. In a reply that names two products, on any line, unnamed doses may
+// be theirs ("Calcium can block levothyroxine. Leave 4 hours between doses."), and a clause naming a product
+// after "the last dose" spaces it from the medicine ("…before taking calcium").
+const BETWEEN_DOSES = /\bbetween\s+(?:(?:each|your|the|its|my)\s+)?(?:[\w'-]+\s+)?doses?\b|\bdoses?\b[^.;,]*?\bapart\b/i;
+const DOSE_OWNER = /\b([\w'-]+)(?=\s+doses?\b)|\bdoses?\s+of\s+(?:(?:your|the|my)\s+)?([\w'-]+)/gi;
+// A generic word ("supplement doses") names no owner.
+const namesOwner = (clause) => [...clause.matchAll(DOSE_OWNER)].some((m) => agentsIn(m[1] || m[2]).size > 0 || namesMedicine(m[1] || m[2]));
 const AFTER_LAST_DOSE = /\bafter\s+(?:the|your|its)\s+(?:last|previous|prior)\s+dose\b/i;
+// The other end of a dose interval ("…before the next dose"). A named product's last dose is its own dose
+// interval only with it; "wait 4 hours after your last dose of levothyroxine" may be spacing from calcium.
+const NEXT_DOSE = /\b(?:next|another|following)\s+dose\b/i;
 function productCount(text) {
   let t = normalizeText(String(text || ""));
   let n = 0;
@@ -102,21 +110,87 @@ const NOT_A_PRODUCT = String.raw`(?:${INSTRUCTION_VERB}|split|divide|spread|two|
 const TWO_IN_DOSES = new RegExp(String.raw`\bdoses?\s+of\s+[^;,]*?\s(?:and|or|plus|with|from)\s+(?!${NOT_A_PRODUCT})|\b(?:and|or|plus)\s+(?:(?:your|the|my)\s+)?(?!${NOT_A_PRODUCT})\S+(?:\s+\S+)?\s+doses?\b|\b(?:apart|away)\s+from\b|\b(?:both|the\s+two|each\s+other|them)\b`, "i");
 const TAKES = /\b(?:tak(?:e|es|ing)|hav(?:e|ing)|us(?:e|ing))\s+((?:\S+\s*){1,3})/gi;
 const takesAnother = (clause) => [...clause.matchAll(TAKES)].some((m) => !/\b(?:doses?|another|more|one|tablets?|capsules?)\b/i.test(m[1]));
-const dosesOneProduct = (clause, reply) => productCount(reply) <= 1 && !TWO_IN_DOSES.test(clause) &&
-  (BETWEEN_DOSES.test(clause) || (AFTER_LAST_DOSE.test(clause) && productCount(clause) === 0 && !takesAnother(clause)));
+function dosesOneProduct(clause, reply) {
+  if (TWO_IN_DOSES.test(clause)) return false;
+  const named = productCount(clause);
+  const unnamedOneProduct = named === 0 && productCount(reply) <= 1;
+  const ownedByOne = named === 1 && namesOwner(clause);
+  return (BETWEEN_DOSES.test(clause) && (unnamedOneProduct || ownedByOne)) ||
+    (AFTER_LAST_DOSE.test(clause) && !takesAnother(clause) && (unnamedOneProduct || (ownedByOne && NEXT_DOSE.test(clause))));
+}
+
+const FOLLOW_UP = /\b(?:call|contact|see|tell|notify|ask|consult|page|message|seek|get|go\s+to|visit)\s+(?:(?:your|a|an|the|medical|immediate|urgent|prompt|health\s*care)\s+)*(?:doctors?|prescribers?|pharmacists?|providers?|clinicians?|physicians?|nurses?|care\s+team|clinic|care|help|attention|hospital|er|emergency\s+room)\b|\b(?:check|recheck|monitor|measure)\s+(?:your\s+)?(?:blood\s+(?:sugar|glucose|pressure)|glucose|temperature|pulse|heart\s+rate)\b/i;
+
+// A clock time ("8 am", "7:30 a.m.", "14:00", "noon"). Two products at two clock times are spaced apart by them.
+const CLOCK = /\b(?:(?:1[0-2]|0?[1-9])(?::[0-5]\d)?\s*[ap]\.?\s?m\b|(?:[01]?\d|2[0-3]):[0-5]\d|noon|midnight)/i;
+// Minutes after midnight, so "noon", "12 pm" and "12:00" are one time.
+function clockMinutes(t) {
+  const s = t.toLowerCase().replace(/[\s.]/g, "");
+  if (s === "noon") return 720;
+  if (s === "midnight") return 0;
+  const [, h, m = "0", ap] = s.match(/^(\d+)(?::(\d+))?([ap]m)?$/);
+  return (ap ? (+h % 12) + (ap === "pm" ? 12 : 0) : +h) * 60 + +m;
+}
+
+// A time that bounds getting care or checking the body, not a product: a deadline ("within 2 hours", "in the next
+// hour") or a clock time ("at 9 am") after a care phrase ("call your doctor", "check your blood sugar"), with no
+// product and no dose verb between them. So "call your doctor within 2 hours if you take calcium with
+// levothyroxine" times the call, while "call your doctor if you take calcium within 2 hours of levothyroxine" and
+// "ask your pharmacist about calcium within 2 hours of levothyroxine" time the calcium.
+const CARE_TIME = new RegExp(String.raw`\b(?:(?:within|in)\s+(?:the\s+next\s+)?(?:${INTERVAL_SOURCE})|(?:at|by)\s+(?:${CLOCK.source}))`, "gi");
+const DOSE_VERB = /\b(?:tak(?:e|es|en|ing)|took|us(?:e|es|ed|ing)|swallow\w*|giv(?:e|es|en|ing)|gave)\b/i;
+function withoutCareTimes(clause) {
+  let rest = "";
+  let from = 0;
+  for (const m of clause.matchAll(CARE_TIME)) {
+    const care = [...clause.slice(0, m.index).matchAll(new RegExp(FOLLOW_UP.source, "gi"))].pop();
+    const between = care && clause.slice(care.index + care[0].length, m.index);
+    if (!care || productCount(between) > 0 || DOSE_VERB.test(between)) continue;
+    rest += clause.slice(from, m.index);
+    from = m.index + m[0].length;
+  }
+  return rest + clause.slice(from);
+}
+
+const SENTENCE_SPLIT = /(?<=[.!?])(?<!\b(?:St|Dr|Mr|Mrs|Ms|Jr|Sr|vs|No)\.)\s+(?=[\p{Lu}*"(])/u;
+// Does the reply place two products at different clock times ("levothyroxine at 8 am and calcium at 9 am",
+// on one line or several)? Only clauses that name a product count, so one medicine's dose times stay. Two
+// products are apart when one clause times both at two times, or two clauses time them and share no time;
+// "acetaminophen at 8 am and 2 pm" beside "magnesium at 8 am" takes them together at 8 am.
+function schedulesProducts(reply) {
+  const timed = String(reply || "").split("\n").flatMap((l) => l.split(SENTENCE_SPLIT)).flatMap((s) => s.split(new RegExp(CLAUSE_SPLIT, "i")))
+    .map(withoutCareTimes).filter((c) => CLOCK.test(c) && productCount(c) > 0)
+    .map((c) => ({ c, times: new Set(c.match(new RegExp(CLOCK.source, "gi")).map(clockMinutes)) }));
+  return timed.some((a, i) => (a.times.size >= 2 && productCount(a.c) >= 2) ||
+    timed.slice(i + 1).some((b) => ![...a.times].some((t) => b.times.has(t)) && productCount(`${a.c} ${b.c}`) >= 2));
+}
+
+// What a clause's stated time is. Three cases: spacing between two products (removed; only a supplied record
+// may give it), an interval between doses of one medicine, or a time for clinical follow-up (both kept). The
+// follow-up time is set aside first, and the rest of the clause is sorted on its own. Null when the clause
+// states no timing. In an emergency or maximum-dose sentence only a clause that puts time between two products
+// counts, and the emergency clause itself never does.
+function timingKind(clause, { reply, safety, clock }) {
+  const rest = withoutCareTimes(clause);
+  const byClock = clock && CLOCK.test(rest) && productCount(rest) > 0;
+  const betweenProducts = byClock || spacesProducts(rest);
+  const states = safety ? !SAFETY_LINE.test(clause) && betweenProducts : betweenProducts || statesSpacing(rest) || instructsSpacing(rest);
+  if (states) return dosesOneProduct(rest, reply) ? "dose interval" : "spacing";
+  return rest === clause ? null : "follow-up";
+}
 
 // One sentence: drop the clauses that state spacing, keep the rest ("Zinc may reduce levothyroxine
 // absorption, so separate them by 4 hours." keeps "Zinc may reduce levothyroxine absorption.").
-// In an emergency or maximum-dose sentence only a clause that spaces two products goes; the emergency
-// clause and any other stay ("Call 911 if…; take zinc 2 hours after ciprofloxacin" keeps "Call 911 if…").
-function scrubSentence(sentence, reply = sentence) {
+// An emergency, maximum-dose or follow-up sentence is also split before "and" + an instruction, so its own
+// part stays word for word ("Call 911 if…; take zinc 2 hours after ciprofloxacin" keeps "Call 911 if…").
+function scrubSentence(sentence, { reply = sentence, clock = false } = {}) {
   const safety = SAFETY_LINE.test(sentence);
-  const clauses = sentence.split(safety ? SAFETY_CLAUSE_SPLIT : new RegExp(CLAUSE_SPLIT, "i"));
+  const clauses = sentence.split(safety || FOLLOW_UP.test(sentence) ? SAFETY_CLAUSE_SPLIT : new RegExp(CLAUSE_SPLIT, "i"));
   const kept = [];
   let listOpen = false;
   for (const c of clauses) {
     const s = c.trim();
-    const remove = !dosesOneProduct(c, reply) && (safety ? !SAFETY_LINE.test(c) && spacesProducts(c) : statesSpacing(c) || instructsSpacing(c));
+    const remove = timingKind(c, { reply, safety, clock }) === "spacing";
     // The rest of a removed clause's list goes with it ("…apart from milk, cheese and yogurt"); an
     // instruction or clause of its own after it stays ("…apart from levothyroxine, call your doctor").
     const tail = listOpen && !SAFETY_LINE.test(c) && !CLAUSE_OPENER.test(s) && s.split(/\s+/).length <= 4;
@@ -145,10 +219,11 @@ function scrubSentence(sentence, reply = sentence) {
 function scrubSpacing(reply) {
   let removed = false;
   const lines = [];
+  const clock = schedulesProducts(reply);
   for (const line of String(reply || "").split("\n")) {
     const [, prefix = "", body] = line.match(/^(\s*(?:[-*•]|\d+[.)])\s+)?(.*)$/);
     // "St. John's wort" and "Dr. Smith" are one sentence.
-    const sentences = body.split(/(?<=[.!?])(?<!\b(?:St|Dr|Mr|Mrs|Ms|Jr|Sr|vs|No)\.)\s+(?=[\p{Lu}*"(])/u).map((s) => scrubSentence(s, reply));
+    const sentences = body.split(SENTENCE_SPLIT).map((s) => scrubSentence(s, { reply, clock }));
     if (!sentences.some((s) => s.removed)) { lines.push(line); continue; }
     removed = true;
     const text = sentences.map((s) => s.text).filter(Boolean).join(" ");
