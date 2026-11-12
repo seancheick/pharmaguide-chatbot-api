@@ -563,3 +563,23 @@ test("an onset statement in a follow-up is kept; a follow-up about the pair is s
   assert.doesNotMatch(reply, /2 hours apart/, reply);
   assert.ok(reply.includes(quoteOf("DSI_LEVOTHYROXINE_CALCIUM")), reply);
 });
+
+// Reported on 25f8d77: the list-tail rule dropped instructions of their own after a removed spacing clause.
+test("a removed spacing clause takes only the rest of its own list, never the next instruction", () => {
+  const first = (line) => applyTimingPolicy(line, []).split("\n")[0];
+  for (const [line, want] of [
+    ["Separate them; avoid alcohol.", "Avoid alcohol."],
+    ["Separate them, avoid grapefruit.", "Avoid grapefruit."],
+    ["Separate them by 4 hours; tell your doctor.", "Tell your doctor."],
+    ["Take calcium and levothyroxine at different times, see your doctor.", "See your doctor."],
+    ["Separate the zinc and ciprofloxacin, stop the zinc, and call your doctor.", "Stop the zinc, and call your doctor."],
+    ["Take iron apart from levothyroxine, call your doctor.", "Call your doctor."],
+    ["Keep calcium apart from levothyroxine, monitor your TSH.", "Monitor your TSH."],
+    ["If your heartbeat is irregular, call 911; space them apart, get help.", "If your heartbeat is irregular, call 911; get help."],
+    ["Take iron apart from milk, cheese and yogurt, and ask your pharmacist.", "Ask your pharmacist."],
+    ["Separate them, otherwise absorption drops.", "Otherwise absorption drops."],
+  ]) assert.equal(first(line), want, line);
+  // The list itself still goes with the clause that named it.
+  assert.equal(first("Take iron apart from milk, cheese and yogurt."), NO_TIMING_RECORD.split("\n")[0]);
+  assert.equal(first("Take iron apart from milk, cheese, yogurt, and calcium-fortified juice."), NO_TIMING_RECORD.split("\n")[0]);
+});

@@ -64,8 +64,11 @@ const statesSpacing = (clause) => [...clause.matchAll(new RegExp(INTERVAL_SOURCE
 const instructsSpacing = (clause) => SPACING_ACTION.test(clause) && SPACING_SUBJECT.test(clause);
 // A clause that puts time between two products ("take zinc 2 hours after ciprofloxacin").
 const spacesProducts = (clause) => instructsSpacing(clause) || (SPACING_VERB.test(clause) && statesSpacing(clause));
-// Words that start a clause of its own, not the tail of a list.
-const CLAUSE_OPENER = /^(?:[—–]|(?:so|but|then|which|while|because|if|as|since|though|although|unless|when|this|that|it|they|you|i|we|(?:and|or)\s+(?:stop|ask|talk|call|avoid|check|see|contact|seek|tell|do|don't|never|take))\b)/i;
+// A removed clause that ends on a list ("…apart from milk,"): only the short segments after it that carry
+// on that list ("cheese and yogurt") go with it.
+const ENDS_ON_LIST = /\b(?:from|with|like|including|such\s+as|containing)\s+[^,;:]+,$/i;
+// Words that start a clause or an instruction of its own, never the rest of a list.
+const CLAUSE_OPENER = /^(?:[—–]|(?:(?:and|or)\s+)?(?:please\s+)?(?:so|but|then|which|while|because|if|as|since|though|although|unless|when|otherwise|this|that|it|they|you|i|we|avoid|stop|tell|see|call|monitor|get|check|ask|keep|take|don'?t|do|never|talk|contact|seek|consult|use|drink|eat|let|watch|report|go|speak|follow|discuss|limit|skip|wait|try|consider|space|separate|make|have|hold|start|restart|continue|switch|read)\b)/i;
 
 // One sentence: drop the clauses that state spacing, keep the rest ("Zinc may reduce levothyroxine
 // absorption, so separate them by 4 hours." keeps "Zinc may reduce levothyroxine absorption.").
@@ -75,13 +78,16 @@ function scrubSentence(sentence) {
   const safety = SAFETY_LINE.test(sentence);
   const clauses = sentence.split(/(?<=[,;:])\s+|\s+(?=[—–]\s)|\s+(?=(?:so|then|but)\s)/i);
   const kept = [];
-  let dropping = false;
+  let listOpen = false;
   for (const c of clauses) {
+    const s = c.trim();
     const remove = safety ? !SAFETY_LINE.test(c) && spacesProducts(c) : statesSpacing(c) || instructsSpacing(c);
-    // The short list tail of a removed clause goes with it ("…apart from milk, cheese and yogurt").
-    const tail = dropping && !SAFETY_LINE.test(c) && !CLAUSE_OPENER.test(c.trim()) && c.trim().split(/\s+/).length <= 4;
-    dropping = remove || tail;
-    if (!dropping) kept.push(c);
+    // The rest of a removed clause's list goes with it ("…apart from milk, cheese and yogurt"); an
+    // instruction or clause of its own after it stays ("…apart from levothyroxine, call your doctor").
+    const tail = listOpen && !SAFETY_LINE.test(c) && !CLAUSE_OPENER.test(s) && s.split(/\s+/).length <= 4;
+    const dropped = remove || tail;
+    listOpen = dropped && /,$/.test(s) && (tail || ENDS_ON_LIST.test(s));
+    if (!dropped) kept.push(c);
   }
   if (kept.length === clauses.length) return { text: sentence, removed: false };
   let text = kept.join(" ").trim()
