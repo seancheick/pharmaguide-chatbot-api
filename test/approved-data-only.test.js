@@ -715,3 +715,44 @@ test("clock times that place two products apart are spacing; one product's clock
     "Take acetaminophen at 8 am. Take acetaminophen again at 2 pm.",
   ]) assert.equal(applyTimingPolicy(line, []), line);
 });
+
+// Found by integrator probe on 2026-11-12 (follow-up to PR #36); fix approved by Sean. A removed clause that sets the
+// time or condition of the clause beside it takes that clause with it, so the scrub never leaves an unconditional order
+// or a dangling fragment.
+test("a removed time window takes the clause it conditions; independent clauses stay", () => {
+  for (const line of [
+    "For 4 hours after levothyroxine, avoid calcium and iron.",
+    "Within 4 hours of your levothyroxine dose, don't take calcium.",
+    "Within 2 hours of taking levothyroxine, avoid calcium.",
+    "After taking levothyroxine, wait 4 hours before calcium.",
+    "Avoid calcium and iron, for 4 hours after levothyroxine.",
+    "If you take calcium, separate it from levothyroxine by 4 hours.",
+    "If you took calcium within 4 hours of levothyroxine, call your doctor.",
+    "Avoid taking calcium within 4 hours of levothyroxine.",
+    // The interval is the call's condition: the call alone would be an order the model never gave.
+    "Call your doctor within 2 hours if you take calcium 4 hours after levothyroxine.",
+  ]) assert.equal(applyTimingPolicy(line, []), NO_TIMING_RECORD, line);
+  // Controls: an independent clause, with or without a condition of its own, stays word for word.
+  const first = (line) => applyTimingPolicy(line, []).split("\n")[0];
+  assert.equal(first("Separate them; avoid alcohol."), "Avoid alcohol.");
+  assert.equal(first("If you miss a dose, don't double up; take them 4 hours apart."), "If you miss a dose, don't double up.");
+  assert.equal(first("Zinc may reduce levothyroxine absorption, so separate them by 4 hours."), "Zinc may reduce levothyroxine absorption.");
+  assert.equal(first("If you have trouble breathing, call 911; take zinc 2 hours after ciprofloxacin."), "If you have trouble breathing, call 911.");
+  // A window goes with its own clause only: a conjunction, semicolon or "so" starts a clause of its own.
+  assert.equal(first("Take calcium with food, and if you also take levothyroxine, keep them 4 hours apart."), "Take calcium with food.");
+  assert.equal(first("Avoid alcohol; for 4 hours after levothyroxine, avoid calcium."), "Avoid alcohol.");
+  assert.equal(first("Calcium blocks levothyroxine, when taken together, so separate them by 4 hours."), "Calcium blocks levothyroxine, when taken together.");
+  assert.equal(first("Avoid calcium, for 4 hours after levothyroxine, and take iron at night."), "Take iron at night.");
+  // A condition between two clauses goes with the one it leads, unless it carries the spacing itself and may time
+  // either (PR #37 review).
+  assert.equal(first("Take calcium with food, if you also take levothyroxine, keep them 4 hours apart."), "Take calcium with food.");
+  assert.equal(applyTimingPolicy("Avoid calcium, for 4 hours after levothyroxine, take iron at night.", []), NO_TIMING_RECORD);
+  // An emergency instruction keeps its own condition; only the spacing between them goes (PR #37 review).
+  assert.equal(first("If you have trouble breathing, after taking calcium 4 hours after levothyroxine, call 911."), "If you have trouble breathing, call 911.");
+  for (const line of [
+    "Do not take calcium and levothyroxine at the same time.",
+    "Call your doctor within 2 hours if the rash worsens.",
+    "Call your doctor within 2 hours if you take calcium with levothyroxine.",
+    "Before bed, take magnesium with water.",
+  ]) assert.equal(applyTimingPolicy(line, []), line);
+});
