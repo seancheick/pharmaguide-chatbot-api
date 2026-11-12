@@ -633,3 +633,63 @@ test("an interval between doses of one product is kept; one between two products
   // "St." does not end the sentence, so the whole clause goes and no "John's wort…" fragment is left behind.
   assert.equal(applyTimingPolicy("Leave 2 hours between doses of St. John's wort and your birth control.", []), NO_TIMING_RECORD);
 });
+
+// Reported by Sean on 2026-11-12 (dsld_clean scripts/audits/clinical_review_20261111/DR_PHAM_ANSWERS_20261112.md,
+// Part B 3A): the scrub sorts a stated time into three cases. Spacing between two products goes unless a
+// record supplies it; an interval between doses of one medicine and a deadline for clinical follow-up stay.
+test("an interval between doses of the one medicine the clause names is kept, also in a reply naming two products", () => {
+  for (const line of [
+    "Wait at least 4 hours between acetaminophen doses.",
+    "Magnesium is fine with acetaminophen. Wait at least 4 hours between acetaminophen doses.",
+    "Leave 6 hours between your ibuprofen doses.",
+    "Calcium does not change this: wait 4 hours between doses of acetaminophen.",
+  ]) assert.equal(applyTimingPolicy(line, []), line);
+  // Controls: doses with no owner in a two-product reply, doses of two products, and a generic owner still go.
+  for (const line of [
+    "Calcium can block levothyroxine. Leave 4 hours between doses.",
+    "Leave 4 hours between calcium and levothyroxine doses.",
+    "Leave 4 hours between levothyroxine doses and calcium.",
+    "Calcium can block levothyroxine. Leave 4 hours between supplement doses.",
+    "Wait 4 hours after your levothyroxine dose.",
+  ]) assert.doesNotMatch(applyTimingPolicy(line, []), /4 hours/, line);
+});
+
+test("a deadline for clinical follow-up is kept; spacing joined to it still goes", () => {
+  for (const line of [
+    "Call your doctor within 2 hours if the rash worsens.",
+    "If the swelling spreads, contact your prescriber within an hour.",
+    "Check your blood sugar within 30 minutes if you feel shaky.",
+  ]) assert.equal(applyTimingPolicy(line, []), line);
+  const first = (line) => applyTimingPolicy(line, []).split("\n")[0];
+  assert.equal(first("Call your doctor and take zinc 2 hours after ciprofloxacin."), "Call your doctor.");
+  // A time that is not a deadline, or a deadline measured between two products, is still spacing.
+  for (const line of ["Tell your doctor you take them 2 hours apart.", "Ask your pharmacist about taking them 2 hours apart.",
+    "Call your doctor if you need to take calcium 2 hours after levothyroxine.", "Ask your pharmacist whether 2 hours is enough.",
+    "Call your doctor if you take calcium within 2 hours of levothyroxine."]) {
+    assert.doesNotMatch(applyTimingPolicy(line, []), /2 hours/, line);
+  }
+});
+
+test("clock times that place two products apart are spacing; one product's clock times are not", async () => {
+  for (const line of [
+    "Take levothyroxine at 8 am and calcium at 9 am.",
+    "Take levothyroxine at 8 am. Take calcium at 9 am.",
+    "Take levothyroxine at 7:00 a.m., and your calcium at noon.",
+    "- Take levothyroxine at 6 AM.\n- Take the zinc at 10 AM.",
+  ]) {
+    const out = applyTimingPolicy(line, []);
+    assert.doesNotMatch(out, /\d\s*(?:a\.?m|p\.?m)|noon/i, `${line}\n${out}`);
+    assert.ok(out.includes(NO_TIMING_RECORD), out);
+  }
+  // With a record for the pair, the record's interval replaces the model's schedule.
+  const { reply } = await askWith("When should I take calcium with levothyroxine?", "Take levothyroxine at 8 am and calcium at 9 am. Calcium can block absorption.");
+  assert.doesNotMatch(reply, /9 am/, reply);
+  assert.match(reply, /Calcium can block absorption\./, reply);
+  assert.ok(reply.includes(quoteOf("DSI_LEVOTHYROXINE_CALCIUM")), reply);
+  // Controls: one product at several times, one timed product beside an untimed one, two products at one time.
+  for (const line of [
+    "Take acetaminophen at 8 am and 2 pm.",
+    "Take levothyroxine at 7 am on an empty stomach. Calcium can block its absorption.",
+    "Take acetaminophen at 8 am and 2 pm; magnesium does not interact with it.",
+  ]) assert.equal(applyTimingPolicy(line, []), line);
+});
