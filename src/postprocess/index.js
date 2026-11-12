@@ -1,18 +1,31 @@
 const { normalizeText, escapeRegex } = require("../core/normalize");
 const { mentionsMineralSpacingTrigger } = require("../gates/detection");
 
-function mineralSpacingNote() {
-  return "• **Timing note:** Minerals (magnesium/iron/calcium/zinc) can reduce absorption of **thyroid meds** and some **antibiotics** — separate by **2–4 hours**.";
+const MINERAL = /\b(?:magnesium|iron|calcium|zinc)\b/i;
+
+/**
+ * Timing for a medicine + mineral pair, quoted from the verified records supplied for this request:
+ * their management text, verbatim. No record, no note: an interval is never written here.
+ */
+function mineralSpacingNote(records) {
+  const quoted = (records || []).filter((r) => [1, 2].some((k) => r[`agent${k}_type`] === "supplement" && MINERAL.test(r[`agent${k}_name`] || "")));
+  if (quoted.length === 0) return null;
+  return quoted.map((r) => `• **Timing (PharmaGuide record, ${r.agent2_name} + ${r.agent1_name}):** ${r.management}`).join("\n");
 }
 
+// A stated interval: "2 hours", "2-4 hrs", "6 h", "2+ hours".
+const STATED_INTERVAL = /\b\d+(?:\.\d+)?(?:\s*(?:[-\u2013]|to)\s*\d+(?:\.\d+)?)?\+?\s*(?:hours?|hrs?|h)\b/i;
+
+// Used only for a medicine + mineral spacing question: the model's own timing lines go, and any line
+// stating an interval goes with them, because the interval shown is the record's (mineralSpacingNote).
 function stripModelSpacingAdvice(text) {
   const lines = text.split("\n");
   const shouldRemoveLine = (line) => {
     const l = line.toLowerCase();
-    const hasSpacingLanguage = l.includes("space") || l.includes("separate") || l.includes("absorption conflict") || l.includes("take at a different time") || l.includes("2-4 hours") || l.includes("2\u20134 hours");
+    const hasSpacingLanguage = l.includes("space") || l.includes("separate") || l.includes("absorption conflict") || l.includes("take at a different time");
     const mentionsTargets = l.includes("thyroid") || l.includes("levothyroxine") || l.includes("tetracycline") || l.includes("fluoroquinolone") || l.includes("antibiotic");
     const mentionsMinerals = l.includes("magnesium") || l.includes("iron") || l.includes("calcium") || l.includes("zinc") || l.includes("mineral");
-    return hasSpacingLanguage && (mentionsTargets || mentionsMinerals);
+    return STATED_INTERVAL.test(l) || (hasSpacingLanguage && (mentionsTargets || mentionsMinerals));
   };
   let result = lines.filter((line) => !shouldRemoveLine(line)).join("\n");
   result = result.replace(/[,;.]*\s*(separate|space)\s+(this\s+)?(mineral|it|them)\s+(by\s+)?2[\u2013-]4\s+hours[^.]*\.?/gi, ".");

@@ -36,7 +36,10 @@ const CLASS_WORDS = {
   "class:diabetes_meds": ["diabetes medication", "diabetes meds", "diabetes pills"],
   "class:diuretics": ["diuretic", "diuretics", "water pill", "water pills"],
   "class:potassium_sparing_diuretics": ["potassium sparing diuretic", "potassium sparing diuretics"],
-  "class:fluoroquinolones": ["fluoroquinolone", "fluoroquinolones", "cipro"],
+  "class:fluoroquinolones": ["fluoroquinolone", "fluoroquinolones", "quinolone", "quinolones", "cipro"],
+  "class:proton_pump_inhibitors": ["ppi", "ppis", "proton pump inhibitor", "proton pump inhibitors"],
+  "class:loop_diuretics": ["loop diuretic", "loop diuretics"],
+  "class:thiazide_diuretics": ["thiazide", "thiazides", "thiazide diuretic", "thiazide diuretics", "hctz"],
   "class:tetracycline_antibiotics": ["tetracycline", "tetracyclines"],
   "class:oral_contraceptives": ["birth control", "oral contraceptive", "oral contraceptives"],
   "class:corticosteroids": ["steroid", "steroids", "corticosteroid", "corticosteroids"],
@@ -86,6 +89,9 @@ function aliasesFor(name, id, type) {
   }
   return [...out];
 }
+
+/** One word-boundary matcher for an agent: the same aliases the interaction records use. */
+const agentMatcher = (name, id, type) => new RegExp(`\\b(?:${aliasesFor(name, id, type).map(escapeRegex).join("|")})\\b`);
 
 // One matcher per agent id, built once per cold start. An id can appear under several names
 // ("Green Tea Extract", "Green Tea (polyphenols)"): every name contributes its aliases.
@@ -164,4 +170,4 @@ function coveredBy(records, a, b) {
 // Record ids look like DSI_WAR_GARLIC, SSI_IRON_GREENTEA, DDI_METFORMIN_ALCOHOL.
 const RECORD_ID = /\s*\*?\((?:DSI|SSI|DDI)_[A-Z0-9_]+\)\*?|\b(?:DSI|SSI|DDI)_[A-Z0-9_]+\b/g;
 
-module.exports = { RECORD_ID, coveredBy, findInteractions, agentsIn, recordBlock, AGENTS, PIPELINE_VERSION: MANIFEST.db_version, MANIFEST };
+module.exports = { RECORD_ID, coveredBy, findInteractions, agentsIn, agentMatcher, recordBlock, AGENTS, PIPELINE_VERSION: MANIFEST.db_version, MANIFEST };

@@ -202,9 +202,10 @@ module.exports = async function handler(req, res) {
     const entities = mergeStateIntoEntities(rawEntities, conversationState);
     const doses = extractDoses(message);
     const doseSummary = getDoseSummary(doses);
-    // ── Depletion check (before triage — grounded, structured answers) ──
-    if (detection.isDepletionQuestion(message) && entities.meds.length > 0) {
-      const deplReply = depletionReply(convoContext);
+    // ── Depletion check (before triage): every depletion question is answered from the pipeline's
+    // approved medication–nutrient notes, or says which medicines they cover. The model never answers it.
+    if (detection.isDepletionQuestion(message)) {
+      const deplReply = depletionReply(convoContext, entities);
       if (deplReply) {
         logGate("system:depletion", message.length, hasConversation);
         return res.status(200).json({
@@ -410,10 +411,11 @@ module.exports = async function handler(req, res) {
       // Strip Markdown link syntax (frontend doesn't render Markdown)
       reply = stripMarkdownLinks(reply);
 
-      // Mineral spacing
+      // Mineral spacing: the model's timing lines go; the interval shown is the supplied record's, verbatim.
       if (detection.mentionsMineralSpacingTrigger(message)) {
         reply = stripModelSpacingAdvice(reply);
-        reply = reply + "\n\n" + mineralSpacingNote();
+        const note = mineralSpacingNote(pipelineRecords);
+        if (note) reply = reply + "\n\n" + note;
       }
 
       // Single question enforcement

@@ -17,9 +17,10 @@ const { MUST_ALWAYS_APPLY } = require("./prompt-rules");
 
 // The current prompt. A deliberate prompt edit changes these: update both together, in the same commit
 // as the edit, so the change is visible in review. Responses are cached on this hash and report it in
-// X-PG-Ruleset. 2026-10-06: split into sections. 2026-11-10: report, don't prescribe.
-const PRODUCTION_PROMPT_SHA256 = "38a1c1aa600b9578900e71abf894da11a6dfcaa09a643e0fb15eac1416aa1fc1";
-const PRODUCTION_PROMPT_LENGTH = 45108;
+// X-PG-Ruleset. 2026-10-06: split into sections. 2026-11-10: report, don't prescribe. 2026-11-11: the
+// medication-depletion table and the authored mineral/antibiotic intervals are gone (pipeline data only).
+const PRODUCTION_PROMPT_SHA256 = "7436ddde67b258f5c83bdfd03d090ac0bb7105c96919d20e0c545e3618e5136a";
+const PRODUCTION_PROMPT_LENGTH = 43152;
 
 const core = () => SECTIONS.filter((s) => s.kind === "core").map((s) => s.text).join("");
 

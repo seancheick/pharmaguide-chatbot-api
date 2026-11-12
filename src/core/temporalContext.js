@@ -321,7 +321,7 @@ const TEMPORAL_DATA = {
     half_life_hours: 2,
     washout_days: 1,
     onset_days: { min: 0, max: 0 },
-    notes: "Loop diuretic. Onset 30-60 min oral. Can cause electrolyte depletion (K, Mg, Ca).",
+    notes: "Loop diuretic. Onset 30-60 min oral.",
     category: "diuretic",
   },
   hydrochlorothiazide: {

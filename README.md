@@ -59,7 +59,7 @@ A production decision-and-explanation system for high-stakes supplement–medica
 | Safety-policy domains | 21 |
 | Post-response validator rules | 10 |
 | Pinned production canaries (replayable live) | 10 (9) |
-| Test suites | 37 |
+| Test suites | 38 |
 <!-- metrics:end -->
 
 *That table is generated from the code by `scripts/readme_metrics.js`; `npm test` fails if it drifts.*
@@ -319,7 +319,7 @@ curl -s localhost:3000/api/chat -H 'Content-Type: application/json' \
 
 ## Toward a unified PharmaGuide intelligence layer
 
-The architecture moves clinical facts (interactions, contraindications, doses, pregnancy guidance, ingredient forms) to a versioned export from PharmaGuide's canonical pipeline, so every product surface consumes the same reviewed source of truth and the assistant explains pipeline truth rather than maintaining a second copy. The first part is live: the pipeline's verified interaction records (severity, mechanism, management, evidence) and its drug-class membership lists are bundled as a byte-for-byte copy pinned by checksum ([`src/data/pipeline/`](./src/data/pipeline), refreshed with `node scripts/sync_pipeline.js`), and when a question names two agents a record joins, the record goes to the model as authoritative context ([`src/core/pipelineInteractions.js`](./src/core/pipelineInteractions.js)). `/api/health` and `X-PG-Ruleset` report the pipeline version (`pipeline=`). Deterministic gates still answer first.
+The architecture moves clinical facts (interactions, contraindications, doses, pregnancy guidance, ingredient forms) to a versioned export from PharmaGuide's canonical pipeline, so every product surface consumes the same reviewed source of truth and the assistant explains pipeline truth rather than maintaining a second copy. The first part is live: the pipeline's verified interaction records (severity, mechanism, management, evidence) and its drug-class membership lists are bundled as a byte-for-byte copy pinned by checksum ([`src/data/pipeline/`](./src/data/pipeline), refreshed with `node scripts/sync_pipeline.js`), and when a question names two agents a record joins, the record goes to the model as authoritative context ([`src/core/pipelineInteractions.js`](./src/core/pipelineInteractions.js)). The pipeline's medication–nutrient notes are synced the same way, keeping only entries it marks verified and approved for beta; every depletion question is answered from them, quoted verbatim ([`src/core/depletions.js`](./src/core/depletions.js)), and a medicine + mineral timing note quotes the supplied record's management text rather than an interval written here. `/api/health` and `X-PG-Ruleset` report the pipeline version (`pipeline=`). Deterministic gates still answer first.
 
 ```text
                   Canonical PharmaGuide pipeline

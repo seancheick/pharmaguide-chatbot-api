@@ -1,6 +1,6 @@
 {
   "source_repo": "dsld_clean (PharmaGuide pipeline)",
-  "source_commit": "53e07e31463353e640e50920e13fecaabab73a29",
+  "source_commit": "3bde242e7465ab0822ecd0e4a02b187accccb039",
   "db_version": "1.0.15",
   "schema_version": "4.0.0",
   "pipeline_version": "3.4.0",
@@ -14,8 +14,317 @@
     },
     "drug_classes.json": {
       "source": "scripts/data/drug_classes.json",
-      "sha256": "8caf6ed06dae20bc79a1d946a162bcb5515e59041ee385ec493fee3d26866519",
-      "bytes": 57092
+      "sha256": "3f15640050858b0fee78d9c2938fa8641448ae1e7fff7b17f6dbebaa3a39fff4",
+      "bytes": 66690
+    },
+    "medication_depletions.json": {
+      "source": "scripts/data/medication_depletions.json",
+      "sha256": "a3a4d675ddae7a387347f876c6b97bf89ef236a729255de43ca7792d08c44a15",
+      "bytes": 69711,
+      "source_sha256": "c5f785f2020e67f40f3f853cb46e67b29674e1c4ee4fd829dc95ab1109011af1",
+      "kept": 20,
+      "withheld": [
+        {
+          "id": "DEP_STATINS_VITAMIND",
+          "drug": "class:statins",
+          "nutrient": "Vitamin D"
+        },
+        {
+          "id": "DEP_ANTACIDS_VITAMINB12",
+          "drug": "class:proton_pump_inhibitors",
+          "nutrient": "Vitamin B12"
+        },
+        {
+          "id": "DEP_ANTACIDS_MAGNESIUM",
+          "drug": "class:proton_pump_inhibitors",
+          "nutrient": "Magnesium"
+        },
+        {
+          "id": "DEP_ANTACIDS_IRON",
+          "drug": "class:acid_suppressants",
+          "nutrient": "Iron"
+        },
+        {
+          "id": "DEP_ANTACIDS_VITAMINC",
+          "drug": "class:antacids",
+          "nutrient": "Vitamin C"
+        },
+        {
+          "id": "DEP_ANTACIDS_ZINC",
+          "drug": "class:antacids",
+          "nutrient": "Zinc"
+        },
+        {
+          "id": "DEP_METFORMIN_FOLATE",
+          "drug": "6809",
+          "nutrient": "Folate"
+        },
+        {
+          "id": "DEP_OCP_VITAMINB6",
+          "drug": "class:oral_contraceptives",
+          "nutrient": "Vitamin B6"
+        },
+        {
+          "id": "DEP_OCP_VITAMINB12",
+          "drug": "class:oral_contraceptives",
+          "nutrient": "Vitamin B12"
+        },
+        {
+          "id": "DEP_OCP_FOLATE",
+          "drug": "class:oral_contraceptives",
+          "nutrient": "Folate"
+        },
+        {
+          "id": "DEP_OCP_MAGNESIUM",
+          "drug": "class:oral_contraceptives",
+          "nutrient": "Magnesium"
+        },
+        {
+          "id": "DEP_OCP_ZINC",
+          "drug": "class:oral_contraceptives",
+          "nutrient": "Zinc"
+        },
+        {
+          "id": "DEP_OCP_VITAMINC",
+          "drug": "class:oral_contraceptives",
+          "nutrient": "Vitamin C"
+        },
+        {
+          "id": "DEP_OCP_VITAMINE",
+          "drug": "class:oral_contraceptives",
+          "nutrient": "Vitamin E"
+        },
+        {
+          "id": "DEP_DIURETICS_POTASSIUM",
+          "drug": "class:loop_and_thiazide_diuretics",
+          "nutrient": "Potassium"
+        },
+        {
+          "id": "DEP_DIURETICS_MAGNESIUM",
+          "drug": "class:loop_and_thiazide_diuretics",
+          "nutrient": "Magnesium"
+        },
+        {
+          "id": "DEP_DIURETICS_THIAMINE",
+          "drug": "4603",
+          "nutrient": "Thiamin"
+        },
+        {
+          "id": "DEP_CORTICOSTEROIDS_POTASSIUM",
+          "drug": "class:corticosteroids",
+          "nutrient": "Potassium"
+        },
+        {
+          "id": "DEP_CORTICOSTEROIDS_MAGNESIUM",
+          "drug": "class:corticosteroids",
+          "nutrient": "Magnesium"
+        },
+        {
+          "id": "DEP_CORTICOSTEROIDS_VITAMINC",
+          "drug": "class:corticosteroids",
+          "nutrient": "Vitamin C"
+        },
+        {
+          "id": "DEP_CORTICOSTEROIDS_ZINC",
+          "drug": "class:corticosteroids",
+          "nutrient": "Zinc"
+        },
+        {
+          "id": "DEP_CORTICOSTEROIDS_VITAMINB6",
+          "drug": "class:corticosteroids",
+          "nutrient": "Vitamin B6"
+        },
+        {
+          "id": "DEP_SSRIS_SODIUM",
+          "drug": "class:ssris",
+          "nutrient": "Sodium"
+        },
+        {
+          "id": "DEP_SSRIS_CALCIUM",
+          "drug": "class:ssris",
+          "nutrient": "Calcium"
+        },
+        {
+          "id": "DEP_SSRIS_VITAMIND",
+          "drug": "class:ssris",
+          "nutrient": "Vitamin D"
+        },
+        {
+          "id": "DEP_ANTICONVULSANTS_VITAMINK",
+          "drug": "class:enzyme_inducing_antiseizure_medications",
+          "nutrient": "Vitamin K"
+        },
+        {
+          "id": "DEP_ANTICONVULSANTS_BIOTIN",
+          "drug": "class:anticonvulsants",
+          "nutrient": "Biotin"
+        },
+        {
+          "id": "DEP_ACEINHIBITORS_ZINC",
+          "drug": "class:ace_inhibitors",
+          "nutrient": "Zinc"
+        },
+        {
+          "id": "DEP_BETABLOCKERS_COQ10",
+          "drug": "class:beta_blockers",
+          "nutrient": "Coenzyme Q10"
+        },
+        {
+          "id": "DEP_BETABLOCKERS_MELATONIN",
+          "drug": "class:beta_blockers",
+          "nutrient": "Melatonin"
+        },
+        {
+          "id": "DEP_NSAIDS_FOLATE",
+          "drug": "class:nsaids",
+          "nutrient": "Folate"
+        },
+        {
+          "id": "DEP_NSAIDS_IRON",
+          "drug": "class:nsaids",
+          "nutrient": "Iron"
+        },
+        {
+          "id": "DEP_NSAIDS_VITAMINC",
+          "drug": "class:nsaids",
+          "nutrient": "Vitamin C"
+        },
+        {
+          "id": "DEP_ANTIBIOTICS_BVITAMINS",
+          "drug": "antibiotics_broadspectrum",
+          "nutrient": "Vitamin B12"
+        },
+        {
+          "id": "DEP_ANTIBIOTICS_VITAMINK",
+          "drug": "antibiotics_broadspectrum",
+          "nutrient": "Vitamin K"
+        },
+        {
+          "id": "DEP_LEVOTHYROXINE_CALCIUM",
+          "drug": "10582",
+          "nutrient": "Calcium"
+        },
+        {
+          "id": "DEP_LEVOTHYROXINE_IRON",
+          "drug": "10582",
+          "nutrient": "Iron"
+        },
+        {
+          "id": "DEP_ANTIPSYCHOTICS_VITAMIND",
+          "drug": "class:antipsychotics",
+          "nutrient": "Vitamin D"
+        },
+        {
+          "id": "DEP_ANTIPSYCHOTICS_COQ10",
+          "drug": "class:antipsychotics",
+          "nutrient": "Coenzyme Q10"
+        },
+        {
+          "id": "DEP_STIMULANTS_MAGNESIUM",
+          "drug": "class:stimulants",
+          "nutrient": "Magnesium"
+        },
+        {
+          "id": "DEP_STIMULANTS_VITAMINC",
+          "drug": "class:stimulants",
+          "nutrient": "Vitamin C"
+        },
+        {
+          "id": "DEP_HIVPI_VITAMIND",
+          "drug": "class:hiv_protease_inhibitors",
+          "nutrient": "Vitamin D"
+        },
+        {
+          "id": "DEP_HIVPI_ZINC",
+          "drug": "class:hiv_protease_inhibitors",
+          "nutrient": "Zinc"
+        },
+        {
+          "id": "DEP_ANTICOAGULANTS_VITAMINK",
+          "drug": "11289",
+          "nutrient": "Vitamin K"
+        },
+        {
+          "id": "DEP_MAOIS_VITAMINB6",
+          "drug": "class:maois",
+          "nutrient": "Vitamin B6"
+        },
+        {
+          "id": "DEP_DIABETESMEDS_MAGNESIUM",
+          "drug": "class:diabetes_meds",
+          "nutrient": "Magnesium"
+        },
+        {
+          "id": "DEP_IMMUNOSUPPRESSANTS_MAGNESIUM",
+          "drug": "class:immunosuppressants",
+          "nutrient": "Magnesium"
+        },
+        {
+          "id": "DEP_IMMUNOSUPPRESSANTS_VITAMIND",
+          "drug": "class:immunosuppressants",
+          "nutrient": "Vitamin D"
+        },
+        {
+          "id": "DEP_CALCIUMCHANNELBLOCKERS_POTASSIUM",
+          "drug": "class:calcium_channel_blockers",
+          "nutrient": "Potassium"
+        },
+        {
+          "id": "DEP_ANTIHYPERTENSIVES_ZINC",
+          "drug": "class:antihypertensives",
+          "nutrient": "Zinc"
+        },
+        {
+          "id": "DEP_ANTIHYPERTENSIVES_COQ10",
+          "drug": "class:antihypertensives",
+          "nutrient": "Coenzyme Q10"
+        },
+        {
+          "id": "DEP_INSULINS_MAGNESIUM",
+          "drug": "class:insulins",
+          "nutrient": "Magnesium"
+        },
+        {
+          "id": "DEP_SEDATIVES_VITAMIND",
+          "drug": "class:sedatives",
+          "nutrient": "Vitamin D"
+        },
+        {
+          "id": "DEP_BENZODIAZEPINES_MELATONIN",
+          "drug": "class:benzodiazepines",
+          "nutrient": "Melatonin"
+        },
+        {
+          "id": "DEP_BVITAMINS_INTERACTIONS",
+          "drug": "class:b_vitamins",
+          "nutrient": "Zinc"
+        },
+        {
+          "id": "DEP_ORLISTAT_VITAMINA",
+          "drug": "37925",
+          "nutrient": "Vitamin A"
+        },
+        {
+          "id": "DEP_CHOLESTYRAMINE_VITAMINA",
+          "drug": "2447",
+          "nutrient": "Vitamin A"
+        },
+        {
+          "id": "DEP_CHOLESTYRAMINE_VITAMIND",
+          "drug": "2447",
+          "nutrient": "Vitamin D"
+        },
+        {
+          "id": "DEP_CHOLESTYRAMINE_VITAMINE",
+          "drug": "2447",
+          "nutrient": "Vitamin E"
+        },
+        {
+          "id": "DEP_CHOLESTYRAMINE_VITAMINK",
+          "drug": "2447",
+          "nutrient": "Vitamin K"
+        }
+      ]
     }
   }
 }

@@ -283,28 +283,28 @@ test("the release gate blocks a pipeline bundle more than 90 days old", () => {
   assert.match(checkPipelineBundleAge(at(91)).issues[0], /sync_pipeline/);
 });
 
-test("the depletion reply raises questions for the prescriber; it never gives a self-dosing amount", () => {
+test("the depletion reply reports the pipeline's approved notes; it never gives a self-dosing amount", () => {
+  // The notes are the pipeline's (src/core/depletions.js); test/approved-data-only.test.js pins that they
+  // are quoted verbatim. This keeps the report-not-prescribe rule over the quoted text.
   const { depletionReply } = require("../src/gates/replies");
-  for (const med of ["atorvastatin", "metformin", "prednisone", "hydrochlorothiazide", "birth control", "gabapentin", "omeprazole"]) {
+  for (const med of ["atorvastatin", "metformin", "prednisone", "hydrochlorothiazide", "furosemide", "omeprazole", "orlistat", "phenytoin", "birth control", "gabapentin"]) {
     const reply = depletionReply(`does ${med} deplete anything`);
     assert.ok(reply, med);
     assert.doesNotMatch(reply, /replenish/i, med);
-    assert.match(reply, /Ask your prescriber about/, med);
+    assert.match(reply, /pharmacist or your prescriber can review/, med);
     for (const sentence of reply.split(/(?<=[.;])\s+|\n/)) {
       if (/\b\d[\d,.-]*\s*(?:mg|mcg|iu)\b/i.test(sentence)) assert.match(sentence, /\b(?:trials?|studies|studied)\b/i, `${med}: a dose not attributed to studies: ${sentence}`);
     }
   }
-  assert.match(depletionReply("does furosemide deplete anything"), /Potassium — only supplement under provider supervision/, "the potassium caution stays");
 });
 
-test("every depletion entry states its own guidance, never a cross-reference to another medicine", () => {
-  const { DEPLETION_MAP, depletionReply } = require("../src/gates/replies");
-  for (const [med, data] of Object.entries(DEPLETION_MAP)) {
-    assert.doesNotMatch(data.discuss, /\bsame (?:as|probiotic|caution)\b/i, `${med}: ${data.discuss}`);
+test("each medicine's notes are its own: a reply never borrows another medicine's note", () => {
+  const { depletionReply } = require("../src/gates/replies");
+  const { notes } = require("../src/core/depletions");
+  for (const subject of notes()) {
+    for (const e of subject.entries) assert.doesNotMatch(`${e.alert_body} ${e.recommendation}`, /\bsame (?:as|probiotic|caution)\b/i, e.id);
   }
-  for (const med of ["simvastatin", "rosuvastatin", "pravastatin", "lovastatin", "pantoprazole", "esomeprazole", "lansoprazole", "fluoxetine", "escitalopram", "azithromycin", "losartan"]) {
-    const reply = depletionReply(`does ${med} deplete anything`);
-    assert.ok(reply, med);
-    assert.doesNotMatch(reply, /\bsame (?:as|probiotic|caution)\b/i, med);
-  }
+  const statins = depletionReply("does simvastatin deplete anything");
+  assert.match(statins, /Statins/);
+  assert.doesNotMatch(statins, /Metformin|Proton pump/, "only the statin note");
 });

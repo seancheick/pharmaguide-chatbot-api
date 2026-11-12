@@ -483,7 +483,7 @@ const KNOWLEDGE_BASE = {
     aliases: ["coenzyme q10", "ubiquinol", "ubiquinone"],
     category: "supplement",
     forms: {
-      ubiquinol: { absorption: "high", notes: "Active/reduced form. Preferred for 40+ or statin users." },
+      ubiquinol: { absorption: "high", notes: "Active/reduced form. Preferred for 40+." },
       ubiquinone: { absorption: "moderate", notes: "Oxidized form. Cheaper but less bioavailable." },
     },
     adult_dose_range: { min: 100, max: 300, unit: "mg" },
@@ -492,7 +492,7 @@ const KNOWLEDGE_BASE = {
     populations: {
       pregnancy: { safe: true, notes: "Limited data at supplemental doses. Likely safe." },
       renal: { safe: true, notes: "Generally safe." },
-      elderly: { safe: true, notes: "Often recommended with statins to offset CoQ10 depletion." },
+      elderly: { safe: true, notes: "No elderly-specific note." },
     },
     interactions: [
       { with: "warfarin", severity: "moderate", mechanism: "Structurally similar to vitamin K. May reduce INR.", timing_fix: null },
