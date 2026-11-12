@@ -332,6 +332,8 @@ test("any medicine + supplement question gets the scrub and the record quote, no
   for (const [q, text, phrase] of cases) {
     const { reply, askedModel } = await askWith(q, text);
     assert.ok(!reply.includes(phrase), `${q}: kept "${phrase}"\n${reply}`);
+    // "Yes, but separate them…" must not become a bare "Yes.": the yes was conditional on the clause removed.
+    assert.doesNotMatch(reply, /^\s*(?:yes|sure|okay|ok)[.!]?\s*$/im, `${q}: an unqualified yes is left\n${reply}`);
     if (!askedModel) { assert.doesNotMatch(reply, ANY_INTERVAL, `${q}: a gate stated an interval\n${reply}`); continue; }
     const timed = timingRecords(P.findInteractions(q));
     if (timed.length > 0) for (const r of timed) assert.ok(reply.includes(r.management), `${q}: ${r.id} not quoted`);

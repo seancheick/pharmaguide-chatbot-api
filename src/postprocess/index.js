@@ -66,6 +66,8 @@ function scrubSentence(sentence) {
     .replace(/\s+(?:so|and|but|then|or)$/i, "")
     .replace(/^(?:[—–-]\s*)?(?:so|and|but|then|or)\s+/i, "");
   if (!/[\p{L}\p{N}]/u.test(text.replace(/\*\*[^*]*\*\*/g, ""))) return { text: "", removed: true };
+  // A bare yes was conditional on the spacing just removed ("Yes, but separate them…"): it goes too.
+  if (/^(?:yes|yeah|yep|sure|okay|ok|absolutely|of\s+course)$/i.test(text.replace(/[\s,.!*]+/g, " ").trim())) return { text: "", removed: true };
   text = text.charAt(0).toUpperCase() + text.slice(1);
   const end = sentence.trim().match(/[.!?]$/);
   if (end && !/[.!?]$/.test(text)) text += end[0];
